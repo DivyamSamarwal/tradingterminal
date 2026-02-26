@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dalal Street Terminal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div class="topbar-brand">
+                <i class="fa-solid fa-bolt accent"></i>
+                <span>Dalal Street <span class="accent">Terminal</span></span>
+            </div>
+            <div class="topbar-stats">
+                <div class="stat"><span class="stat-label">Day</span><span class="stat-val mono" id="day-counter">Day 1</span></div>
+                <div class="stat-sep"></div>
+                <div class="stat"><span class="stat-label">NIFTY 50</span><span class="stat-val mono" id="nifty-value">22,500.00</span></div>
+                <div class="stat-sep"></div>
+                <div class="stat"><span class="stat-label">Market Time</span><span class="stat-val mono" id="market-time">09:15 AM</span></div>
+                <div class="stat-sep"></div>
+                <div class="stat"><span class="stat-label">Sentiment</span><span class="stat-val mono" id="market-sentiment"><i class="fa-solid fa-minus"></i> Neutral</span></div>
+                <div class="stat-sep"></div>
+                <div class="stat"><span class="stat-label">Portfolio</span><span class="stat-val mono" id="portfolio-value">₹ 1,00,000.00</span></div>
+                <div class="stat-sep"></div>
+                <div class="stat clickable" id="cash-stat" title="Click to modify cash">
+                    <span class="stat-label">Cash <i class="fa-solid fa-pen-to-square" style="font-size:8px;opacity:0.5"></i></span>
+                    <span class="stat-val mono" id="cash-balance">₹ 1,00,000.00</span>
+                </div>
+                <div class="stat-sep"></div>
+                <div class="stat"><span class="stat-label">Day P&L</span><span class="stat-val mono" id="total-pnl">₹ 0.00</span></div>
+            </div>
+            <div class="topbar-controls">
+                <button class="ctrl-btn" id="btn-pause" title="Pause"><i class="fa-solid fa-pause"></i></button>
+                <button class="ctrl-btn on" id="btn-play" title="1x Speed"><i class="fa-solid fa-play"></i></button>
+                <button class="ctrl-btn" id="btn-fast" title="10x Speed"><i class="fa-solid fa-forward-fast"></i></button>
+                <span class="ctrl-sep"></span>
+                <button class="ctrl-btn" id="btn-settings" title="Settings"><i class="fa-solid fa-gear"></i></button>
+                <button class="ctrl-btn" id="btn-theme" title="Toggle Light/Dark"><i class="fa-solid fa-sun"></i></button>
+            </div>
+        </header>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Watchlist -->
+            <aside class="watchlist-panel">
+                <div class="sec-header"><i class="fa-solid fa-list-ul"></i> Watchlist</div>
+                <div class="wl-head">
+                    <span class="wl-h-sym">Symbol</span>
+                    <span class="wl-h-ltp">LTP</span>
+                    <span class="wl-h-chg">Chg%</span>
+                </div>
+                <div class="wl-body" id="watchlist"></div>
+            </aside>
+
+            <!-- Center -->
+            <main class="center-panel">
+                <!-- Active stock header -->
+                <div class="chart-topbar">
+                    <div class="ct-left">
+                        <h2 class="ct-symbol" id="active-symbol">RELIANCE</h2>
+                        <span class="ct-name" id="active-name">Reliance Industries</span>
+                    </div>
+                    <div class="ct-right">
+                        <span class="ct-price mono" id="active-price">2500.00</span>
+                        <span class="ct-change mono" id="active-change">0.00 (0.00%)</span>
+                    </div>
+                </div>
+
+                <!-- Chart -->
+                <div class="chart-container">
+                    <canvas id="main-chart"></canvas>
+                </div>
+
+                <!-- News Feed -->
+                <div class="news-panel">
+                    <div class="news-header">
+                        <span><i class="fa-solid fa-newspaper accent"></i> Live News Feed</span>
+                        <span class="mono news-badge" id="news-count">0</span>
+                    </div>
+                    <div class="news-body" id="news-container">
+                        <div class="news-item">
+                            <span class="news-time mono">09:15</span>
+                            <span class="news-text">Market session started. Waiting for events...</span>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Order Panel -->
+            <aside class="order-panel">
+                <div class="sec-header">
+                    <span><i class="fa-solid fa-bolt"></i> Order Entry</span>
+                    <span class="badge mono" id="order-symbol">---</span>
+                </div>
+
+                <div class="order-tabs">
+                    <button class="o-tab active" id="tab-equity">Equity</button>
+                    <button class="o-tab" id="tab-options">Options</button>
+                </div>
+
+                <!-- Equity Form -->
+                <div class="order-form" id="equity-form">
+                    <div class="fg">
+                        <label>Product</label>
+                        <select class="fc"><option>MIS (Intraday)</option><option>CNC (Delivery)</option></select>
+                    </div>
+                    <div class="fg">
+                        <label>Order Type</label>
+                        <select class="fc"><option>MARKET</option><option>LIMIT</option></select>
+                    </div>
+                    <div class="fg">
+                        <label>Quantity</label>
+                        <input type="number" id="order-qty" class="fc mono qty-big" value="1" min="1">
+                        <div class="presets">
+                            <button class="preset" data-v="1">+1</button>
+                            <button class="preset" data-v="10">+10</button>
+                            <button class="preset" data-v="50">+50</button>
+                            <button class="preset" data-v="100">+100</button>
+                        </div>
+                    </div>
+                    <div class="order-meta">
+                        <span>Req Margin</span><span class="mono" id="req-margin">₹ 0.00</span>
+                    </div>
+                    <div class="order-actions">
+                        <button class="btn-buy" id="btn-buy"><i class="fa-solid fa-arrow-up"></i> BUY</button>
+                        <button class="btn-sell" id="btn-sell"><i class="fa-solid fa-arrow-down"></i> SELL / SHORT</button>
+                    </div>
+                    <div class="short-info">
+                        <i class="fa-solid fa-info-circle"></i> Sell without holdings = Short position. Cover later by buying back.
+                    </div>
+                </div>
+
+                <!-- Options Form -->
+                <div class="order-form hidden" id="options-form">
+                    <div class="fg">
+                        <label>Type</label>
+                        <div class="toggle-row">
+                            <button class="toggle active" id="opt-call">CALL (CE)</button>
+                            <button class="toggle" id="opt-put">PUT (PE)</button>
+                        </div>
+                        <input type="hidden" id="option-type" value="CALL">
+                    </div>
+                    <div class="fg">
+                        <label>Strike Price</label>
+                        <select class="fc mono" id="strike-price"><option>Select Stock</option></select>
+                    </div>
+                    <div class="fg">
+                        <label>Expiry</label>
+                        <select class="fc" id="expiry-date"><option>Weekly</option><option>Monthly</option></select>
+                    </div>
+                    <div class="fg">
+                        <label>Lots</label>
+                        <input type="number" id="option-lots" class="fc mono qty-big" value="1" min="1">
+                        <div class="presets">
+                            <button class="preset-opt" data-v="1">+1</button>
+                            <button class="preset-opt" data-v="5">+5</button>
+                            <button class="preset-opt" data-v="10">+10</button>
+                        </div>
+                    </div>
+                    <div class="order-meta">
+                        <span>Premium</span><span class="mono" id="option-premium">₹ 0.00</span>
+                    </div>
+                    <div class="order-meta">
+                        <span>Lot Size</span><span class="mono" id="lot-size">0</span>
+                    </div>
+                    <div class="order-meta">
+                        <span>Total Qty</span><span class="mono" id="total-qty">0</span>
+                    </div>
+                    <div class="order-meta border-top">
+                        <span>Req Margin</span><span class="mono" id="req-margin-opt">₹ 0.00</span>
+                    </div>
+                    <div class="order-actions">
+                        <button class="btn-buy" id="btn-buy-option"><i class="fa-solid fa-arrow-up"></i> BUY</button>
+                        <button class="btn-sell" id="btn-sell-option"><i class="fa-solid fa-arrow-down"></i> SELL</button>
+                    </div>
+                </div>
+
+                <!-- Position Card -->
+                <div class="pos-card">
+                    <div class="pos-card-head">Current Position</div>
+                    <div class="pos-card-grid">
+                        <div class="pc-item"><span class="pc-label">Qty</span><span class="pc-val mono" id="pos-qty">0</span></div>
+                        <div class="pc-item"><span class="pc-label">Avg</span><span class="pc-val mono" id="pos-avg">0.00</span></div>
+                        <div class="pc-item"><span class="pc-label">LTP</span><span class="pc-val mono" id="pos-ltp">0.00</span></div>
+                        <div class="pc-item pc-pnl"><span class="pc-label">P&L</span><span class="pc-val mono" id="pos-pnl">₹ 0.00</span></div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Bottom Table -->
+        <footer class="bottom-bar">
+            <div class="bottom-tabs">
+                <button class="b-tab active" id="positions-tab"><i class="fa-solid fa-chart-pie"></i> Positions</button>
+                <button class="b-tab" id="options-pos-tab"><i class="fa-solid fa-layer-group"></i> Options</button>
+                <button class="b-tab" id="history-tab"><i class="fa-solid fa-clock-rotate-left"></i> Trade History</button>
+            </div>
+            <div class="table-area" id="equity-table">
+                <table class="dtable">
+                    <thead><tr>
+                        <th>Symbol</th><th>Side</th><th>Product</th>
+                        <th class="r">Qty</th><th class="r">Avg Price</th><th class="r">LTP</th>
+                        <th class="r">Value</th><th class="r">P&L</th>
+                    </tr></thead>
+                    <tbody id="positions-tbody">
+                        <tr><td colspan="8" class="empty">No open positions</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-area hidden" id="options-table">
+                <table class="dtable">
+                    <thead><tr>
+                        <th>Symbol</th><th>Type</th><th>Strike</th><th>Expiry</th>
+                        <th class="r">Lots</th><th class="r">Qty</th><th class="r">Avg Prem</th>
+                        <th class="r">LTP</th><th class="r">P&L</th>
+                    </tr></thead>
+                    <tbody id="options-tbody">
+                        <tr><td colspan="9" class="empty">No option positions</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-area hidden" id="history-table">
+                <table class="dtable">
+                    <thead><tr>
+                        <th>Time</th><th>Day</th><th>Symbol</th><th>Side</th><th>Type</th>
+                        <th class="r">Qty</th><th class="r">Price</th><th class="r">Value</th>
+                    </tr></thead>
+                    <tbody id="history-tbody">
+                        <tr><td colspan="8" class="empty">No trades yet</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </footer>
+    </div>
+
+    <!-- New Day Overlay -->
+    <div class="overlay hidden" id="day-overlay">
+        <div class="overlay-card">
+            <div class="ov-icon"><i class="fa-solid fa-bell"></i></div>
+            <h2 class="ov-title">Market Closed</h2>
+            <p class="ov-sub">Trading session for <span id="ov-day-label">Day 1</span> has ended at 3:30 PM</p>
+            <div class="ov-stats">
+                <div class="ov-stat"><span class="ov-stat-label">Day P&L</span><span class="ov-stat-val mono" id="ov-day-pnl">₹ 0.00</span></div>
+                <div class="ov-stat"><span class="ov-stat-label">Portfolio Value</span><span class="ov-stat-val mono" id="ov-portfolio">₹ 1,00,000.00</span></div>
+                <div class="ov-stat"><span class="ov-stat-label">Cash Balance</span><span class="ov-stat-val mono" id="ov-cash">₹ 1,00,000.00</span></div>
+                <div class="ov-stat"><span class="ov-stat-label">Open Positions</span><span class="ov-stat-val mono" id="ov-positions">0</span></div>
+            </div>
+            <div class="ov-expiry-info hidden" id="ov-expiry-info">
+                <i class="fa-solid fa-clock"></i> <span id="ov-expiry-text"></span>
+            </div>
+            <button class="ov-btn" id="btn-new-day"><i class="fa-solid fa-sun"></i> Start New Trading Day</button>
+            <p class="ov-hint">Positions carry forward. Expired options will be auto-settled.</p>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="overlay hidden" id="settings-overlay">
+        <div class="overlay-card settings-card">
+            <div class="ov-icon" style="background:var(--orange)"><i class="fa-solid fa-gear"></i></div>
+            <h2 class="ov-title">Settings</h2>
+            <p class="ov-sub">Configure your trading simulation</p>
+            <div class="settings-form">
+                <div class="settings-group">
+                    <label class="settings-label"><i class="fa-solid fa-wallet"></i> Starting Capital</label>
+                    <div class="cash-input-row">
+                        <span class="cash-prefix">₹</span>
+                        <input type="number" id="settings-cash" class="fc mono" value="100000" min="10000" step="10000">
+                    </div>
+                    <div class="cash-presets">
+                        <button class="cash-preset" data-v="50000">₹50K</button>
+                        <button class="cash-preset" data-v="100000">₹1L</button>
+                        <button class="cash-preset" data-v="500000">₹5L</button>
+                        <button class="cash-preset" data-v="1000000">₹10L</button>
+                        <button class="cash-preset" data-v="5000000">₹50L</button>
+                        <button class="cash-preset" data-v="10000000">₹1Cr</button>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <label class="settings-label"><i class="fa-solid fa-gauge-high"></i> News Frequency</label>
+                    <select class="fc" id="settings-news-freq">
+                        <option value="0.02">Low (2%)</option>
+                        <option value="0.04" selected>Normal (4%)</option>
+                        <option value="0.08">High (8%)</option>
+                        <option value="0.15">Breaking News (15%)</option>
+                    </select>
+                </div>
+                <div class="settings-group">
+                    <label class="settings-label"><i class="fa-solid fa-chart-line"></i> Volatility</label>
+                    <select class="fc" id="settings-volatility">
+                        <option value="0.5">Low</option>
+                        <option value="1" selected>Normal</option>
+                        <option value="2">High</option>
+                        <option value="3">Extreme</option>
+                    </select>
+                </div>
+                <div class="settings-warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Changing capital will reset all positions and start fresh.
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button class="ov-btn" id="btn-apply-settings"><i class="fa-solid fa-check"></i> Apply Settings</button>
+                <button class="ov-btn-secondary" id="btn-close-settings">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-box"></div>
+    <script src="js/app.js"></script>
+</body>
+</html>
