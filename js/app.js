@@ -174,7 +174,140 @@ var newsEvents = [
     { text: "Large OI buildup in {name} futures. Institutional activity surges.", impact: 0.01, target: "RANDOM" },
     { text: "{name} hits 52-week high! Momentum traders pile in.", impact: 0.03, target: "RANDOM" },
     { text: "{name} breaks key support level. Technical breakdown triggers selling.", impact: -0.03, target: "RANDOM" },
-    { text: "Credit rating upgrade for {name} by CRISIL. Outlook stable.", impact: 0.015, target: "RANDOM" }
+    { text: "Credit rating upgrade for {name} by CRISIL. Outlook stable.", impact: 0.015, target: "RANDOM" },
+
+    // ---- ADDITIONAL MACRO ----
+    { text: "India CPI inflation drops to 4.2%. Monetary easing hopes rise.", impact: 0.016, target: "ALL" },
+    { text: "RBI announces surprise 25bps CRR cut. Liquidity injection into banking.", impact: 0.02, target: "BANK" },
+    { text: "US 10-year bond yield crosses 5%. Global equity rout intensifies.", impact: -0.022, target: "ALL" },
+    { text: "S&P upgrades India's sovereign rating outlook to positive.", impact: 0.025, target: "ALL" },
+    { text: "India manufacturing PMI hits 16-month high at 58.3.", impact: 0.014, target: "ALL" },
+    { text: "Monsoon forecast revised below normal. Rural consumption at risk.", impact: -0.01, target: "FMCG" },
+    { text: "India forex reserves cross $700 billion. Record high.", impact: 0.008, target: "ALL" },
+    { text: "Government raises windfall tax on oil. Energy margins hit.", impact: -0.02, target: "ENERGY" },
+    { text: "GST collections hit record 2.1L Cr in March. Fiscal health strong.", impact: 0.012, target: "ALL" },
+    { text: "Global recession fears mount. IMF cuts world growth projection.", impact: -0.016, target: "ALL" },
+    { text: "India included in JPMorgan Global Bond Index. FII inflows surge.", impact: 0.022, target: "ALL" },
+    { text: "European Central Bank surprises with 50bps rate cut. Risk-on wave.", impact: 0.015, target: "ALL" },
+    { text: "Crypto crash spills into equity markets. Risk assets under pressure.", impact: -0.008, target: "ALL" },
+    { text: "India trade deficit narrows sharply. Exports hit all-time high.", impact: 0.012, target: "ALL" },
+    { text: "Earthquake in Taiwan disrupts semiconductor supply chain.", impact: -0.02, target: "IT" },
+    { text: "US-China trade tensions re-escalate. New tariffs announced.", impact: -0.014, target: "ALL" },
+    { text: "Gold hits all-time high above $2,800/oz. Safe haven demand surges.", impact: -0.006, target: "ALL" },
+    { text: "India becomes 3rd largest economy by GDP. Overtakes Japan.", impact: 0.02, target: "ALL" },
+    { text: "RBI Governor makes hawkish comments. Rate cut expectations dashed.", impact: -0.012, target: "BANK" },
+    { text: "Union Budget announces zero tax up to 12L income. Consumption boost expected.", impact: 0.025, target: "FMCG" },
+
+    // ---- ADDITIONAL BANKING / FINANCE ----
+    { text: "ICICI Bank net profit jumps 35%. Best quarterly performance in 5 years.", impact: 0.03, target: "ICICIBANK" },
+    { text: "Kotak Mahindra Bank faces RBI embargo on digital onboarding.", impact: -0.035, target: "KOTAKBANK" },
+    { text: "Axis Bank NPA ratio improves to 1.4%. Clean-up cycle nearing end.", impact: 0.02, target: "AXISBANK" },
+    { text: "Bajaj Finance EMI card user base crosses 80 million.", impact: 0.018, target: "BAJFINANCE" },
+    { text: "NBFC liquidity crisis fears return. Shadow banking stocks tumble.", impact: -0.025, target: "BANK" },
+    { text: "Digital lending regulations tightened by RBI. Fintech stocks fall.", impact: -0.015, target: "BANK" },
+    { text: "Bank Nifty crosses 55,000 for the first time. Banking euphoria.", impact: 0.025, target: "BANK" },
+    { text: "Home loan rates cut by 50bps across PSU banks. Housing demand to rise.", impact: 0.015, target: "BANK" },
+    { text: "SBI raises 30K Cr via QIP. Institutional demand 3x oversubscribed.", impact: 0.015, target: "SBIN" },
+    { text: "HDFC Bank faces deposits growth slowdown concern. Street cautious.", impact: -0.018, target: "HDFCBANK" },
+
+    // ---- ADDITIONAL IT ----
+    { text: "TCS board announces Rs 18,000 Cr share buyback at premium.", impact: 0.03, target: "TCS" },
+    { text: "Infosys faces $500M tax demand from GST authorities.", impact: -0.03, target: "INFY" },
+    { text: "Wipro bags $1.5B deal from European telco. Largest in 3 years.", impact: 0.035, target: "WIPRO" },
+    { text: "HCL Tech launches GenAI platform. Enterprise AI revenue pipeline $2B.", impact: 0.025, target: "HCLTECH" },
+    { text: "Indian IT headcount shrinks for 3rd quarter. Automation impact visible.", impact: -0.015, target: "IT" },
+    { text: "US tech spending outlook improves. CIO surveys bullish for FY26.", impact: 0.018, target: "IT" },
+    { text: "Currency tailwind: Rupee depreciation boosts IT earnings outlook.", impact: 0.012, target: "IT" },
+    { text: "European DORA regulation creates compliance demand. IT firms benefit.", impact: 0.015, target: "IT" },
+
+    // ---- ADDITIONAL ENERGY / POWER ----
+    { text: "Reliance Retail revenue crosses 3L Cr. Fastest growing retail chain.", impact: 0.025, target: "RELIANCE" },
+    { text: "Reliance warns of petrochemical margin weakness in Q3 call.", impact: -0.02, target: "RELIANCE" },
+    { text: "NTPC Green Energy IPO listing at 30% premium. Parent stock rallies.", impact: 0.02, target: "NTPC" },
+    { text: "Power Grid dividend yield at 5%. Defensive pick in volatile market.", impact: 0.01, target: "POWERGRID" },
+    { text: "India's renewable energy capacity crosses 200GW milestone.", impact: 0.015, target: "POWER" },
+    { text: "Gas price revision: APM price hiked 10%. Upstream companies benefit.", impact: 0.018, target: "ENERGY" },
+    { text: "Power demand dips on unseasonable rain. Utility stocks correct.", impact: -0.012, target: "POWER" },
+    { text: "Adani Green completes 25GW wind-solar hybrid project.", impact: 0.02, target: "ADANIENT" },
+
+    // ---- ADDITIONAL AUTO ----
+    { text: "Maruti Q3 profit surges 42%. SUV mix at all-time high of 60%.", impact: 0.03, target: "MARUTI" },
+    { text: "Tata Motors JLR margins expand to 8.5%. Best in 4 years.", impact: 0.028, target: "TATAMOTORS" },
+    { text: "EV subsidy FAME-III scheme launched. 50K Cr allocated over 5 years.", impact: 0.025, target: "AUTO" },
+    { text: "Auto insurance costs rise 20%. Negative for auto demand outlook.", impact: -0.012, target: "AUTO" },
+    { text: "Maruti recalls 50,000 vehicles over safety defect. Shares dip.", impact: -0.02, target: "MARUTI" },
+    { text: "Tata Motors to demerge EV business. Listing expected next quarter.", impact: 0.035, target: "TATAMOTORS" },
+
+    // ---- ADDITIONAL PHARMA ----
+    { text: "Sun Pharma specialty portfolio revenue crosses $1B for first time.", impact: 0.028, target: "SUNPHARMA" },
+    { text: "India pharma exports to Africa double in 2 years. New markets open.", impact: 0.015, target: "PHARMA" },
+    { text: "Biosimilar approval in EU boosts Indian pharma companies.", impact: 0.02, target: "PHARMA" },
+    { text: "Drug price control order expanded. 150 new drugs under ceiling.", impact: -0.018, target: "PHARMA" },
+
+    // ---- ADDITIONAL METAL ----
+    { text: "Tata Steel completes Netherlands plant restructuring. Losses to narrow.", impact: 0.02, target: "TATASTEEL" },
+    { text: "JSW Steel reports record quarterly EBITDA. Volume guidance raised.", impact: 0.025, target: "JSWSTEEL" },
+    { text: "Coal India e-auction premiums at 3-year high. Profitability surges.", impact: 0.022, target: "COALINDIA" },
+    { text: "Global aluminum surplus leads to price crash. Metal sector bleeds.", impact: -0.022, target: "METAL" },
+    { text: "India imposes export duty on iron ore. Steel input costs to rise.", impact: -0.015, target: "METAL" },
+    { text: "Copper prices hit $12,000/ton. EV-driven demand reaches new high.", impact: 0.018, target: "METAL" },
+
+    // ---- ADDITIONAL TELECOM ----
+    { text: "Jio announces satellite broadband plans. Direct competition with Starlink.", impact: 0.02, target: "RELIANCE" },
+    { text: "Airtel Africa revenue grows 22%. International ops becoming significant.", impact: 0.018, target: "BHARTIARTL" },
+    { text: "TRAI mandates 20% tariff cut for basic plans. Revenue impact feared.", impact: -0.02, target: "TELECOM" },
+    { text: "Airtel wins 700 MHz spectrum in latest auction. Rural 5G expansion.", impact: 0.015, target: "BHARTIARTL" },
+
+    // ---- ADDITIONAL FMCG ----
+    { text: "Hindustan Unilever premium portfolio grows 25%. Premiumization trend strong.", impact: 0.018, target: "HINDUNILVR" },
+    { text: "ITC cigarette volumes defy ESG concerns. Tax stability helps.", impact: 0.015, target: "ITC" },
+    { text: "FMCG sector faces urban slowdown. Quick commerce cannibalizes kiranas.", impact: -0.012, target: "FMCG" },
+    { text: "Hindustan Unilever announces Rs 12,000 Cr buyback at premium.", impact: 0.025, target: "HINDUNILVR" },
+
+    // ---- ADDITIONAL INFRA ----
+    { text: "L&T order book crosses 5L Cr. Highest backlog in company history.", impact: 0.025, target: "LT" },
+    { text: "Adani Ports handles record cargo of 40 MT in single quarter.", impact: 0.02, target: "ADANIENT" },
+    { text: "Real estate demand boom fuels cement and infra stocks higher.", impact: 0.018, target: "INFRA" },
+    { text: "Road construction pace drops 15%. Labour shortage impacts projects.", impact: -0.015, target: "INFRA" },
+    { text: "L&T Smart World wins Rs 8,000 Cr smart city contract.", impact: 0.02, target: "LT" },
+
+    // ---- ADDITIONAL NEW AGE / TECH ----
+    { text: "Zomato enters live events and ticketing. New revenue vertical launched.", impact: 0.02, target: "ZOMATO" },
+    { text: "Quick commerce war: Zomato Blinkit burns Rs 500 Cr in quarter.", impact: -0.025, target: "ZOMATO" },
+    { text: "Zomato gets GST demand notice of Rs 800 Cr. Stock under pressure.", impact: -0.03, target: "ZOMATO" },
+    { text: "Zomato gold membership crosses 10 million subscribers.", impact: 0.02, target: "ZOMATO" },
+
+    // ---- MORE RANDOM / GENERIC ----
+    { text: "{name} signs $2B joint venture with global PE fund.", impact: 0.028, target: "RANDOM" },
+    { text: "Whistleblower complaint against {name}. Corporate governance concerns.", impact: -0.035, target: "RANDOM" },
+    { text: "Board of {name} approves 5:1 stock split. Improves retail participation.", impact: 0.02, target: "RANDOM" },
+    { text: "{name} enters Fortune 500 list for the first time.", impact: 0.015, target: "RANDOM" },
+    { text: "Tax raid on {name} offices. I-T department seizes documents.", impact: -0.04, target: "RANDOM" },
+    { text: "{name} CEO buys shares worth 50 Cr in open market. Confidence signal.", impact: 0.025, target: "RANDOM" },
+    { text: "PE ratio of {name} crosses 80x. Valuation concerns intensify.", impact: -0.018, target: "RANDOM" },
+    { text: "{name} production halted due to factory fire. Operations disrupted.", impact: -0.045, target: "RANDOM" },
+    { text: "{name} wins government contract worth 15,000 Cr. Order book surges.", impact: 0.03, target: "RANDOM" },
+    { text: "Warren Buffett's Berkshire takes 2% stake in {name}. Global attention.", impact: 0.04, target: "RANDOM" },
+    { text: "{name} launches QIP worth 10,000 Cr. Equity dilution concerns.", impact: -0.02, target: "RANDOM" },
+    { text: "Foreign broker initiates coverage on {name} with BUY. Target 40% upside.", impact: 0.025, target: "RANDOM" },
+    { text: "{name} announced as replacement in NIFTY 50 index. Passive inflows expected.", impact: 0.035, target: "RANDOM" },
+    { text: "{name} excluded from MSCI Emerging Markets index. FII selling likely.", impact: -0.03, target: "RANDOM" },
+    { text: "{name} debt-to-equity ratio improves to 0.3x. Balance sheet strengthens.", impact: 0.015, target: "RANDOM" },
+    { text: "ESG rating downgrade for {name}. Sustainability-focused funds exit.", impact: -0.02, target: "RANDOM" },
+    { text: "{name} ROCE improves to 22%. Capital efficiency gains noted by analysts.", impact: 0.018, target: "RANDOM" },
+    { text: "Unusual options activity in {name}. Massive call buying detected.", impact: 0.025, target: "RANDOM" },
+    { text: "{name} subsidiary IPO valued at premium. Unlocking hidden value.", impact: 0.022, target: "RANDOM" },
+    { text: "Labour strike at {name} factory enters 2nd week. Production loss mounting.", impact: -0.03, target: "RANDOM" },
+    { text: "{name} dividend yield at 4.5%. Attractive for income investors.", impact: 0.01, target: "RANDOM" },
+    { text: "Short selling in {name} at 3-year high. Bears circling aggressively.", impact: -0.02, target: "RANDOM" },
+    { text: "{name} signs MoU with Indian Army for defense supplies.", impact: 0.02, target: "RANDOM" },
+    { text: "{name} patent portfolio valued at $800M by independent assessors.", impact: 0.015, target: "RANDOM" },
+    { text: "Regulatory clearance granted to {name} for new product launch.", impact: 0.018, target: "RANDOM" },
+    { text: "{name} faces class action lawsuit in US courts. Legal risk escalates.", impact: -0.035, target: "RANDOM" },
+    { text: "Bulk deal: Singapore sovereign fund buys 1.5% of {name}.", impact: 0.02, target: "RANDOM" },
+    { text: "{name} management guides for 30% profit growth in FY26.", impact: 0.025, target: "RANDOM" },
+    { text: "Data breach reported at {name}. Customer information compromised.", impact: -0.025, target: "RANDOM" },
+    { text: "{name} expands to 3 new international markets. Revenue diversification.", impact: 0.018, target: "RANDOM" }
 ];
 
 // Map target keywords to stocks
