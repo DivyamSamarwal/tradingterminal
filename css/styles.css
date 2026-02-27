@@ -494,6 +494,37 @@ body {
 }
 .short-info i { color: var(--orange); margin-right: 4px; }
 
+/* SL / Target row */
+.sl-target-row {
+    display: flex;
+    gap: 8px;
+    padding: 8px 14px 0;
+}
+.sl-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.sl-field label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+.sl-field .fc {
+    padding: 5px 8px;
+    font-size: 11px;
+}
+.sl-hint {
+    font-size: 10px;
+    color: var(--orange);
+    padding: 4px 14px 8px;
+    opacity: 0.75;
+}
+.sl-hint i { margin-right: 4px; }
+
 /* ========== POSITION CARD ========== */
 .pos-card {
     margin-top: auto;
@@ -559,6 +590,14 @@ body {
 .b-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 .b-tab i { font-size: 11px; }
 
+/* Close All button floats right */
+.b-tab.close-all-btn {
+    margin-left: auto;
+    color: var(--red);
+    border-bottom-color: transparent !important;
+}
+.b-tab.close-all-btn:hover { background: rgba(255,23,68,0.08); color: var(--red); }
+
 .table-area {
     flex: 1;
     overflow-y: auto;
@@ -592,6 +631,22 @@ body {
 .dtable .sym-cell { font-family: var(--font); font-weight: 600; color: var(--text-bright); }
 .dtable .side-long { color: var(--green); font-weight: 600; }
 .dtable .side-short { color: var(--red); font-weight: 600; }
+
+/* Close position inline button */
+.btn-close-pos {
+    background: transparent;
+    border: 1px solid var(--red);
+    color: var(--red);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: 0.15s;
+    white-space: nowrap;
+}
+.btn-close-pos:hover { background: var(--red); color: #fff; }
 
 .empty {
     text-align: center;

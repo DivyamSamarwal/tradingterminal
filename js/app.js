@@ -364,7 +364,8 @@ var state = {
     chartType: 'line',
     timeframe: '30M',
     viewLen: 30,
-    candlePeriod: 5
+    candlePeriod: 5,
+    slTargets: {}   // { ticker: { sl: num|null, target: num|null } }
 };
 
 var marketInterval;
@@ -504,6 +505,11 @@ function setupListeners() {
     document.getElementById('positions-tab').addEventListener('click', function() { switchBottomTab('equity'); });
     document.getElementById('options-pos-tab').addEventListener('click', function() { switchBottomTab('options'); });
     document.getElementById('history-tab').addEventListener('click', function() { switchBottomTab('history'); });
+    document.getElementById('btn-close-all').addEventListener('click', closeAllPositions);
+
+    // SL / Target auto-set when inputs change
+    document.getElementById('sl-price').addEventListener('change', saveSlTarget);
+    document.getElementById('target-price').addEventListener('change', saveSlTarget);
 }
 
 // ==================== SETTINGS / MODIFIABLE CASH ====================
@@ -539,6 +545,7 @@ function applySettings() {
         state.margin = newCash;
         state.positions = {};
         state.optionsPositions = {};
+        state.slTargets = {};
         state.tradeHistory = [];
         state.day = 1;
         state.time = START_TIME;
@@ -745,6 +752,30 @@ function tickMinute() {
     var gainers = marketStocks.filter(function(s) { return s.ltp >= s.open; }).length;
     state.sentiment = Math.round(((gainers / marketStocks.length) - 0.5) * 200);
 
+    // SL / Target auto-trigger
+    Object.keys(state.slTargets).forEach(function(ticker) {
+        var st = state.slTargets[ticker];
+        if (!st) return;
+        var pos = state.positions[ticker];
+        if (!pos) { delete state.slTargets[ticker]; return; }
+        var stock = marketStocks.find(function(s) { return s.ticker === ticker; });
+        if (!stock) return;
+        var isLong = pos.qty > 0;
+        if (st.sl && isLong && stock.ltp <= st.sl) {
+            toast('\u26d4 SL Hit', ticker + ' stop loss triggered @ \u20b9' + stock.ltp.toFixed(2), 'error');
+            closeEquityPosition(ticker);
+        } else if (st.sl && !isLong && stock.ltp >= st.sl) {
+            toast('\u26d4 SL Hit', ticker + ' stop loss triggered @ \u20b9' + stock.ltp.toFixed(2), 'error');
+            closeEquityPosition(ticker);
+        } else if (st.target && isLong && stock.ltp >= st.target) {
+            toast('\u2705 Target Hit', ticker + ' target reached @ \u20b9' + stock.ltp.toFixed(2), 'success');
+            closeEquityPosition(ticker);
+        } else if (st.target && !isLong && stock.ltp <= st.target) {
+            toast('\u2705 Target Hit', ticker + ' target reached @ \u20b9' + stock.ltp.toFixed(2), 'success');
+            closeEquityPosition(ticker);
+        }
+    });
+
     // News events
     if (Math.random() < NEWS_FREQ) triggerNewsEvent();
 
@@ -819,6 +850,7 @@ function startNewDay() {
     state.niftyBase = state.niftyValue;
     state.niftyHistory = Array(state.historyLen).fill(state.niftyValue);
     state.sentiment = 0;
+    state.slTargets = {};
 
     document.getElementById('day-counter').textContent = 'Day ' + state.day;
     state.newsCount = 0;
@@ -1289,6 +1321,11 @@ function renderActiveStock() {
     renderChart(stock);
     updateOrderMargin();
     renderPositionCard(stock);
+
+    // Populate SL / Target fields for active stock
+    var st = state.slTargets[stock.ticker];
+    document.getElementById('sl-price').value     = (st && st.sl)     ? st.sl     : '';
+    document.getElementById('target-price').value = (st && st.target) ? st.target : '';
 }
 
 function formatVolume(v) {
@@ -1536,12 +1573,112 @@ function renderPositionCard(stock) {
     pnlEl2.className = 'pc-val mono ' + (pnl >= 0 ? 'up' : 'dn');
 }
 
+// ==================== CLOSE POSITION HELPERS ====================
+function closeEquityPosition(ticker, silent) {
+    var pos = state.positions[ticker];
+    var stock = marketStocks.find(function(s) { return s.ticker === ticker; });
+    if (!pos || !stock) return;
+
+    var absQty = Math.abs(pos.qty);
+    var price = stock.ltp;
+    var isShort = pos.qty < 0;
+    var pnl = isShort ? (pos.avgPrice - price) * absQty : (price - pos.avgPrice) * absQty;
+
+    if (isShort) {
+        state.margin += pos.avgPrice * absQty * 0.2 + pnl;
+    } else {
+        state.margin += price * absQty;
+    }
+
+    state.tradeHistory.unshift({
+        time: formatTime(state.time),
+        day: state.day,
+        ticker: ticker,
+        side: isShort ? 'COVER' : 'SELL',
+        type: 'Equity',
+        qty: absQty,
+        price: price,
+        value: price * absQty
+    });
+
+    delete state.positions[ticker];
+    delete state.slTargets[ticker];
+    stock.volume += absQty * 100;
+
+    if (state.activeStock && state.activeStock.ticker === ticker) {
+        document.getElementById('sl-price').value = '';
+        document.getElementById('target-price').value = '';
+    }
+
+    if (!silent) {
+        toast('Closed', ticker + ' position closed @ \u20b9' + price.toFixed(2) + '  P&L: ' + (pnl >= 0 ? '+' : '') + fmtCur(pnl), pnl >= 0 ? 'success' : 'error');
+        renderAll();
+    }
+}
+
+function closeOptionPosition(id, silent) {
+    var pos = state.optionsPositions[id];
+    var stock = marketStocks.find(function(s) { return s.ticker === pos.ticker; });
+    if (!pos || !stock) return;
+
+    var curPrem = calcPremium(pos.type, pos.strike, stock.ltp, pos.daysToExpiry);
+    var totalQty = pos.lots * pos.lotSize;
+    var pnl = (curPrem - pos.avgPremium) * totalQty;
+    state.margin += curPrem * totalQty;
+
+    state.tradeHistory.unshift({
+        time: formatTime(state.time),
+        day: state.day,
+        ticker: pos.ticker,
+        side: 'SELL',
+        type: pos.type + ' OPT',
+        qty: totalQty,
+        price: curPrem,
+        value: curPrem * totalQty
+    });
+
+    delete state.optionsPositions[id];
+    if (!silent) {
+        toast('Closed', pos.ticker + ' ' + pos.type + ' ' + pos.strike + ' @ \u20b9' + curPrem.toFixed(2) + '  P&L: ' + (pnl >= 0 ? '+' : '') + pnl.toFixed(2), pnl >= 0 ? 'success' : 'error');
+        renderAll();
+    }
+}
+
+function closeAllPositions() {
+    var equityKeys = Object.keys(state.positions);
+    var optionKeys = Object.keys(state.optionsPositions);
+    if (equityKeys.length === 0 && optionKeys.length === 0) {
+        toast('Info', 'No open positions to close', 'info');
+        return;
+    }
+    var count = equityKeys.length + optionKeys.length;
+    optionKeys.slice().forEach(function(id) { closeOptionPosition(id, true); });
+    equityKeys.slice().forEach(function(t) { closeEquityPosition(t, true); });
+    toast('Closed All', count + ' position(s) squared off at market price', 'success');
+    renderAll();
+}
+
+function saveSlTarget() {
+    if (!state.activeStock) return;
+    var ticker = state.activeStock.ticker;
+    var sl = parseFloat(document.getElementById('sl-price').value);
+    var tgt = parseFloat(document.getElementById('target-price').value);
+    state.slTargets[ticker] = {
+        sl:     isNaN(sl)  || sl  <= 0 ? null : sl,
+        target: isNaN(tgt) || tgt <= 0 ? null : tgt
+    };
+    var msg = [];
+    if (state.slTargets[ticker].sl)     msg.push('SL \u20b9' + sl.toFixed(2));
+    if (state.slTargets[ticker].target) msg.push('Target \u20b9' + tgt.toFixed(2));
+    if (msg.length) toast('Alert Set', ticker + ': ' + msg.join(', '), 'info');
+}
+
 function renderPositionsTable() {
     var tbody = document.getElementById('positions-tbody');
     var keys = Object.keys(state.positions);
 
     if (keys.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty">No open positions</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="empty">No open positions</td></tr>';
         return;
     }
 
@@ -1557,17 +1694,28 @@ function renderPositionsTable() {
         var pnl = isShort
             ? (pos.avgPrice - stock.ltp) * absQty
             : (stock.ltp - pos.avgPrice) * absQty;
+        var pnlPct = ((pnl / (pos.avgPrice * absQty)) * 100).toFixed(2);
         var pnlCls = pnl >= 0 ? 'up' : 'dn';
+        var hasSl = state.slTargets[ticker] && (state.slTargets[ticker].sl || state.slTargets[ticker].target);
 
         var tr = document.createElement('tr');
-        tr.innerHTML = '<td class="sym-cell">' + ticker + '</td>' +
+        tr.style.cursor = 'pointer';
+        tr.title = 'Click to select ' + ticker;
+        tr.innerHTML =
+            '<td class="sym-cell">' + ticker + (hasSl ? ' <i class="fa-solid fa-bell" style="font-size:9px;color:var(--orange)"></i>' : '') + '</td>' +
             '<td class="' + (isShort ? 'side-short' : 'side-long') + '">' + (isShort ? 'SHORT' : 'LONG') + '</td>' +
             '<td>MIS</td>' +
             '<td class="r">' + pos.qty + '</td>' +
             '<td class="r">' + pos.avgPrice.toFixed(2) + '</td>' +
             '<td class="r">' + stock.ltp.toFixed(2) + '</td>' +
             '<td class="r">' + fmtCur(curVal) + '</td>' +
-            '<td class="r ' + pnlCls + '">' + (pnl >= 0 ? '+' : '') + fmtCur(pnl) + '</td>';
+            '<td class="r ' + pnlCls + '">' + (pnl >= 0 ? '+' : '') + fmtCur(pnl) + '</td>' +
+            '<td class="r ' + pnlCls + '">' + (pnl >= 0 ? '+' : '') + pnlPct + '%</td>' +
+            '<td class="r"><button class="btn-close-pos" onclick="event.stopPropagation();closeEquityPosition(\'' + ticker + '\')" title="Close position">&#x2715; Close</button></td>';
+        tr.onclick = function() {
+            var s = marketStocks.find(function(x) { return x.ticker === ticker; });
+            if (s) selectStock(s);
+        };
         tbody.appendChild(tr);
     });
 }
@@ -1577,7 +1725,7 @@ function renderOptionsTable() {
     var keys = Object.keys(state.optionsPositions);
 
     if (keys.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="empty">No option positions</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="empty">No option positions</td></tr>';
         return;
     }
 
@@ -1593,6 +1741,8 @@ function renderOptionsTable() {
         var cls = pnl >= 0 ? 'up' : 'dn';
 
         var tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.title = 'Click to select ' + pos.ticker;
         tr.innerHTML = '<td class="sym-cell">' + pos.ticker + '</td>' +
             '<td>' + pos.type + '</td>' +
             '<td class="r">' + pos.strike + '</td>' +
@@ -1601,7 +1751,12 @@ function renderOptionsTable() {
             '<td class="r">' + totalQty + '</td>' +
             '<td class="r">' + pos.avgPremium.toFixed(2) + '</td>' +
             '<td class="r">' + curPrem.toFixed(2) + '</td>' +
-            '<td class="r ' + cls + '">' + (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + '</td>';
+            '<td class="r ' + cls + '">' + (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + '</td>' +
+            '<td class="r"><button class="btn-close-pos" onclick="event.stopPropagation();closeOptionPosition(\'' + id + '\')" title="Close option">&#x2715; Close</button></td>';
+        tr.onclick = function() {
+            var s = marketStocks.find(function(x) { return x.ticker === pos.ticker; });
+            if (s) selectStock(s);
+        };
         tbody.appendChild(tr);
     });
 }
