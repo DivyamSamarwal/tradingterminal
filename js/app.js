@@ -13,11 +13,12 @@ var VOL_MULTIPLIER = 1;         // volatility multiplier
 var CIRCUIT_LIMIT = 0.10;       // 10% upper/lower circuit
 
 var TIMEFRAMES = [
-    { label: '5M',  viewLen: 5,   candlePeriod: 1  },
-    { label: '15M', viewLen: 15,  candlePeriod: 3  },
-    { label: '30M', viewLen: 30,  candlePeriod: 5  },
-    { label: '1H',  viewLen: 60,  candlePeriod: 10 },
-    { label: 'All', viewLen: 375, candlePeriod: 15 }
+    { label: '5M',   viewLen: 5,    candlePeriod: 1  },
+    { label: '15M',  viewLen: 15,   candlePeriod: 3  },
+    { label: '30M',  viewLen: 30,   candlePeriod: 5  },
+    { label: '1H',   viewLen: 60,   candlePeriod: 10 },
+    { label: 'Day',  viewLen: 375,  candlePeriod: 15 },
+    { label: 'Week', viewLen: 1875, candlePeriod: 75 }
 ];
 
 var LOT_SIZES = {
@@ -350,7 +351,7 @@ var state = {
     isRunning: true,
     speedMs: 1000,
     activeStock: null,
-    historyLen: 375,
+    historyLen: 1875,
     theme: 'dark',
     activeTab: 'equity',
     activeBottomTab: 'equity',
@@ -420,6 +421,7 @@ function initMarket() {
     marketStocks.forEach(function(s) {
         s.history = Array(state.historyLen).fill(s.ltp);
         s.open = s.ltp;
+        s.prevClose = s.ltp;
         s.volume = 0;
         s.circuitHit = null;
         s.ohlcHistory = [];
@@ -550,6 +552,7 @@ function applySettings() {
         marketStocks.forEach(function(s) {
             s.ltp = s.base;
             s.open = s.base;
+            s.prevClose = s.base;
             s.history = Array(state.historyLen).fill(s.ltp);
             s.volume = 0;
             s.circuitHit = null;
@@ -795,13 +798,14 @@ function startNewDay() {
 
     // Overnight gap
     marketStocks.forEach(function(stock) {
+        stock.prevClose = stock.ltp;  // save previous day's close
         var overnightChange = (Math.random() - 0.5) * 0.02;
         stock.ltp = parseFloat((stock.ltp * (1 + overnightChange)).toFixed(2));
         stock.open = stock.ltp;
         stock.base = stock.ltp;
         stock.volume = 0;
         stock.circuitHit = null;
-        var keepPoints = Math.min(20, stock.history.length);
+        var keepPoints = Math.min(375, stock.history.length);
         var kept = stock.history.slice(-keepPoints);
         var fill = Array(state.historyLen - keepPoints).fill(stock.ltp);
         stock.history = fill.concat(kept);
@@ -1269,6 +1273,19 @@ function renderActiveStock() {
     elChg.textContent = (isUp ? '+' : '') + dayChg.toFixed(2) + ' (' + dayPct.toFixed(2) + '%)' + volStr + circuitStr;
     elChg.className = 'ct-change mono ' + (isUp ? 'up' : 'dn');
 
+    var elPrev = document.getElementById('active-prev-close');
+    if (elPrev) {
+        if (stock.prevClose) {
+            var chgFromPrev = stock.ltp - stock.prevClose;
+            var pctFromPrev = (chgFromPrev / stock.prevClose * 100);
+            elPrev.textContent = 'Prev Close: \u20b9' + stock.prevClose.toFixed(2) +
+                '  (' + (chgFromPrev >= 0 ? '+' : '') + pctFromPrev.toFixed(2) + '% from prev)';
+            elPrev.className = 'ct-prev-close mono ' + (chgFromPrev >= 0 ? 'up' : 'dn');
+        } else {
+            elPrev.textContent = '';
+        }
+    }
+
     renderChart(stock);
     updateOrderMargin();
     renderPositionCard(stock);
@@ -1326,6 +1343,16 @@ function _applyChartData(stock, isLight) {
         scY.min = yMin - yPad;
         scY.max = yMax + yPad;
 
+        // Prev close line (candle mode)
+        var ds2c = chartInstance.data.datasets[1];
+        if (stock.prevClose && ohlcData.length) {
+            ds2c.data = Array(ohlcData.length).fill(stock.prevClose);
+            ds2c.hidden = false;
+        } else {
+            ds2c.data = [];
+            ds2c.hidden = true;
+        }
+
         tip.callbacks = {
             title: function() { return state.activeStock ? state.activeStock.ticker : ''; },
             label: function(tCtx) {
@@ -1358,6 +1385,16 @@ function _applyChartData(stock, isLight) {
         chartInstance._ohlc         = null;
         scY.min = undefined;
         scY.max = undefined;
+
+        // Prev close dashed reference line
+        var ds2 = chartInstance.data.datasets[1];
+        if (stock.prevClose && lineSlice.length) {
+            ds2.data   = Array(lineSlice.length).fill(stock.prevClose);
+            ds2.hidden = false;
+        } else {
+            ds2.data   = [];
+            ds2.hidden = true;
+        }
 
         // Pre-compute gradient from existing chartArea (avoids per-frame callback overhead)
         var area = chartInstance.chartArea;
@@ -1412,6 +1449,17 @@ function renderChart(stock) {
                 pointHoverRadius: 4,
                 pointHoverBorderColor: '#fff',
                 pointHoverBorderWidth: 2
+            }, {
+                // Prev close reference line
+                data: [],
+                borderWidth: 1.5,
+                borderDash: [6, 4],
+                borderColor: 'rgba(255, 165, 0, 0.7)',
+                backgroundColor: 'transparent',
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                fill: false,
+                tension: 0
             }]
         },
         options: {
@@ -1427,6 +1475,7 @@ function renderChart(stock) {
                     borderWidth: 1,
                     padding: 10,
                     displayColors: false,
+                    filter: function(item) { return item.datasetIndex === 0; },
                     callbacks: {}
                 }
             },

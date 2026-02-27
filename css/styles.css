@@ -227,6 +227,7 @@ body {
 .ct-right { text-align: right; display: flex; flex-direction: column; }
 .ct-price { font-size: 22px; font-weight: 700; }
 .ct-change { font-size: 12px; }
+.ct-prev-close { font-size: 11px; opacity: 0.75; margin-top: 2px; }
 .ct-chart-type { display: flex; gap: 4px; align-items: center; }
 .ct-type-sep { width: 1px; height: 16px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
 .tf-btn {
