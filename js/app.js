@@ -12,6 +12,14 @@ var NEWS_FREQ = 0.04;           // 4% per tick
 var VOL_MULTIPLIER = 1;         // volatility multiplier
 var CIRCUIT_LIMIT = 0.10;       // 10% upper/lower circuit
 
+var TIMEFRAMES = [
+    { label: '5M',  viewLen: 5,   candlePeriod: 1  },
+    { label: '15M', viewLen: 15,  candlePeriod: 3  },
+    { label: '30M', viewLen: 30,  candlePeriod: 5  },
+    { label: '1H',  viewLen: 60,  candlePeriod: 10 },
+    { label: 'All', viewLen: 375, candlePeriod: 15 }
+];
+
 var LOT_SIZES = {
     RELIANCE: 250, TCS: 150, HDFCBANK: 550, ITC: 1600,
     INFY: 300, SBIN: 1500, ICICIBANK: 1375, ZOMATO: 3500,
@@ -342,7 +350,7 @@ var state = {
     isRunning: true,
     speedMs: 1000,
     activeStock: null,
-    historyLen: 120,
+    historyLen: 375,
     theme: 'dark',
     activeTab: 'equity',
     activeBottomTab: 'equity',
@@ -351,11 +359,54 @@ var state = {
     niftyBase: 22500,
     niftyValue: 22500,
     niftyHistory: [],
-    sentiment: 0  // -100 to +100
+    sentiment: 0,  // -100 to +100
+    chartType: 'line',
+    timeframe: '30M',
+    viewLen: 30,
+    candlePeriod: 5
 };
 
 var marketInterval;
 var chartInstance = null;
+
+// ==================== CANDLESTICK PLUGIN ====================
+var candlestickPlugin = {
+    id: 'candlestickDraw',
+    afterDatasetsDraw: function(chart) {
+        var ctx = chart.ctx;
+        var xScale = chart.scales.x;
+        var yScale = chart.scales.y;
+        if (!xScale || !yScale) return;
+        var ohlc = chart._ohlc;
+        if (!ohlc || !ohlc.length) return;
+        var count = ohlc.length;
+        var candleW = Math.max(3, Math.floor((xScale.width / (count + 1)) * 0.65));
+        var isLight = state.theme === 'light';
+        ohlc.forEach(function(d, i) {
+            var xPos = xScale.getPixelForValue(i);
+            var openY  = yScale.getPixelForValue(d.o);
+            var closeY = yScale.getPixelForValue(d.c);
+            var highY  = yScale.getPixelForValue(d.h);
+            var lowY   = yScale.getPixelForValue(d.l);
+            var isBull = d.c >= d.o;
+            var color  = isBull
+                ? (isLight ? '#00a846' : '#00c853')
+                : (isLight ? '#d50032' : '#ff1744');
+            // Wick
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.moveTo(xPos, highY);
+            ctx.lineTo(xPos, lowY);
+            ctx.stroke();
+            // Body
+            var bodyTop = Math.min(openY, closeY);
+            var bodyH   = Math.max(1, Math.abs(closeY - openY));
+            ctx.fillStyle = color;
+            ctx.fillRect(xPos - candleW / 2, bodyTop, candleW, bodyH);
+        });
+    }
+};
 
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", function() {
@@ -371,6 +422,8 @@ function initMarket() {
         s.open = s.ltp;
         s.volume = 0;
         s.circuitHit = null;
+        s.ohlcHistory = [];
+        s.currentCandle = null;
     });
     state.niftyHistory = Array(state.historyLen).fill(state.niftyValue);
     selectStock(marketStocks[0]);
@@ -387,6 +440,12 @@ function setupListeners() {
     document.getElementById('btn-apply-settings').addEventListener('click', applySettings);
     document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
     document.getElementById('cash-stat').addEventListener('click', openSettings);
+    document.getElementById('btn-chart-line').addEventListener('click', function() { setChartType('line'); });
+    document.getElementById('btn-chart-candle').addEventListener('click', function() { setChartType('candle'); });
+    TIMEFRAMES.forEach(function(tf) {
+        var btn = document.getElementById('tf-' + tf.label);
+        if (btn) btn.addEventListener('click', function() { setTimeframe(tf.label); });
+    });
 
     // Cash preset buttons
     document.querySelectorAll('.cash-preset').forEach(function(btn) {
@@ -494,6 +553,8 @@ function applySettings() {
             s.history = Array(state.historyLen).fill(s.ltp);
             s.volume = 0;
             s.circuitHit = null;
+            s.ohlcHistory = [];
+            s.currentCandle = null;
         });
         state.niftyHistory = Array(state.historyLen).fill(state.niftyValue);
 
@@ -519,12 +580,31 @@ function applySettings() {
     renderAll();
 }
 
+// ==================== CHART TYPE TOGGLE ====================
+function setChartType(type) {
+    state.chartType = type;
+    document.getElementById('btn-chart-line').classList.toggle('active', type === 'line');
+    document.getElementById('btn-chart-candle').classList.toggle('active', type === 'candle');
+    if (state.activeStock) renderChart(state.activeStock);
+}
+
+// ==================== TIMEFRAME TOGGLE ====================
+function setTimeframe(label) {
+    var tf = TIMEFRAMES.find(function(t) { return t.label === label; });
+    if (!tf) return;
+    state.timeframe = label;
+    state.viewLen = tf.viewLen;
+    state.candlePeriod = tf.candlePeriod;
+    document.querySelectorAll('.tf-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.getElementById('tf-' + label).classList.add('active');
+    if (state.activeStock) renderChart(state.activeStock);
+}
+
 // ==================== THEME ====================
 function toggleTheme() {
     state.theme = state.theme === 'dark' ? 'light' : 'dark';
     document.body.classList.toggle('light');
     document.querySelector('#btn-theme i').className = state.theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
-    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
     if (state.activeStock) renderChart(state.activeStock);
     toast('Theme', state.theme === 'light' ? 'Light Mode' : 'Dark Mode', 'info');
 }
@@ -630,6 +710,21 @@ function tickMinute() {
         stock.history.push(stock.ltp);
         if (stock.history.length > state.historyLen) stock.history.shift();
 
+        // OHLC candle aggregation
+        if (!stock.currentCandle) {
+            stock.currentCandle = { o: stock.ltp, h: stock.ltp, l: stock.ltp, c: stock.ltp, ticks: 1 };
+        } else {
+            if (stock.ltp > stock.currentCandle.h) stock.currentCandle.h = stock.ltp;
+            if (stock.ltp < stock.currentCandle.l) stock.currentCandle.l = stock.ltp;
+            stock.currentCandle.c = stock.ltp;
+            stock.currentCandle.ticks++;
+            if (stock.currentCandle.ticks >= state.candlePeriod) {
+                stock.ohlcHistory.push({ o: stock.currentCandle.o, h: stock.currentCandle.h, l: stock.currentCandle.l, c: stock.currentCandle.c });
+                if (stock.ohlcHistory.length > 80) stock.ohlcHistory.shift();
+                stock.currentCandle = null;
+            }
+        }
+
         // Volume simulation
         stock.volume += Math.floor(Math.random() * 5000 + 500);
 
@@ -712,6 +807,8 @@ function startNewDay() {
         stock.history = fill.concat(kept);
         stock.history.push(stock.ltp);
         if (stock.history.length > state.historyLen) stock.history.shift();
+        stock.ohlcHistory = [];
+        stock.currentCandle = null;
     });
 
     // Reset NIFTY for new day
@@ -1184,60 +1281,137 @@ function formatVolume(v) {
     return v.toString();
 }
 
-function renderChart(stock) {
-    var canvas = document.getElementById('main-chart');
-    var ctx = canvas.getContext('2d');
-    var isLight = state.theme === 'light';
-    var lastPrice = stock.history[stock.history.length - 1];
-    var firstPrice = stock.history[0];
-    var lineColor = lastPrice >= firstPrice ? (isLight ? '#00a846' : '#00c853') : (isLight ? '#d50032' : '#ff1744');
+// ==================== CANDLE DATA BUILDER ====================
+function buildCandleData(stock) {
+    var candles = [];
+    var period = state.candlePeriod;
+    var hist = stock.history.slice(-state.viewLen);
+    for (var i = 0; i < hist.length; i += period) {
+        var slice = hist.slice(i, i + period);
+        if (slice.length < 1) break;
+        candles.push({
+            x: candles.length,
+            o: slice[0],
+            h: Math.max.apply(null, slice),
+            l: Math.min.apply(null, slice),
+            c: slice[slice.length - 1]
+        });
+    }
+    return candles;
+}
 
-    if (chartInstance) {
-        chartInstance.data.labels = stock.history.map(function(_, i) { return i; });
-        chartInstance.data.datasets[0].data = stock.history.slice();
-        chartInstance.data.datasets[0].borderColor = lineColor;
-        chartInstance.data.datasets[0].pointHoverBackgroundColor = lineColor;
-        chartInstance.data.datasets[0].backgroundColor = function(context) {
-            var chart = context.chart;
-            var area = chart.chartArea;
-            if (!area) return 'transparent';
-            var grad = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+// Fast in-place data mutator — never destroys the chart instance
+function _applyChartData(stock, isLight) {
+    var ds   = chartInstance.data.datasets[0];
+    var scX  = chartInstance.options.scales.x;
+    var scY  = chartInstance.options.scales.y;
+    var tip  = chartInstance.options.plugins.tooltip;
+
+    if (state.chartType === 'candle') {
+        var ohlcData = buildCandleData(stock);
+        var allH = ohlcData.map(function(d) { return d.h; });
+        var allL = ohlcData.map(function(d) { return d.l; });
+        var yMax = allH.length ? Math.max.apply(null, allH) : 0;
+        var yMin = allL.length ? Math.min.apply(null, allL) : 0;
+        var yPad = (yMax - yMin) * 0.05 || yMin * 0.01 || 1;
+
+        chartInstance.data.labels      = ohlcData.map(function(_, i) { return i; });
+        ds.data                        = ohlcData.map(function(d) { return d.c; });
+        ds.borderColor                 = 'transparent';
+        ds.backgroundColor             = 'transparent';
+        ds.fill                        = false;
+        ds.tension                     = 0;
+        ds.pointHoverRadius            = 0;
+        chartInstance._ohlc            = ohlcData;
+        scY.min = yMin - yPad;
+        scY.max = yMax + yPad;
+
+        tip.callbacks = {
+            title: function() { return state.activeStock ? state.activeStock.ticker : ''; },
+            label: function(tCtx) {
+                var cd = tCtx.chart._ohlc;
+                var d  = cd && cd[tCtx.dataIndex];
+                if (!d) return '';
+                return [
+                    'O: \u20b9' + d.o.toFixed(2),
+                    'H: \u20b9' + d.h.toFixed(2),
+                    'L: \u20b9' + d.l.toFixed(2),
+                    'C: \u20b9' + d.c.toFixed(2)
+                ];
+            }
+        };
+    } else {
+        var lineSlice  = stock.history.slice(-state.viewLen);
+        var lastPrice  = lineSlice[lineSlice.length - 1] || 0;
+        var firstPrice = lineSlice[0] || 0;
+        var lineColor  = lastPrice >= firstPrice
+            ? (isLight ? '#00a846' : '#00c853')
+            : (isLight ? '#d50032' : '#ff1744');
+
+        chartInstance.data.labels   = lineSlice.map(function(_, i) { return i; });
+        ds.data                     = lineSlice;
+        ds.borderColor              = lineColor;
+        ds.pointHoverBackgroundColor = lineColor;
+        ds.fill                     = true;
+        ds.tension                  = lineSlice.length > 60 ? 0 : 0.3;
+        ds.pointHoverRadius         = 4;
+        chartInstance._ohlc         = null;
+        scY.min = undefined;
+        scY.max = undefined;
+
+        // Pre-compute gradient from existing chartArea (avoids per-frame callback overhead)
+        var area = chartInstance.chartArea;
+        if (area) {
+            var grad = chartInstance.ctx.createLinearGradient(0, area.top, 0, area.bottom);
             grad.addColorStop(0, lineColor + '30');
             grad.addColorStop(1, lineColor + '02');
-            return grad;
+            ds.backgroundColor = grad;
+        } else {
+            ds.backgroundColor = lineColor + '15';
+        }
+
+        tip.callbacks = {
+            title: function() { return state.activeStock ? state.activeStock.ticker : ''; },
+            label: function(tCtx) { return '\u20b9 ' + tCtx.parsed.y.toFixed(2); }
         };
-        chartInstance.options.scales.y.grid.color = isLight ? '#e0e0e0' : 'rgba(255,255,255,0.04)';
-        chartInstance.options.scales.y.ticks.color = isLight ? '#666' : '#6b7080';
-        chartInstance.options.scales.x.grid.color = isLight ? '#f0f0f0' : 'rgba(255,255,255,0.02)';
-        chartInstance.update('none');
+    }
+
+    // Theme colours
+    scX.grid.color        = isLight ? '#f0f0f0' : 'rgba(255,255,255,0.02)';
+    scY.grid.color        = isLight ? '#e0e0e0' : 'rgba(255,255,255,0.04)';
+    scY.ticks.color       = isLight ? '#666'    : '#6b7080';
+    tip.backgroundColor   = isLight ? '#fff'    : '#1a1a26';
+    tip.titleColor        = isLight ? '#333'    : '#eee';
+    tip.bodyColor         = isLight ? '#333'    : '#ccc';
+    tip.borderColor       = isLight ? '#ddd'    : '#333';
+
+    chartInstance.update('none');
+}
+
+function renderChart(stock) {
+    var canvas  = document.getElementById('main-chart');
+    var ctx     = canvas.getContext('2d');
+    var isLight = state.theme === 'light';
+
+    // Fast path — chart already exists, just mutate data in-place
+    if (chartInstance) {
+        _applyChartData(stock, isLight);
         return;
     }
 
+    // Create the single chart instance (used for BOTH line and candle modes)
     chartInstance = new Chart(ctx, {
         type: 'line',
+        plugins: [candlestickPlugin],
         data: {
-            labels: stock.history.map(function(_, i) { return i; }),
+            labels: [],
             datasets: [{
-                data: stock.history.slice(),
-                borderColor: lineColor,
-                backgroundColor: function(context) {
-                    var chart = context.chart;
-                    var area = chart.chartArea;
-                    if (!area) return 'transparent';
-                    var grad = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
-                    grad.addColorStop(0, lineColor + '30');
-                    grad.addColorStop(1, lineColor + '02');
-                    return grad;
-                },
+                data: [],
                 borderWidth: 2,
                 pointRadius: 0,
                 pointHoverRadius: 4,
-                pointHoverBackgroundColor: lineColor,
                 pointHoverBorderColor: '#fff',
-                pointHoverBorderWidth: 2,
-                fill: true,
-                tension: 0.3,
-                cubicInterpolationMode: 'monotone'
+                pointHoverBorderWidth: 2
             }]
         },
         options: {
@@ -1250,34 +1424,27 @@ function renderChart(stock) {
                     enabled: true,
                     mode: 'index',
                     intersect: false,
-                    backgroundColor: isLight ? '#fff' : '#1a1a26',
-                    titleColor: isLight ? '#333' : '#eee',
-                    bodyColor: isLight ? '#333' : '#ccc',
-                    borderColor: isLight ? '#ddd' : '#333',
                     borderWidth: 1,
                     padding: 10,
                     displayColors: false,
-                    callbacks: {
-                        title: function() { return stock.ticker; },
-                        label: function(ctx) { return '\u20b9 ' + ctx.parsed.y.toFixed(2); }
-                    }
+                    callbacks: {}
                 }
             },
             scales: {
                 x: {
                     display: true,
-                    grid: { color: isLight ? '#f0f0f0' : 'rgba(255,255,255,0.02)', drawBorder: false },
+                    grid: { drawBorder: false },
                     ticks: { display: false }
                 },
                 y: {
                     display: true,
                     position: 'right',
-                    grid: { color: isLight ? '#e0e0e0' : 'rgba(255,255,255,0.04)', drawBorder: false },
+                    grid: { drawBorder: false },
                     ticks: {
-                        color: isLight ? '#666' : '#6b7080',
                         font: { family: 'JetBrains Mono', size: 10 },
                         padding: 8,
-                        maxTicksLimit: 8
+                        maxTicksLimit: 8,
+                        callback: function(v) { return '\u20b9' + v.toFixed(0); }
                     }
                 }
             },
@@ -1285,6 +1452,8 @@ function renderChart(stock) {
             hover: { mode: 'index', intersect: false }
         }
     });
+
+    _applyChartData(stock, isLight);
 }
 
 function updateOrderMargin() {

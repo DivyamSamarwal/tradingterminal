@@ -227,6 +227,41 @@ body {
 .ct-right { text-align: right; display: flex; flex-direction: column; }
 .ct-price { font-size: 22px; font-weight: 700; }
 .ct-change { font-size: 12px; }
+.ct-chart-type { display: flex; gap: 4px; align-items: center; }
+.ct-type-sep { width: 1px; height: 16px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+.tf-btn {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    letter-spacing: 0.04em;
+    font-family: 'JetBrains Mono', monospace;
+}
+.tf-btn:hover { background: var(--bg-3); color: var(--text); }
+.tf-btn.active { background: var(--bg-3); color: var(--text-bright); border-color: var(--accent); }
+.chart-type-btn {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    letter-spacing: 0.02em;
+}
+.chart-type-btn:hover { background: var(--bg-3); color: var(--text); }
+.chart-type-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
 
 .chart-container {
     flex: 1;
