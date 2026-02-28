@@ -1528,7 +1528,7 @@ function updateStrikesAndPremium() {
         var prem = calcPremium(optType, s, stock.ltp, days);
         var opt = document.createElement('option');
         opt.value = s;
-        opt.textContent = s + ' (\u20b9' + prem.toFixed(2) + ')';
+        opt.textContent = s + ' (' + fmtPrice(stock, prem) + ')';
         sel.appendChild(opt);
     });
     var atm = strikes.find(function(s) { return s >= stock.ltp; }) || strikes[5];
@@ -1546,9 +1546,10 @@ function updateOptionMargin() {
     var totalQty = lots * lotSize;
     var days = getExpiryDays();
     var premium = calcPremium(optType, strike, stock.ltp, days);
-    var req = premium * totalQty;
+    var fxRate = EXCHANGE_RATES[stock.currency] || 1;
+    var req = premium * totalQty * fxRate;   // convert to INR
 
-    document.getElementById('option-premium').textContent = '\u20b9 ' + premium.toFixed(2);
+    document.getElementById('option-premium').textContent = fmtPrice(stock, premium);
     document.getElementById('lot-size').textContent = lotSize;
     document.getElementById('total-qty').textContent = totalQty;
     document.getElementById('req-margin-opt').textContent = fmtCur(req);
@@ -1570,29 +1571,31 @@ function executeOptionTrade(side) {
 
     if (lots <= 0) { toast("Error", "Invalid lot count", "error"); return; }
 
+    var fxRate = EXCHANGE_RATES[stock.currency] || 1;
     var premium = calcPremium(optType, strike, stock.ltp, days);
-    var cost = premium * totalQty;
+    var cost = premium * totalQty;          // in native currency
+    var costINR = cost * fxRate;            // converted to INR
     var optionId = stock.ticker + '_' + optType + '_' + strike + '_' + expiryType;
 
     if (side === 'BUY') {
-        if (state.margin < cost) { toast("Error", "Insufficient margin", "error"); return; }
+        if (state.margin < costINR) { toast("Error", "Insufficient margin", "error"); return; }
         var pos = state.optionsPositions[optionId] || {
             ticker: stock.ticker, type: optType, strike: strike, expiryType: expiryType,
             daysToExpiry: days, lots: 0, avgPremium: 0, lotSize: lotSize
         };
         var oldTotal = pos.lots * pos.lotSize * pos.avgPremium;
         pos.lots += lots;
-        pos.avgPremium = (oldTotal + cost) / (pos.lots * pos.lotSize);
+        pos.avgPremium = (oldTotal + cost) / (pos.lots * pos.lotSize);  // stored in native currency
         state.optionsPositions[optionId] = pos;
-        state.margin -= cost;
-        toast("Option BUY", lots + 'L ' + stock.ticker + ' ' + optType + ' ' + strike + ' ' + expiryType, 'success');
+        state.margin -= costINR;
+        toast("Option BUY", lots + 'L ' + stock.ticker + ' ' + optType + ' ' + strike + ' ' + expiryType + ' @ ' + fmtPrice(stock, premium), 'success');
     } else {
         var pos2 = state.optionsPositions[optionId];
         if (!pos2 || pos2.lots < lots) { toast("Error", "Insufficient option holdings", "error"); return; }
-        state.margin += premium * totalQty;
+        state.margin += premium * totalQty * fxRate;   // convert proceeds to INR
         pos2.lots -= lots;
         if (pos2.lots === 0) delete state.optionsPositions[optionId];
-        toast("Option SELL", lots + 'L ' + stock.ticker + ' ' + optType + ' ' + strike + ' ' + expiryType, 'error');
+        toast("Option SELL", lots + 'L ' + stock.ticker + ' ' + optType + ' ' + strike + ' ' + expiryType + ' @ ' + fmtPrice(stock, premium), 'error');
     }
 
     // Record trade
@@ -1604,7 +1607,7 @@ function executeOptionTrade(side) {
         type: optType + ' ' + strike + ' ' + expiryType,
         qty: totalQty,
         price: premium,
-        value: cost
+        value: costINR
     });
 
     document.getElementById('option-lots').value = 1;
@@ -2140,10 +2143,12 @@ function closeOptionPosition(id, silent) {
     var stock = marketStocks.find(function(s) { return s.ticker === pos.ticker; });
     if (!pos || !stock) return;
 
+    var fxRate = EXCHANGE_RATES[stock.currency] || 1;
     var curPrem = calcPremium(pos.type, pos.strike, stock.ltp, pos.daysToExpiry);
     var totalQty = pos.lots * pos.lotSize;
-    var pnl = (curPrem - pos.avgPremium) * totalQty;
-    state.margin += curPrem * totalQty;
+    var pnlNative = (curPrem - pos.avgPremium) * totalQty;
+    var pnlINR = pnlNative * fxRate;
+    state.margin += curPrem * totalQty * fxRate;   // convert proceeds to INR
 
     state.tradeHistory.unshift({
         time: formatTime(state.time),
@@ -2153,12 +2158,12 @@ function closeOptionPosition(id, silent) {
         type: pos.type + ' OPT',
         qty: totalQty,
         price: curPrem,
-        value: curPrem * totalQty
+        value: curPrem * totalQty * fxRate
     });
 
     delete state.optionsPositions[id];
     if (!silent) {
-        toast('Closed', pos.ticker + ' ' + pos.type + ' ' + pos.strike + ' @ \u20b9' + curPrem.toFixed(2) + '  P&L: ' + (pnl >= 0 ? '+' : '') + pnl.toFixed(2), pnl >= 0 ? 'success' : 'error');
+        toast('Closed', pos.ticker + ' ' + pos.type + ' ' + pos.strike + ' @ ' + fmtPrice(stock, curPrem) + '  P&L: ' + (pnlINR >= 0 ? '+' : '') + fmtCur(pnlINR), pnlINR >= 0 ? 'success' : 'error');
         renderAll();
     }
 }
@@ -2256,8 +2261,9 @@ function renderOptionsTable() {
 
         var curPrem = calcPremium(pos.type, pos.strike, stock.ltp, pos.daysToExpiry);
         var totalQty = pos.lots * pos.lotSize;
-        var pnl = (curPrem - pos.avgPremium) * totalQty;
-        var cls = pnl >= 0 ? 'up' : 'dn';
+        var pnlNative = (curPrem - pos.avgPremium) * totalQty;
+        var pnlINR = toINR(pnlNative, stock.currency);  // convert P&L to INR
+        var cls = pnlINR >= 0 ? 'up' : 'dn';
 
         var tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
@@ -2268,9 +2274,9 @@ function renderOptionsTable() {
             '<td>' + pos.expiryType + ' (' + pos.daysToExpiry + 'd)</td>' +
             '<td class="r">' + pos.lots + '</td>' +
             '<td class="r">' + totalQty + '</td>' +
-            '<td class="r">' + pos.avgPremium.toFixed(2) + '</td>' +
-            '<td class="r">' + curPrem.toFixed(2) + '</td>' +
-            '<td class="r ' + cls + '">' + (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + '</td>' +
+            '<td class="r">' + fmtPrice(stock, pos.avgPremium) + '</td>' +
+            '<td class="r">' + fmtPrice(stock, curPrem) + '</td>' +
+            '<td class="r ' + cls + '">' + (pnlINR >= 0 ? '+' : '') + fmtCur(pnlINR) + '</td>' +
             '<td class="r"><button class="btn-close-pos" onclick="event.stopPropagation();closeOptionPosition(\'' + id + '\')" title="Close option">&#x2715; Close</button></td>';
         tr.onclick = function() {
             var s = marketStocks.find(function(x) { return x.ticker === pos.ticker; });
@@ -2320,7 +2326,7 @@ function calcTotalPNL() {
         var s = marketStocks.find(function(x) { return x.ticker === p.ticker; });
         if (!s) return;
         var cur = calcPremium(p.type, p.strike, s.ltp, p.daysToExpiry);
-        total += (cur - p.avgPremium) * p.lots * p.lotSize;
+        total += toINR((cur - p.avgPremium) * p.lots * p.lotSize, s.currency);  // convert to INR
     });
     return total;
 }
