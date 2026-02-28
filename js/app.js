@@ -12,8 +12,8 @@ var NEWS_FREQ = 0.04;           // 4% per tick
 var VOL_MULTIPLIER = 1;         // volatility multiplier
 var CIRCUIT_LIMIT = 0.10;       // 10% upper/lower circuit
 
-// Currency exchange rates: 1 unit of foreign currency = X INR
-var EXCHANGE_RATES = { INR: 1, USD: 87.0, CNY: 12.0, JPY: 0.57 };
+// Currency exchange rates: 1 unit of foreign currency = X INR  (Feb 28, 2026)
+var EXCHANGE_RATES = { INR: 1, USD: 91.03, CNY: 13.28, JPY: 0.583 };
 
 var TIMEFRAMES = [
     { label: '5M',   viewLen: 5,    candlePeriod: 1  },
@@ -40,10 +40,13 @@ var LOT_SIZES = {
     PAYTM: 4350, IRCTC: 450, BEL: 3500,
     // NASDAQ
     AAPL: 100, MSFT: 100, NVDA: 100, TSLA: 100, META: 100, GOOGL: 100, AMZN: 100, NFLX: 100,
+    AMD: 100, ADBE: 100, AVGO: 100, COIN: 100, PLTR: 100, MU: 100,
     // SSE
     MOUTAI: 100, ICBC: 1000, CMBANK: 500, PINGAN: 500, PETROCH: 1000,
+    BYD: 100, CATL: 100, LONGI: 1000, SAIC: 500, CITICS: 500,
     // TSE
     TOYOTA: 100, SONY: 100, SOFTBNK: 100, HONDA: 100, NINTNDO: 100,
+    MUFG: 100, FASTRET: 10, KEYENCE: 10, DAIKIN: 10, CANON7751: 100,
     // Commodities
     GOLD: 10, SILVER: 100, COPPER: 10, ALUM: 10, ZINC: 10
 };
@@ -55,88 +58,104 @@ function mkStock(ticker, name, ltp, vol, sector, market, currency) {
 }
 
 var marketStocks = [
-    // ── Banking & Finance ──
-    mkStock("HDFCBANK",   "HDFC Bank Ltd",            1983, 0.0020, "Banking"),
-    mkStock("SBIN",       "State Bank of India",       742,  0.0030, "Banking"),
-    mkStock("ICICIBANK",  "ICICI Bank",                1121, 0.0022, "Banking"),
-    mkStock("KOTAKBANK",  "Kotak Mahindra Bank",       2044, 0.0019, "Banking"),
-    mkStock("AXISBANK",   "Axis Bank Ltd",             1340, 0.0024, "Banking"),
-    mkStock("BAJFINANCE", "Bajaj Finance Ltd",         6878, 0.0028, "Finance"),
-    mkStock("BAJAJFINSV", "Bajaj Finserv Ltd",         1835, 0.0022, "Finance"),
+    // ── Banking & Finance ──  (prices: Feb 28, 2026)
+    mkStock("HDFCBANK",   "HDFC Bank Ltd",            1755, 0.0020, "Banking"),
+    mkStock("SBIN",       "State Bank of India",       715,  0.0030, "Banking"),
+    mkStock("ICICIBANK",  "ICICI Bank",                1275, 0.0022, "Banking"),
+    mkStock("KOTAKBANK",  "Kotak Mahindra Bank",       2010, 0.0019, "Banking"),
+    mkStock("AXISBANK",   "Axis Bank Ltd",             1050, 0.0024, "Banking"),
+    mkStock("BAJFINANCE", "Bajaj Finance Ltd",         7450, 0.0028, "Finance"),
+    mkStock("BAJAJFINSV", "Bajaj Finserv Ltd",         2015, 0.0022, "Finance"),
     // ── IT ──
-    mkStock("TCS",        "Tata Consultancy Services", 3723, 0.0014, "IT"),
-    mkStock("INFY",       "Infosys Ltd",               1317, 0.0025, "IT"),
-    mkStock("HCLTECH",    "HCL Technologies",          1879, 0.0020, "IT"),
-    mkStock("WIPRO",      "Wipro Ltd",                 308,  0.0026, "IT"),
-    mkStock("TECHM",      "Tech Mahindra Ltd",         1540, 0.0022, "IT"),
-    mkStock("LTIM",       "LTIMindtree Ltd",           5920, 0.0020, "IT"),
+    mkStock("TCS",        "Tata Consultancy Services", 3560, 0.0014, "IT"),
+    mkStock("INFY",       "Infosys Ltd",               1870, 0.0025, "IT"),
+    mkStock("HCLTECH",    "HCL Technologies",          1720, 0.0020, "IT"),
+    mkStock("WIPRO",      "Wipro Ltd",                 295,  0.0026, "IT"),
+    mkStock("TECHM",      "Tech Mahindra Ltd",         1685, 0.0022, "IT"),
+    mkStock("LTIM",       "LTIMindtree Ltd",           5150, 0.0020, "IT"),
     // ── Energy & Conglomerate ──
-    mkStock("RELIANCE",   "Reliance Industries",       1291, 0.0018, "Energy"),
-    mkStock("ONGC",       "Oil & Natural Gas Corp",    265,  0.0025, "Energy"),
-    mkStock("BPCL",       "Bharat Petroleum Corp",     290,  0.0028, "Energy"),
+    mkStock("RELIANCE",   "Reliance Industries",       1225, 0.0018, "Energy"),
+    mkStock("ONGC",       "Oil & Natural Gas Corp",    235,  0.0025, "Energy"),
+    mkStock("BPCL",       "Bharat Petroleum Corp",     265,  0.0028, "Energy"),
     // ── Power ──
-    mkStock("NTPC",       "NTPC Ltd",                  325,  0.0018, "Power"),
-    mkStock("POWERGRID",  "Power Grid Corporation",    295,  0.0015, "Power"),
+    mkStock("NTPC",       "NTPC Ltd",                  320,  0.0018, "Power"),
+    mkStock("POWERGRID",  "Power Grid Corporation",    305,  0.0015, "Power"),
     // ── Infra ──
-    mkStock("ADANIENT",   "Adani Enterprises",         2375, 0.0040, "Infra"),
-    mkStock("LT",         "Larsen & Toubro",           3512, 0.0016, "Infra"),
-    mkStock("BEL",        "Bharat Electronics Ltd",    285,  0.0030, "Infra"),
+    mkStock("ADANIENT",   "Adani Enterprises",         2185, 0.0040, "Infra"),
+    mkStock("LT",         "Larsen & Toubro",           3255, 0.0016, "Infra"),
+    mkStock("BEL",        "Bharat Electronics Ltd",    255,  0.0030, "Infra"),
     // ── Auto ──
-    mkStock("TATAMOTORS", "Tata Motors Ltd",           725,  0.0035, "Auto"),
-    mkStock("MARUTI",     "Maruti Suzuki India",       12035,0.0016, "Auto"),
-    mkStock("MM",         "Mahindra & Mahindra",      3020, 0.0022, "Auto"),
-    mkStock("EICHERMOT",  "Eicher Motors Ltd",         5250, 0.0018, "Auto"),
+    mkStock("TATAMOTORS", "Tata Motors Ltd",           665,  0.0035, "Auto"),
+    mkStock("MARUTI",     "Maruti Suzuki India",       11800,0.0016, "Auto"),
+    mkStock("MM",         "Mahindra & Mahindra",       2855, 0.0022, "Auto"),
+    mkStock("EICHERMOT",  "Eicher Motors Ltd",         5035, 0.0018, "Auto"),
     // ── Pharma ──
-    mkStock("SUNPHARMA",  "Sun Pharma Industries",     1882, 0.0018, "Pharma"),
-    mkStock("CIPLA",      "Cipla Ltd",                 1510, 0.0020, "Pharma"),
-    mkStock("DRREDDY",    "Dr Reddy's Laboratories",   1195, 0.0022, "Pharma"),
+    mkStock("SUNPHARMA",  "Sun Pharma Industries",     1745, 0.0018, "Pharma"),
+    mkStock("CIPLA",      "Cipla Ltd",                 1555, 0.0020, "Pharma"),
+    mkStock("DRREDDY",    "Dr Reddy's Laboratories",   1165, 0.0022, "Pharma"),
     // ── Metals & Mining ──
-    mkStock("TATASTEEL",  "Tata Steel Ltd",            155,  0.0038, "Metal"),
-    mkStock("JSWSTEEL",   "JSW Steel Ltd",             970,  0.0032, "Metal"),
-    mkStock("COALINDIA",  "Coal India Ltd",            385,  0.0022, "Metal"),
+    mkStock("TATASTEEL",  "Tata Steel Ltd",            140,  0.0038, "Metal"),
+    mkStock("JSWSTEEL",   "JSW Steel Ltd",             930,  0.0032, "Metal"),
+    mkStock("COALINDIA",  "Coal India Ltd",            355,  0.0022, "Metal"),
     // ── FMCG ──
-    mkStock("ITC",        "ITC Ltd",                   405,  0.0010, "FMCG"),
-    mkStock("HINDUNILVR", "Hindustan Unilever",        2325, 0.0012, "FMCG"),
-    mkStock("BRITANNIA",  "Britannia Industries",      5060, 0.0016, "FMCG"),
-    mkStock("NESTLEIND",  "Nestle India Ltd",          2305, 0.0014, "FMCG"),
-    mkStock("TATACONSUM", "Tata Consumer Products",    1035, 0.0022, "FMCG"),
+    mkStock("ITC",        "ITC Ltd",                   415,  0.0010, "FMCG"),
+    mkStock("HINDUNILVR", "Hindustan Unilever",        2290, 0.0012, "FMCG"),
+    mkStock("BRITANNIA",  "Britannia Industries",      4755, 0.0016, "FMCG"),
+    mkStock("NESTLEIND",  "Nestle India Ltd",          2155, 0.0014, "FMCG"),
+    mkStock("TATACONSUM", "Tata Consumer Products",    960,  0.0022, "FMCG"),
     // ── Telecom ──
-    mkStock("BHARTIARTL", "Bharti Airtel",             1694, 0.0020, "Telecom"),
+    mkStock("BHARTIARTL", "Bharti Airtel",             1730, 0.0020, "Telecom"),
     // ── Consumer ──
-    mkStock("TITAN",      "Titan Company Ltd",         3535, 0.0018, "Consumer"),
+    mkStock("TITAN",      "Titan Company Ltd",         3155, 0.0018, "Consumer"),
     // ── Cement ──
-    mkStock("ULTRACEMCO", "UltraTech Cement Ltd",     11500, 0.0016, "Cement"),
+    mkStock("ULTRACEMCO", "UltraTech Cement Ltd",     10300, 0.0016, "Cement"),
     // ── New Age Tech ──
-    mkStock("ZOMATO",     "Zomato Ltd",                222,  0.0050, "Tech"),
-    mkStock("PAYTM",      "One97 Communications",      695,  0.0060, "Tech"),
-    mkStock("IRCTC",      "IRCTC Ltd",                 820,  0.0030, "Tech"),
-    // ── NASDAQ ──
-    mkStock("AAPL",    "Apple Inc.",              205,  0.0018, "Tech",       "NASDAQ", "USD"),
-    mkStock("MSFT",    "Microsoft Corp.",          415,  0.0016, "Tech",       "NASDAQ", "USD"),
-    mkStock("NVDA",    "NVIDIA Corp.",             870,  0.0040, "Semicon",    "NASDAQ", "USD"),
-    mkStock("TSLA",    "Tesla Inc.",               280,  0.0055, "EV",         "NASDAQ", "USD"),
-    mkStock("META",    "Meta Platforms",           560,  0.0030, "SocMedia",   "NASDAQ", "USD"),
-    mkStock("GOOGL",   "Alphabet Inc.",            195,  0.0020, "Tech",       "NASDAQ", "USD"),
+    mkStock("ZOMATO",     "Zomato Ltd",                235,  0.0050, "Tech"),
+    mkStock("PAYTM",      "One97 Communications",      855,  0.0060, "Tech"),
+    mkStock("IRCTC",      "IRCTC Ltd",                 775,  0.0030, "Tech"),
+    // ── NASDAQ ──  (USD prices, post-split adjusted, Feb 2026)
+    mkStock("AAPL",    "Apple Inc.",              264,  0.0018, "Tech",       "NASDAQ", "USD"),
+    mkStock("MSFT",    "Microsoft Corp.",          393,  0.0016, "Tech",       "NASDAQ", "USD"),
+    mkStock("NVDA",    "NVIDIA Corp.",             177,  0.0040, "Semicon",    "NASDAQ", "USD"),  // post 10:1 split Jun'24
+    mkStock("TSLA",    "Tesla Inc.",               403,  0.0055, "EV",         "NASDAQ", "USD"),
+    mkStock("META",    "Meta Platforms",           648,  0.0030, "SocMedia",   "NASDAQ", "USD"),
+    mkStock("GOOGL",   "Alphabet Inc.",            311,  0.0020, "Tech",       "NASDAQ", "USD"),
     mkStock("AMZN",    "Amazon.com Inc.",          210,  0.0025, "E-Comm",     "NASDAQ", "USD"),
-    mkStock("NFLX",    "Netflix Inc.",             960,  0.0035, "Streaming",  "NASDAQ", "USD"),
-    // ── SSE (Shanghai) ──
-    mkStock("MOUTAI",  "Kweichow Moutai",         1620, 0.0018, "Liquor",     "SSE",    "CNY"),
-    mkStock("ICBC",    "Ind & Comm Bank China",     5.9, 0.0015, "Banking",    "SSE",    "CNY"),
-    mkStock("CMBANK",  "China Merchants Bank",      43,  0.0020, "Banking",    "SSE",    "CNY"),
-    mkStock("PINGAN",  "Ping An Insurance",          46, 0.0022, "Insurance",  "SSE",    "CNY"),
-    mkStock("PETROCH", "PetroChina Co.",             9.6, 0.0020, "Energy",    "SSE",    "CNY"),
-    // ── TSE (Japan) ──
-    mkStock("TOYOTA",  "Toyota Motor Corp.",      2250, 0.0018, "Auto",       "TSE",    "JPY"),
-    mkStock("SONY",    "Sony Group Corp.",        13200, 0.0025, "Consumer",   "TSE",    "JPY"),
-    mkStock("SOFTBNK", "SoftBank Group Corp.",    8100, 0.0035, "Tech",       "TSE",    "JPY"),
-    mkStock("HONDA",   "Honda Motor Co.",          1720, 0.0022, "Auto",       "TSE",    "JPY"),
-    mkStock("NINTNDO", "Nintendo Co. Ltd.",        6800, 0.0028, "Gaming",     "TSE",    "JPY"),
-    // ── Commodities ──
-    mkStock("GOLD",    "Gold (USD/oz)",            2900, 0.0012, "Precious",   "COMM",   "USD"),
-    mkStock("SILVER",  "Silver (USD/oz)",            33, 0.0025, "Precious",   "COMM",   "USD"),
-    mkStock("COPPER",  "Copper (USD/ton)",          9900, 0.0025, "Industrial", "COMM",   "USD"),
-    mkStock("ALUM",    "Aluminium (USD/ton)",       2750, 0.0020, "Industrial", "COMM",   "USD"),
-    mkStock("ZINC",    "Zinc (USD/ton)",            2950, 0.0022, "Industrial", "COMM",   "USD")
+    mkStock("NFLX",    "Netflix Inc.",              96,  0.0035, "Streaming",  "NASDAQ", "USD"),  // post 10:1 split Feb'26
+    mkStock("AMD",     "Advanced Micro Devices",   200,  0.0045, "Semicon",    "NASDAQ", "USD"),
+    mkStock("ADBE",    "Adobe Inc.",               262,  0.0022, "Software",   "NASDAQ", "USD"),
+    mkStock("AVGO",    "Broadcom Inc.",            320,  0.0030, "Semicon",    "NASDAQ", "USD"),
+    mkStock("COIN",    "Coinbase Global",          176,  0.0070, "Crypto",     "NASDAQ", "USD"),
+    mkStock("PLTR",    "Palantir Technologies",    137,  0.0060, "AI/Data",    "NASDAQ", "USD"),
+    mkStock("MU",      "Micron Technology",        412,  0.0040, "Semicon",    "NASDAQ", "USD"),
+    // ── SSE (Shanghai) ──  (CNY)
+    mkStock("MOUTAI",  "Kweichow Moutai",         1535, 0.0018, "Liquor",     "SSE",    "CNY"),
+    mkStock("ICBC",    "Ind & Comm Bank China",     7.1, 0.0015, "Banking",    "SSE",    "CNY"),
+    mkStock("CMBANK",  "China Merchants Bank",      48,  0.0020, "Banking",    "SSE",    "CNY"),
+    mkStock("PINGAN",  "Ping An Insurance",          52, 0.0022, "Insurance",  "SSE",    "CNY"),
+    mkStock("PETROCH", "PetroChina Co.",            10.8, 0.0020, "Energy",    "SSE",    "CNY"),
+    mkStock("BYD",     "BYD Co. Ltd.",              285,  0.0035, "EV",         "SSE",    "CNY"),
+    mkStock("CATL",    "CATL (CATLSH)",             242,  0.0032, "EV Battery", "SSE",    "CNY"),
+    mkStock("LONGI",   "LONGi Green Energy",         18,  0.0040, "Solar",      "SSE",    "CNY"),
+    mkStock("SAIC",    "SAIC Motor Corp.",           22,  0.0028, "Auto",       "SSE",    "CNY"),
+    mkStock("CITICS",  "CITIC Securities",           28,  0.0025, "Finance",    "SSE",    "CNY"),
+    // ── TSE (Japan) ──  (JPY)
+    mkStock("TOYOTA",  "Toyota Motor Corp.",      2755, 0.0018, "Auto",       "TSE",    "JPY"),
+    mkStock("SONY",    "Sony Group Corp.",        2850, 0.0025, "Consumer",   "TSE",    "JPY"),
+    mkStock("SOFTBNK", "SoftBank Group Corp.",   10200, 0.0035, "Tech",       "TSE",    "JPY"),
+    mkStock("HONDA",   "Honda Motor Co.",          1450, 0.0022, "Auto",       "TSE",    "JPY"),
+    mkStock("NINTNDO", "Nintendo Co. Ltd.",         870, 0.0028, "Gaming",     "TSE",    "JPY"),  // post 10:1 split Oct'24
+    mkStock("MUFG",    "Mitsubishi UFJ Financial", 2908, 0.0020, "Banking",    "TSE",    "JPY"),
+    mkStock("FASTRET", "Fast Retailing (Uniqlo)", 52000, 0.0022, "Retail",     "TSE",    "JPY"),
+    mkStock("KEYENCE", "Keyence Corp.",           63000, 0.0018, "Automation", "TSE",    "JPY"),
+    mkStock("DAIKIN",  "Daikin Industries",       22500, 0.0022, "HVAC",       "TSE",    "JPY"),
+    mkStock("CANON7751","Canon Inc.",              4250, 0.0020, "Tech",       "TSE",    "JPY"),
+    // ── Commodities ──  (USD)
+    mkStock("GOLD",    "Gold (USD/oz)",            5248, 0.0012, "Precious",   "COMM",   "USD"),
+    mkStock("SILVER",  "Silver (USD/oz)",             93, 0.0025, "Precious",   "COMM",   "USD"),
+    mkStock("COPPER",  "Copper (USD/ton)",         13360, 0.0025, "Industrial", "COMM",   "USD"),
+    mkStock("ALUM",    "Aluminium (USD/ton)",       2645, 0.0020, "Industrial", "COMM",   "USD"),
+    mkStock("ZINC",    "Zinc (USD/ton)",            2955, 0.0022, "Industrial", "COMM",   "USD")
 ];
 
 // ==================== NEWS EVENTS (80+) ====================
@@ -611,11 +630,11 @@ var state = {
     activeBottomTab: 'equity',
     newsCount: 0,
     marketOpen: true,
-    niftyBase: 23500,
-    niftyValue: 23500,
+    niftyBase: 22500,
+    niftyValue: 22500,
     niftyHistory: [],
-    sensexBase: 77500,
-    sensexValue: 77500,
+    sensexBase: 74500,
+    sensexValue: 74500,
     sentiment: 0,  // -100 to +100
     chartType: 'line',
     timeframe: '30M',
