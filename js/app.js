@@ -254,6 +254,10 @@ var marketStocks = [
     mkStock("ZINC",    "Zinc (USD/ton)",            2955, 0.0022, "Industrial", "COMM",   "USD")
 ];
 
+// O(1) ticker → stock reference map (references, so in-place stock mutations are always reflected)
+var stockMap = {};
+(function() { marketStocks.forEach(function(s) { stockMap[s.ticker] = s; }); }());
+
 // ==================== NEWS EVENTS (80+) ====================
 var newsEvents = [
     // ---- MACRO / MARKET-WIDE ----
@@ -1113,7 +1117,7 @@ function setupListeners() {
 
 // ==================== SETTINGS / MODIFIABLE CASH ====================
 function openSettings() {
-    document.getElementById('settings-cash').value = state.margin;
+    document.getElementById('settings-cash').value = INITIAL_MARGIN;
     document.getElementById('settings-news-freq').value = NEWS_FREQ.toString();
     document.getElementById('settings-volatility').value = VOL_MULTIPLIER.toString();
     document.getElementById('settings-overlay').classList.remove('hidden');
@@ -1152,10 +1156,10 @@ function applySettings() {
         state.marketOpen = true;
         state.isRunning = true;
         state.sentiment = 0;
-        state.niftyValue = 23500;
-        state.niftyBase = 23500;
-        state.sensexValue = 77500;
-        state.sensexBase = 77500;
+        state.niftyValue = 22500;
+        state.niftyBase = 22500;
+        state.sensexValue = 74500;
+        state.sensexBase = 74500;
 
         marketStocks.forEach(function(s) {
             s.ltp = s.base;
@@ -1178,6 +1182,7 @@ function applySettings() {
         document.getElementById('news-count').textContent = '0';
 
         if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+        _wlCache = {}; _wlLastOrder = ''; // force watchlist DOM rebuild
 
         document.querySelectorAll('.ctrl-btn').forEach(function(b) {
             if (b.id !== 'btn-theme' && b.id !== 'btn-settings') b.classList.remove('on');
@@ -1404,7 +1409,7 @@ function tickMinute() {
         if (!st) return;
         var pos = state.positions[ticker];
         if (!pos) { delete state.slTargets[ticker]; return; }
-        var stock = marketStocks.find(function(s) { return s.ticker === ticker; });
+        var stock = stockMap[ticker];
         if (!stock) return;
         var isLong = pos.qty > 0;
         if (st.sl && isLong && stock.ltp <= st.sl) {
@@ -1434,7 +1439,7 @@ function showDayEndOverlay() {
     var posVal = 0;
     Object.entries(state.positions).forEach(function(entry) {
         var t = entry[0], p = entry[1];
-        var s = marketStocks.find(function(x) { return x.ticker === t; });
+        var s = stockMap[t];
         if (s) posVal += s.ltp * Math.abs(p.qty);
     });
 
@@ -1514,6 +1519,7 @@ function startNewDay() {
     container.prepend(el);
 
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    _wlCache = {}; _wlLastOrder = ''; // force watchlist DOM rebuild for new day
 
     document.querySelectorAll('.ctrl-btn').forEach(function(b) {
         if (b.id !== 'btn-theme' && b.id !== 'btn-settings') b.classList.remove('on');
@@ -1530,7 +1536,7 @@ function settleExpiredOptions() {
     Object.entries(state.optionsPositions).forEach(function(entry) {
         var id = entry[0], pos = entry[1];
         if (pos.daysToExpiry <= 1) {
-            var stock = marketStocks.find(function(s) { return s.ticker === pos.ticker; });
+            var stock = stockMap[pos.ticker];
             if (!stock) return;
 
             var intrinsic = pos.type === 'CALL'
@@ -1856,14 +1862,25 @@ function executeOptionTrade(side) {
 }
 
 // ==================== RENDER ====================
+// Coalesce multiple rapid renderAll() calls into one paint per animation frame
+var _rafPending = false;
 function renderAll() {
-    renderTopBar();
-    renderWatchlist();
-    renderActiveStock();
-    renderPositionsTable();
-    if (state.activeBottomTab === 'options') renderOptionsTable();
-    if (state.activeBottomTab === 'history') renderHistoryTable();
+    if (_rafPending) return;
+    _rafPending = true;
+    requestAnimationFrame(function() {
+        _rafPending = false;
+        renderTopBar();
+        renderWatchlist();
+        renderActiveStock();
+        renderPositionsTable();
+        if (state.activeBottomTab === 'options') renderOptionsTable();
+        if (state.activeBottomTab === 'history') renderHistoryTable();
+    });
 }
+
+// Watchlist DOM row cache — built once per filter change, updated in-place every tick
+var _wlCache = {};
+var _wlLastOrder = '';
 
 function renderTopBar() {
     document.getElementById('market-time').textContent = formatTime(state.time);
@@ -1921,7 +1938,7 @@ function renderTopBar() {
     var posVal = 0;
     Object.entries(state.positions).forEach(function(entry) {
         var t = entry[0], p = entry[1];
-        var s = marketStocks.find(function(x) { return x.ticker === t; });
+        var s = stockMap[t];
         if (s) posVal += toINR(s.ltp * Math.abs(p.qty), s.currency);
     });
     document.getElementById('portfolio-value').textContent = fmtCur(state.margin + posVal);
@@ -1931,11 +1948,8 @@ function renderWatchlist() {
     var list = document.getElementById('watchlist');
     var searchEl = document.getElementById('wl-search-input');
     var query = searchEl ? searchEl.value.trim().toUpperCase() : '';
-
-    // Apply market filter
     var mf = state.wlMarketFilter;
     var byMarket = mf === 'ALL' ? marketStocks : marketStocks.filter(function(s) { return s.market === mf; });
-
     var filtered = query
         ? byMarket.filter(function(s) {
             return s.ticker.indexOf(query) !== -1 ||
@@ -1944,59 +1958,123 @@ function renderWatchlist() {
           })
         : byMarket;
 
-    // Preserve scroll position
-    var scrollTop = list.scrollTop;
-    list.innerHTML = '';
+    var orderKey = filtered.map(function(s) { return s.ticker; }).join(',');
+    var needsRebuild = (orderKey !== _wlLastOrder);
 
     if (filtered.length === 0) {
-        list.innerHTML = '<div class="wl-empty">No stocks match "' + query + '"</div>';
+        if (needsRebuild) {
+            list.innerHTML = '<div class="wl-empty">No stocks match "' + query + '"</div>';
+            _wlLastOrder = orderKey;
+        }
+        var cntEl0 = document.getElementById('wl-count');
+        if (cntEl0) cntEl0.textContent = '0/' + marketStocks.length;
         return;
     }
 
+    // Structural rebuild only when the visible stock list or order changes
+    if (needsRebuild) {
+        var scrollTop = list.scrollTop;
+        var frag = document.createDocumentFragment();
+        _wlCache = {};
+        filtered.forEach(function(s) {
+            var row = document.createElement('div');
+            var left = document.createElement('div');
+            left.style.flex = '1.5';
+
+            var symLine = document.createElement('span');
+            symLine.className = 'wl-sym';
+            symLine.textContent = s.ticker;
+            if (s.market !== 'NSE') {
+                var badge = document.createElement('span');
+                badge.className = 'wl-mkt-badge wlm-' + s.market.toLowerCase();
+                badge.textContent = s.market;
+                symLine.appendChild(badge);
+            }
+            var circuitEl = document.createElement('span');
+            circuitEl.className = 'circuit-badge';
+            circuitEl.style.display = 'none';
+            symLine.appendChild(circuitEl);
+
+            var sectorEl = document.createElement('div');
+            sectorEl.className = 'wl-sector';
+            sectorEl.textContent = s.sector;
+
+            var bar = document.createElement('div');
+            bar.className = 'vol-bar';
+            var barFill = document.createElement('div');
+            barFill.className = 'vol-fill';
+            bar.appendChild(barFill);
+
+            left.appendChild(symLine);
+            left.appendChild(sectorEl);
+            left.appendChild(bar);
+
+            var ltpEl = document.createElement('span');
+            ltpEl.className = 'wl-ltp';
+            var chgEl = document.createElement('span');
+            chgEl.className = 'wl-chg';
+
+            row.appendChild(left);
+            row.appendChild(ltpEl);
+            row.appendChild(chgEl);
+            row.addEventListener('click', (function(stock) {
+                return function() { selectStock(stock); };
+            })(s));
+
+            _wlCache[s.ticker] = { row: row, ltpEl: ltpEl, chgEl: chgEl, barFill: barFill, circuitEl: circuitEl };
+            frag.appendChild(row);
+        });
+        list.innerHTML = '';
+        list.appendChild(frag);
+        list.scrollTop = scrollTop;
+        _wlLastOrder = orderKey;
+    }
+
+    // In-place value updates every tick — only touches DOM when value actually changed
+    var maxVol = 300000;
     filtered.forEach(function(s) {
-        var dayChange = ((s.ltp - s.open) / s.open * 100);
+        var c = _wlCache[s.ticker];
+        if (!c) return;
+        var dayChange = (s.ltp - s.open) / s.open * 100;
         var cls = dayChange >= 0 ? 'up' : 'dn';
+        var flashCls = (s._prevTick !== undefined && s.ltp !== s._prevTick)
+            ? (s.ltp > s._prevTick ? ' flash-up' : ' flash-dn') : '';
+        var rowCls = 'wl-row' + (state.activeStock === s ? ' active' : '') + flashCls;
+        if (c.row.className !== rowCls) c.row.className = rowCls;
 
-        // Price flash class
-        var flashCls = '';
-        if (s._prevTick !== undefined && s.ltp !== s._prevTick) {
-            flashCls = s.ltp > s._prevTick ? ' flash-up' : ' flash-dn';
+        var ltpText = fmtPrice(s, s.ltp);
+        var ltpCls = 'wl-ltp ' + cls;
+        if (c.ltpEl.className !== ltpCls) c.ltpEl.className = ltpCls;
+        if (c.ltpEl.textContent !== ltpText) c.ltpEl.textContent = ltpText;
+
+        var chgText = (dayChange >= 0 ? '+' : '') + dayChange.toFixed(2) + '%';
+        var chgCls = 'wl-chg ' + cls;
+        if (c.chgEl.className !== chgCls) c.chgEl.className = chgCls;
+        if (c.chgEl.textContent !== chgText) c.chgEl.textContent = chgText;
+
+        var volPct = Math.min(100, (s.volume / maxVol) * 100).toFixed(1) + '%';
+        if (c.barFill.style.width !== volPct) c.barFill.style.width = volPct;
+
+        if (s.circuitHit) {
+            var cbCls = 'circuit-badge ' + (s.circuitHit === 'UC' ? 'uc' : 'lc');
+            if (c.circuitEl.className !== cbCls) c.circuitEl.className = cbCls;
+            if (c.circuitEl.textContent !== s.circuitHit) c.circuitEl.textContent = s.circuitHit;
+            if (c.circuitEl.style.display !== '') c.circuitEl.style.display = '';
+        } else if (c.circuitEl.style.display !== 'none') {
+            c.circuitEl.style.display = 'none';
         }
-
-        var row = document.createElement('div');
-        row.className = 'wl-row' + (state.activeStock === s ? ' active' : '') + flashCls;
-        row.onclick = function() { selectStock(s); };
-
-        var circuitBadge = '';
-        if (s.circuitHit === 'UC') circuitBadge = '<span class="circuit-badge uc">UC</span>';
-        else if (s.circuitHit === 'LC') circuitBadge = '<span class="circuit-badge lc">LC</span>';
-
-        var maxVol = 300000;
-        var volPct = Math.min(100, (s.volume / maxVol) * 100);
-        var ltpDisplay = fmtPrice(s, s.ltp);
-
-        // Market badge color class
-        var mktBadge = s.market !== 'NSE' ? '<span class="wl-mkt-badge wlm-' + s.market.toLowerCase() + '">' + s.market + '</span>' : '';
-
-        row.innerHTML = '<div style="flex:1.5">' +
-            '<span class="wl-sym">' + s.ticker + circuitBadge + mktBadge + '</span>' +
-            '<div class="wl-sector">' + s.sector + '</div>' +
-            '<div class="vol-bar"><div class="vol-fill" style="width:' + volPct + '%"></div></div></div>' +
-            '<span class="wl-ltp ' + cls + '">' + ltpDisplay + '</span>' +
-            '<span class="wl-chg ' + cls + '">' + (dayChange >= 0 ? '+' : '') + dayChange.toFixed(2) + '%</span>';
-        list.appendChild(row);
     });
-    list.scrollTop = scrollTop;
 
-    // Update count badge
     var cntEl = document.getElementById('wl-count');
-    if (cntEl) cntEl.textContent = filtered.length + '/' + marketStocks.length;
+    if (cntEl) {
+        var cntText = filtered.length + '/' + marketStocks.length;
+        if (cntEl.textContent !== cntText) cntEl.textContent = cntText;
+    }
 }
 
 function selectStock(stock) {
     if (!stock) return;
     state.activeStock = stock;
-    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
     renderAll();
     if (state.activeTab === 'options') updateStrikesAndPremium();
 }
@@ -2196,10 +2274,7 @@ function _applyChartData(stock, isLight) {
         ds.tension                = lineSlice.length > 60 ? 0 : 0.3;
         ds.pointHoverRadius       = 4;
         chartInstance._ohlc       = null;
-        chartInstance._volumes    = null; // no volume bars in pre-history view to keep chart clean
-        if (stock.volumeHistory && stock.volumeHistory.length && state.viewLen <= 375) {
-            chartInstance._volumes = stock.volumeHistory.slice(-state.viewLen);
-        }
+        chartInstance._volumes    = null; // no volume overlay on line chart (volumeHistory is live-only and misaligns with pre-history)
         chartInstance._lineData = lineSlice;
         scY.min = undefined;
         scY.max = undefined;
@@ -2404,8 +2479,7 @@ function renderPositionCard(stock) {
 // ==================== CLOSE POSITION HELPERS ====================
 function closeEquityPosition(ticker, silent) {
     var pos = state.positions[ticker];
-    var stock = marketStocks.find(function(s) { return s.ticker === ticker; });
-    if (!pos || !stock) return;
+        var stock = stockMap[ticker];
 
     var absQty = Math.abs(pos.qty);
     var price = stock.ltp;
@@ -2448,7 +2522,7 @@ function closeEquityPosition(ticker, silent) {
 
 function closeOptionPosition(id, silent) {
     var pos = state.optionsPositions[id];
-    var stock = marketStocks.find(function(s) { return s.ticker === pos.ticker; });
+    var stock = stockMap[pos && pos.ticker];
     if (!pos || !stock) return;
 
     var fxRate = EXCHANGE_RATES[stock.currency] || 1;
@@ -2517,7 +2591,7 @@ function renderPositionsTable() {
     tbody.innerHTML = '';
     keys.forEach(function(ticker) {
         var pos = state.positions[ticker];
-        var stock = marketStocks.find(function(s) { return s.ticker === ticker; });
+        var stock = stockMap[ticker];
         if (!stock) return;
 
         var isShort = pos.qty < 0;
@@ -2544,10 +2618,7 @@ function renderPositionsTable() {
             '<td class="r ' + pnlCls + '">' + (pnl >= 0 ? '+' : '') + fmtCur(pnl) + '</td>' +
             '<td class="r ' + pnlCls + '">' + (pnl >= 0 ? '+' : '') + pnlPct + '%</td>' +
             '<td class="r"><button class="btn-close-pos" onclick="event.stopPropagation();closeEquityPosition(\'' + ticker + '\')" title="Close position">&#x2715; Close</button></td>';
-        tr.onclick = function() {
-            var s = marketStocks.find(function(x) { return x.ticker === ticker; });
-            if (s) selectStock(s);
-        };
+        tr.onclick = function() { selectStock(stockMap[ticker]); };
         tbody.appendChild(tr);
     });
 }
@@ -2564,7 +2635,7 @@ function renderOptionsTable() {
     tbody.innerHTML = '';
     keys.forEach(function(id) {
         var pos = state.optionsPositions[id];
-        var stock = marketStocks.find(function(s) { return s.ticker === pos.ticker; });
+        var stock = stockMap[pos.ticker];
         if (!stock) return;
 
         var curPrem = calcPremium(pos.type, pos.strike, stock.ltp, pos.daysToExpiry);
@@ -2586,10 +2657,7 @@ function renderOptionsTable() {
             '<td class="r">' + fmtPrice(stock, curPrem) + '</td>' +
             '<td class="r ' + cls + '">' + (pnlINR >= 0 ? '+' : '') + fmtCur(pnlINR) + '</td>' +
             '<td class="r"><button class="btn-close-pos" onclick="event.stopPropagation();closeOptionPosition(\'' + id + '\')" title="Close option">&#x2715; Close</button></td>';
-        tr.onclick = function() {
-            var s = marketStocks.find(function(x) { return x.ticker === pos.ticker; });
-            if (s) selectStock(s);
-        };
+        tr.onclick = function() { selectStock(stockMap[pos.ticker]); };
         tbody.appendChild(tr);
     });
 }
@@ -2650,16 +2718,16 @@ function exportTradeHistoryCSV() {
 
     // Value of all open equity positions at current LTP
     var posValue = 0;
-    Object.values(state.positions).forEach(function(pos) {
-        var s = marketStocks.find(function(x) { return x.ticker === pos.ticker; });
+    Object.entries(state.positions).forEach(function(entry) {
+        var s = stockMap[entry[0]];
         if (!s) return;
-        posValue += toINR(Math.abs(pos.qty) * s.ltp, s.currency);
+        posValue += toINR(Math.abs(entry[1].qty) * s.ltp, s.currency);
     });
 
     // Value of all open options at current premium
     var optValue = 0;
     Object.values(state.optionsPositions).forEach(function(pos) {
-        var s = marketStocks.find(function(x) { return x.ticker === pos.ticker; });
+        var s = stockMap[pos.ticker];
         if (!s) return;
         var curPrem = calcPremium(pos.type, pos.strike, s.ltp, pos.daysToExpiry);
         optValue += toINR(curPrem * pos.lots * pos.lotSize, s.currency);
@@ -2699,7 +2767,7 @@ function calcTotalPNL() {
     var total = 0;
     Object.entries(state.positions).forEach(function(entry) {
         var t = entry[0], p = entry[1];
-        var s = marketStocks.find(function(x) { return x.ticker === t; });
+        var s = stockMap[t];
         if (!s) return;
         var pnlNative = p.qty > 0
             ? (s.ltp - p.avgPrice) * p.qty
@@ -2707,7 +2775,7 @@ function calcTotalPNL() {
         total += toINR(pnlNative, s.currency);
     });
     Object.values(state.optionsPositions).forEach(function(p) {
-        var s = marketStocks.find(function(x) { return x.ticker === p.ticker; });
+        var s = stockMap[p.ticker];
         if (!s) return;
         var cur = calcPremium(p.type, p.strike, s.ltp, p.daysToExpiry);
         total += toINR((cur - p.avgPremium) * p.lots * p.lotSize, s.currency);  // convert to INR

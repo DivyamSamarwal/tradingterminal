@@ -220,6 +220,7 @@ body {
 .wl-body {
     flex: 1;
     overflow-y: auto;
+    contain: strict;
 }
 
 .wl-row {
@@ -316,11 +317,14 @@ body {
     padding: 12px 16px 8px;
     position: relative;
     min-height: 0;
+    contain: layout style;
 }
 
 .chart-container canvas {
     width: 100% !important;
     height: 100% !important;
+    background: var(--bg-0);
+    border-radius: 4px;
 }
 
 /* ========== NEWS PANEL ========== */
@@ -1083,8 +1087,8 @@ body {
     0%   { background: rgba(255, 23, 68, 0.25); }
     100% { background: transparent; }
 }
-.flash-up { animation: flashUp 0.55s ease-out; }
-.flash-dn { animation: flashDn 0.55s ease-out; }
+.flash-up { animation: flashUp 0.55s ease-out; will-change: background; }
+.flash-dn { animation: flashDn 0.55s ease-out; will-change: background; }
 
 /* ========== CHART CROSSHAIR CURSOR ========== */
 .chart-container canvas { cursor: crosshair; }
