@@ -20,7 +20,9 @@
             <div class="topbar-stats">
                 <div class="stat"><span class="stat-label">Day</span><span class="stat-val mono" id="day-counter">Day 1</span></div>
                 <div class="stat-sep"></div>
-                <div class="stat"><span class="stat-label">NIFTY 50</span><span class="stat-val mono" id="nifty-value">22,500.00</span></div>
+                <div class="stat"><span class="stat-label">NIFTY 50</span><span class="stat-val mono" id="nifty-value">23,500.00</span></div>
+                <div class="stat-sep"></div>
+                <div class="stat"><span class="stat-label">SENSEX</span><span class="stat-val mono" id="sensex-value">77,500.00</span></div>
                 <div class="stat-sep"></div>
                 <div class="stat"><span class="stat-label">Market Time</span><span class="stat-val mono" id="market-time">09:15 AM</span></div>
                 <div class="stat-sep"></div>
@@ -49,7 +51,11 @@
         <div class="main-grid">
             <!-- Watchlist -->
             <aside class="watchlist-panel">
-                <div class="sec-header"><i class="fa-solid fa-list-ul"></i> Watchlist</div>
+                <div class="sec-header"><i class="fa-solid fa-list-ul"></i> Watchlist <span class="wl-stock-count" id="wl-count"></span></div>
+                <div class="wl-search-wrap">
+                    <i class="fa-solid fa-magnifying-glass wl-search-icon"></i>
+                    <input type="text" id="wl-search-input" class="wl-search-input" placeholder="Search symbol, sector..." autocomplete="off">
+                </div>
                 <div class="wl-head">
                     <span class="wl-h-sym">Symbol</span>
                     <span class="wl-h-ltp">LTP</span>

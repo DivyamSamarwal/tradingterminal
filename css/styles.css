@@ -92,15 +92,16 @@ body {
 .topbar-stats {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 12px;
     flex: 1;
     justify-content: center;
+    overflow: hidden;
 }
 
 .stat { display: flex; flex-direction: column; align-items: center; }
-.stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); }
-.stat-val { font-size: 14px; font-weight: 600; color: var(--text-bright); }
-.stat-sep { width: 1px; height: 24px; background: var(--border); }
+.stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); white-space: nowrap; }
+.stat-val { font-size: 13px; font-weight: 600; color: var(--text-bright); white-space: nowrap; }
+.stat-sep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
 
 .topbar-controls {
     display: flex;
@@ -278,7 +279,7 @@ body {
 
 /* ========== NEWS PANEL ========== */
 .news-panel {
-    height: 120px;
+    height: 150px;
     border-top: 1px solid var(--border);
     background: var(--bg-1);
     display: flex;
@@ -971,7 +972,79 @@ body {
     letter-spacing: 0.4px;
 }
 
-/* ========== NIFTY DISPLAY ========== */
-#nifty-value {
+/* ========== WATCHLIST SEARCH ========== */
+.wl-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2);
+    flex-shrink: 0;
+    position: relative;
+}
+.wl-search-icon {
+    position: absolute;
+    left: 20px;
+    font-size: 10px;
+    color: var(--text-dim);
+    pointer-events: none;
+    z-index: 1;
+}
+.wl-search-input {
+    width: 100%;
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px 6px 28px;
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 12px;
+    outline: none;
+    transition: border 0.15s;
+}
+.wl-search-input::placeholder { color: var(--text-dim); font-size: 11px; }
+.wl-search-input:focus { border-color: var(--accent); }
+.wl-empty {
+    text-align: center;
+    padding: 24px 12px;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-style: italic;
+}
+.wl-stock-count {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-dim);
+    padding: 1px 6px;
+    background: var(--bg-3);
+    border-radius: 10px;
+    margin-left: auto;
+}
+
+/* ========== PRICE FLASH ANIMATIONS ========== */
+@keyframes flashUp {
+    0%   { background: rgba(0, 200, 83, 0.25); }
+    100% { background: transparent; }
+}
+@keyframes flashDn {
+    0%   { background: rgba(255, 23, 68, 0.25); }
+    100% { background: transparent; }
+}
+.flash-up { animation: flashUp 0.55s ease-out; }
+.flash-dn { animation: flashDn 0.55s ease-out; }
+
+/* ========== CHART CROSSHAIR CURSOR ========== */
+.chart-container canvas { cursor: crosshair; }
+
+/* ========== VOLUME BAR SEPARATOR ========== */
+.vol-divider {
+    border: none;
+    border-top: 1px dashed var(--border);
+    margin: 0;
+}
+
+/* ========== NIFTY / SENSEX DISPLAY ========== */
+#nifty-value, #sensex-value {
     font-size: 13px;
 }
