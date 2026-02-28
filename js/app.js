@@ -16,13 +16,109 @@ var CIRCUIT_LIMIT = 0.10;       // 10% upper/lower circuit
 var EXCHANGE_RATES = { INR: 1, USD: 91.03, CNY: 13.28, JPY: 0.583 };
 
 var TIMEFRAMES = [
-    { label: '5M',   viewLen: 5,    candlePeriod: 1  },
-    { label: '15M',  viewLen: 15,   candlePeriod: 3  },
-    { label: '30M',  viewLen: 30,   candlePeriod: 5  },
-    { label: '1H',   viewLen: 60,   candlePeriod: 10 },
-    { label: 'Day',  viewLen: 375,  candlePeriod: 15 },
-    { label: 'Week', viewLen: 1875, candlePeriod: 75 }
+    { label: '5M',   viewLen: 5,    candlePeriod: 1   },
+    { label: '15M',  viewLen: 15,   candlePeriod: 3   },
+    { label: '30M',  viewLen: 30,   candlePeriod: 5   },
+    { label: '1H',   viewLen: 60,   candlePeriod: 10  },
+    { label: 'Day',  viewLen: 375,  candlePeriod: 15  },
+    { label: 'Week', viewLen: 1875, candlePeriod: 75  },
+    { label: '1M',   viewLen: 8250, candlePeriod: 375 }  // 22 trading days
 ];
+
+// ==================== PRE-HISTORY GENERATOR ====================
+// Generates 22 days × 375 ticks of realistic price history using a seeded LCG PRNG
+// so each stock always gets the same deterministic pattern on every simulation reset.
+function generatePreHistory(stock, days) {
+    days = days || 22;
+    var TPD = 375; // ticks per trading day
+
+    // Deterministic seeded LCG per ticker
+    var seed = 0;
+    for (var ci = 0; ci < stock.ticker.length; ci++) {
+        seed = ((seed * 31) + stock.ticker.charCodeAt(ci)) & 0x7fffffff;
+    }
+    seed = ((seed || 1) * 1234567) & 0x7fffffff;
+    function rng() {
+        seed = (seed * 1664525 + 1013904223) & 0x7fffffff;
+        return seed / 0x7fffffff;
+    }
+    function randn() {
+        var u = rng() || 1e-10, v2 = rng();
+        return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v2);
+    }
+
+    // Starting price ~22 days ago: random ±15% variance from current ltp
+    var targetEnd = stock.ltp;
+    var overallReturn = (rng() * 2 - 1) * 0.15;
+    var price = targetEnd / (1 + overallReturn);
+    price = Math.max(targetEnd * 0.60, Math.min(targetEnd * 1.70, price));
+
+    var v = stock.vol;
+    var history = new Array(days * TPD);
+    var idx = 0;
+
+    for (var d = 0; d < days; d++) {
+        // Overnight gap (±0.8%)
+        if (d > 0) {
+            price *= (1 + randn() * 0.004);
+        }
+        var dayOpen = price;
+        var ucLimit = dayOpen * 1.10;
+        var lcLimit = dayOpen * 0.90;
+        // Random intraday trend bias (trending or ranging day)
+        var trend = (rng() * 2 - 1) * 0.00018;
+
+        for (var t = 0; t < TPD; t++) {
+            // Mean reversion gently pulls price toward current ltp over the month
+            var mr = (targetEnd - price) / targetEnd * 0.0006;
+            var move = randn() * v * 1.1 + trend + mr;
+            price *= (1 + move);
+            price = Math.max(lcLimit, Math.min(ucLimit, price));
+            history[idx++] = price;
+        }
+    }
+
+    // Smooth the last day (375 ticks) to land exactly on targetEnd
+    var lastVal = history[history.length - 1];
+    if (lastVal && Math.abs(lastVal - targetEnd) > 0.005 * targetEnd) {
+        var ratio = targetEnd / lastVal;
+        var smoothStart = history.length - TPD;
+        for (var si = smoothStart; si < history.length; si++) {
+            var alpha = (si - smoothStart) / TPD;
+            history[si] = history[si] * (1 + (ratio - 1) * alpha);
+        }
+    }
+    // Round to appropriate precision
+    var decimals = (stock.currency === 'JPY') ? 0 : 2;
+    return history.map(function(p) { return parseFloat(p.toFixed(decimals)); });
+}
+
+// Build OHLC candles from pre-history ticks (for candle chart on pre-data)
+function buildPreOHLC(stock, period, maxCandles) {
+    if (!stock.preHistory || !stock.preHistory.length) return [];
+    period = period || state.candlePeriod;
+    var pre = stock.preHistory;
+    var preLen = pre.length;
+    // Only build as many candles as needed
+    var startTick = maxCandles ? Math.max(0, preLen - maxCandles * period) : 0;
+    var candles = [];
+    // Deterministic volume multiplier from ticker seed
+    var volBase = Math.floor(stock.vol * 8000000 + 100000);
+    for (var i = startTick; i < preLen; i += period) {
+        var slice = pre.slice(i, i + period);
+        if (!slice.length) break;
+        var c = slice[slice.length - 1], o = slice[0];
+        var isBull = c >= o;
+        candles.push({
+            o: o,
+            h: Math.max.apply(null, slice),
+            l: Math.min.apply(null, slice),
+            c: c,
+            v: Math.floor(volBase * (isBull ? 0.9 : 1.2) * (0.6 + (i % 7) * 0.08))
+        });
+    }
+    return candles;
+}
 
 var LOT_SIZES = {
     RELIANCE: 250, TCS: 150, HDFCBANK: 550, ITC: 1600,
@@ -579,7 +675,122 @@ var newsEvents = [
     { text: "EU carbon tax on aluminium imports pressures producers.", impact: -0.018, target: "ALUM", market: "COMM" },
     { text: "Zinc mine closure in Peru disrupts 8% of global supply.", impact: 0.028, target: "ZINC", market: "COMM" },
     { text: "Zinc galvanization demand from construction sector at 5-year high.", impact: 0.020, target: "ZINC", market: "COMM" },
-    { text: "Zinc prices plunge on weak Chinese steel sector demand.", impact: -0.025, target: "ZINC", market: "COMM" }
+    { text: "Zinc prices plunge on weak Chinese steel sector demand.", impact: -0.025, target: "ZINC", market: "COMM" },
+
+    // ---- NASDAQ — AMD ----
+    { text: "AMD MI300X AI accelerator ships to 12 new hyperscaler clients. Data center revenue doubles.", impact: 0.040, target: "AMD", market: "NASDAQ" },
+    { text: "AMD Ryzen 9000 series captures 35% consumer CPU market share. Intel losing ground.", impact: 0.028, target: "AMD", market: "NASDAQ" },
+    { text: "AMD supply chain issues delay RDNA 4 GPU launch. Stock falls on news.", impact: -0.030, target: "AMD", market: "NASDAQ" },
+    { text: "AMD partners with Microsoft for custom AI training chips. Multi-year $3B deal.", impact: 0.035, target: "AMD", market: "NASDAQ" },
+
+    // ---- NASDAQ — ADBE ----
+    { text: "Adobe Firefly AI generated 9 billion images. Creatives enterprise subscriptions up 28%.", impact: 0.030, target: "ADBE", market: "NASDAQ" },
+    { text: "Adobe Creative Cloud price increases 10%. Wall Street cheers margin expansion.", impact: 0.025, target: "ADBE", market: "NASDAQ" },
+    { text: "Adobe Q2 results: Digital Media ARR hits $16.8B. Beat by $400M.", impact: 0.032, target: "ADBE", market: "NASDAQ" },
+    { text: "Adobe faces growing pressure from Canva and Figma. Market share risk.", impact: -0.025, target: "ADBE", market: "NASDAQ" },
+
+    // ---- NASDAQ — AVGO ----
+    { text: "Broadcom custom AI ASIC revenue surges: hyperscaler AI pods driving $10B opportunity.", impact: 0.040, target: "AVGO", market: "NASDAQ" },
+    { text: "Broadcom VMware integration complete. Enterprise software ARR at $8.5B run rate.", impact: 0.030, target: "AVGO", market: "NASDAQ" },
+    { text: "Broadcom Ethernet networking chips win deals from Meta and Google. AI infrastructure play.", impact: 0.028, target: "AVGO", market: "NASDAQ" },
+    { text: "Broadcom loses one hyperscaler AI chip contract. Revenue concentration risk.", impact: -0.025, target: "AVGO", market: "NASDAQ" },
+
+    // ---- NASDAQ — COIN ----
+    { text: "Coinbase approved for crypto futures trading in 3 new countries. Regulatory win.", impact: 0.045, target: "COIN", market: "NASDAQ" },
+    { text: "Bitcoin ETF inflows hit $2B single day. Coinbase custody fees surge.", impact: 0.050, target: "COIN", market: "NASDAQ" },
+    { text: "Coinbase Q2 revenue triples on crypto bull run. Record trading volumes.", impact: 0.055, target: "COIN", market: "NASDAQ" },
+    { text: "SEC launches new probe into Coinbase staking products. Regulatory overhang.", impact: -0.050, target: "COIN", market: "NASDAQ" },
+    { text: "Crypto winter hits Coinbase: trading revenue drops 60% QoQ on low volatility.", impact: -0.040, target: "COIN", market: "NASDAQ" },
+
+    // ---- NASDAQ — PLTR ----
+    { text: "Palantir wins $1.5B US Army AI decision-making platform contract. Largest ever.", impact: 0.055, target: "PLTR", market: "NASDAQ" },
+    { text: "Palantir AIP commercial revenue grows 55% YoY. Boot camp model driving enterprise deals.", impact: 0.040, target: "PLTR", market: "NASDAQ" },
+    { text: "Palantir added to S&P 500. Passive inflows expected of $2B.", impact: 0.045, target: "PLTR", market: "NASDAQ" },
+    { text: "Palantir CEO dumps $300M of shares. Insider selling weighs on sentiment.", impact: -0.030, target: "PLTR", market: "NASDAQ" },
+
+    // ---- NASDAQ — MU ----
+    { text: "Micron HBM3E memory wins NVIDIA H200 design. AI memory revenue to triple.", impact: 0.045, target: "MU", market: "NASDAQ" },
+    { text: "Micron raises Q3 guidance: data center DRAM pricing up 30%. Memory supercycle.", impact: 0.040, target: "MU", market: "NASDAQ" },
+    { text: "Micron's new NAND factory in Idaho starts production. Cost structure improves.", impact: 0.025, target: "MU", market: "NASDAQ" },
+    { text: "PC DRAM oversupply hits Micron. Spot prices down 18%. Margin pressure.", impact: -0.030, target: "MU", market: "NASDAQ" },
+
+    // ---- MORE ALL_NASDAQ ----
+    { text: "NASDAQ 100 hits all-time high. AI-driven earnings euphoria sweeps tech sector.", impact: 0.025, target: "ALL_NASDAQ", market: "NASDAQ" },
+    { text: "Mag-7 earnings season: all 7 companies beat estimates. NASDAQ rallies 3%.", impact: 0.030, target: "ALL_NASDAQ", market: "NASDAQ" },
+    { text: "US antitrust regulator files sweeping Big Tech breakup proposal. Sector tanks.", impact: -0.030, target: "ALL_NASDAQ", market: "NASDAQ" },
+    { text: "AI capex spending upgraded by all hyperscalers. Semicon and cloud stocks surge.", impact: 0.028, target: "ALL_NASDAQ", market: "NASDAQ" },
+    { text: "US Treasury yield drops to 4.1%. Growth stocks re-rate higher.", impact: 0.020, target: "ALL_NASDAQ", market: "NASDAQ" },
+    { text: "Tech layoffs resume: 25,000 jobs cut across 10 companies. Margin expansion.", impact: 0.015, target: "ALL_NASDAQ", market: "NASDAQ" },
+
+    // ---- SSE — BYD ----
+    { text: "BYD monthly EV sales hit 500,000 units for first time. Global No.1 title defended.", impact: 0.040, target: "BYD", market: "SSE" },
+    { text: "BYD launches next-gen Blade Battery 2.0: 800km range. Orders flood in.", impact: 0.035, target: "BYD", market: "SSE" },
+    { text: "BYD opens first Europe gigafactory in Hungary. EU tariff bypass strategy.", impact: 0.030, target: "BYD", market: "SSE" },
+    { text: "BYD EV price war escalates. Entry-model cut to CNY 69,800. Margins squeezed.", impact: -0.025, target: "BYD", market: "SSE" },
+
+    // ---- SSE — CATL ----
+    { text: "CATL solid-state battery mass production announced for 2027. Revolution ahead.", impact: 0.045, target: "CATL", market: "SSE" },
+    { text: "CATL signs €8B battery supply deal with BMW and Mercedes. European dominance.", impact: 0.035, target: "CATL", market: "SSE" },
+    { text: "CATL Shenxing super-fast charging battery: 400km in 10 minutes. Game changer.", impact: 0.030, target: "CATL", market: "SSE" },
+    { text: "US CATL battery blacklist expands. North American market access blocked.", impact: -0.035, target: "CATL", market: "SSE" },
+
+    // ---- SSE — LONGI ----
+    { text: "LONGi breaks solar efficiency world record at 33.9%. Revolutionary milestone.", impact: 0.040, target: "LONGI", market: "SSE" },
+    { text: "LONGi bifacial Hi-MO 9 module wins 10GW tender from Saudi Arabia.", impact: 0.030, target: "LONGI", market: "SSE" },
+    { text: "Solar panel oversupply crisis: LONGi cuts ASP guidance by 15%.", impact: -0.030, target: "LONGI", market: "SSE" },
+
+    // ---- SSE — SAIC ----
+    { text: "SAIC IM Motors launches L4 autonomous EV. Robotaxi permit in 5 Chinese cities.", impact: 0.030, target: "SAIC", market: "SSE" },
+    { text: "SAIC-GM joint venture sales drop 40% YoY. ICE vehicle demand collapses.", impact: -0.030, target: "SAIC", market: "SSE" },
+    { text: "SAIC MG brand hits record overseas sales in Europe and India. Export strategy pays.", impact: 0.025, target: "SAIC", market: "SSE" },
+
+    // ---- SSE — CITICS ----
+    { text: "CITIC Securities IPO pipeline at 5-year high. Capital markets activity booming.", impact: 0.025, target: "CITICS", market: "SSE" },
+    { text: "CITIC Securities reports record wealth management AUM of CNY 5.2 trillion.", impact: 0.022, target: "CITICS", market: "SSE" },
+    { text: "China brokerage industry consolidation: CITIC merges with CSC Securities.", impact: 0.030, target: "CITICS", market: "SSE" },
+
+    // ---- MORE ALL_SSE ----
+    { text: "China PBOC announces targeted easing: CNY 500B injected via MLF.", impact: 0.022, target: "ALL_SSE", market: "SSE" },
+    { text: "China property market stabilizes: home prices rise for 1st time in 18 months.", impact: 0.028, target: "ALL_SSE", market: "SSE" },
+    { text: "China consumer confidence index hits 2-year high. Domestic demand recovering.", impact: 0.025, target: "ALL_SSE", market: "SSE" },
+    { text: "China retaliatory tariffs on US semiconductors. Tech sector under pressure.", impact: -0.028, target: "ALL_SSE", market: "SSE" },
+    { text: "China stock connect sees record HK northbound inflow of CNY 15B in one week.", impact: 0.022, target: "ALL_SSE", market: "SSE" },
+    { text: "China imposes platform economy regulation on big tech. Ant, Tencent selloff.", impact: -0.020, target: "ALL_SSE", market: "SSE" },
+
+    // ---- TSE — MUFG ----
+    { text: "MUFG benefits from BOJ rate hike: net interest income rises CNY 800B YoY.", impact: 0.030, target: "MUFG", market: "TSE" },
+    { text: "MUFG sells remaining Morgan Stanley stake for $5B profit. Capital boost.", impact: 0.025, target: "MUFG", market: "TSE" },
+    { text: "MUFG announces record share buyback: JPY 500B. Highest ever by a Japanese bank.", impact: 0.028, target: "MUFG", market: "TSE" },
+
+    // ---- TSE — FASTRET (Uniqlo) ----
+    { text: "Fast Retailing Uniqlo India opens 50th store. Asia revenue contribution hits 40%.", impact: 0.025, target: "FASTRET", market: "TSE" },
+    { text: "Uniqlo LifeWear collaboration with Lemaire sells out in 3 hours globally.", impact: 0.022, target: "FASTRET", market: "TSE" },
+    { text: "Fast Retailing raises FY profit guidance 15%. Overseas same-store sales +18%.", impact: 0.030, target: "FASTRET", market: "TSE" },
+    { text: "Uniqlo faces copycat competition in China. Market share erosion risk.", impact: -0.020, target: "FASTRET", market: "TSE" },
+
+    // ---- TSE — KEYENCE ----
+    { text: "Keyence factory automation sensors see record orders from EV gigafactories.", impact: 0.035, target: "KEYENCE", market: "TSE" },
+    { text: "Keyence launches AI-vision inspection system. Semiconductor fab clients surge.", impact: 0.030, target: "KEYENCE", market: "TSE" },
+    { text: "Keyence Q3 operating margin at 55%. World-class profitability sustained.", impact: 0.025, target: "KEYENCE", market: "TSE" },
+
+    // ---- TSE — DAIKIN ----
+    { text: "Daikin India air conditioner sales up 35% on record heat wave. Market share 30%.", impact: 0.030, target: "DAIKIN", market: "TSE" },
+    { text: "Daikin Europe heat pump revenue doubles. EU energy transition accelerates.", impact: 0.028, target: "DAIKIN", market: "TSE" },
+    { text: "Daikin launches next-gen refrigerant R-290 ACs. Ahead of 2025 EU regulation.", impact: 0.022, target: "DAIKIN", market: "TSE" },
+
+    // ---- TSE — CANON ----
+    { text: "Canon medical imaging division wins 1,000-unit CT scanner order from US hospitals.", impact: 0.025, target: "CANON7751", market: "TSE" },
+    { text: "Canon semiconductor lithography equipment orders surge 40% on AI chip demand.", impact: 0.030, target: "CANON7751", market: "TSE" },
+    { text: "Canon mirrorless camera R6 III sells out globally. Camera segment revenue up 22%.", impact: 0.018, target: "CANON7751", market: "TSE" },
+
+    // ---- MORE ALL_TSE ----
+    { text: "Yen weakens to 155 vs USD. Japan exporters hit 12-month earnings high.", impact: 0.022, target: "ALL_TSE", market: "TSE" },
+    { text: "Yen strengthens sharply to 135. Japan export stocks face earnings downgrade.", impact: -0.022, target: "ALL_TSE", market: "TSE" },
+    { text: "Tokyo Stock Exchange corporate governance reforms: 80% of listed firms now buy back shares.", impact: 0.020, target: "ALL_TSE", market: "TSE" },
+    { text: "Japan PM announces ¥50 trillion economic package. Domestic demand stocks rally.", impact: 0.025, target: "ALL_TSE", market: "TSE" },
+    { text: "Japan core inflation hits 3.5%. BOJ signals faster pace of rate normalization.", impact: -0.018, target: "ALL_TSE", market: "TSE" },
+    { text: "Warren Buffett increases Japan trading house stake to 9.9%. Nikkei rally.", impact: 0.025, target: "ALL_TSE", market: "TSE" },
+    { text: "Japan GPIF rebalances: $12B shift into domestic equities from bonds.", impact: 0.022, target: "ALL_TSE", market: "TSE" }
 ];
 
 // Map target keywords to stocks
@@ -637,6 +848,7 @@ var state = {
     sensexValue: 74500,
     sentiment: 0,  // -100 to +100
     chartType: 'line',
+    chartScale: 'linear',  // 'linear' | 'log' | 'pct'
     timeframe: '30M',
     viewLen: 30,
     candlePeriod: 5,
@@ -756,10 +968,14 @@ document.addEventListener("DOMContentLoaded", function() {
 
 function initMarket() {
     marketStocks.forEach(function(s) {
-        s.history = Array(state.historyLen).fill(s.ltp);
-        s.volumeHistory = Array(state.historyLen).fill(0);
+        // Generate 1 month (22 days × 375 ticks) of realistic price history
+        s.preHistory = generatePreHistory(s, 22);
+        // Live history starts with a single tick (preHistory fills the visual history)
+        s.history = [s.ltp];
+        s.volumeHistory = [0];
         s.open = s.ltp;
-        s.prevClose = s.ltp;
+        // prevClose = last tick of pre-history (the "previous day's close")
+        s.prevClose = s.preHistory.length > 0 ? s.preHistory[s.preHistory.length - 1] : s.ltp;
         s._prevTick = s.ltp;
         s.volume = 0;
         s.circuitHit = null;
@@ -783,6 +999,11 @@ function setupListeners() {
     document.getElementById('cash-stat').addEventListener('click', openSettings);
     document.getElementById('btn-chart-line').addEventListener('click', function() { setChartType('line'); });
     document.getElementById('btn-chart-candle').addEventListener('click', function() { setChartType('candle'); });
+
+    // Scale buttons
+    document.getElementById('btn-scale-linear').addEventListener('click', function() { setChartScale('linear'); });
+    document.getElementById('btn-scale-log').addEventListener('click', function() { setChartScale('log'); });
+    document.getElementById('btn-scale-pct').addEventListener('click', function() { setChartScale('pct'); });
     TIMEFRAMES.forEach(function(tf) {
         var btn = document.getElementById('tf-' + tf.label);
         if (btn) btn.addEventListener('click', function() { setTimeframe(tf.label); });
@@ -844,6 +1065,7 @@ function setupListeners() {
     document.getElementById('options-pos-tab').addEventListener('click', function() { switchBottomTab('options'); });
     document.getElementById('history-tab').addEventListener('click', function() { switchBottomTab('history'); });
     document.getElementById('btn-close-all').addEventListener('click', closeAllPositions);
+    document.getElementById('btn-export-csv').addEventListener('click', exportTradeHistoryCSV);
 
     // SL / Target auto-set when inputs change
     document.getElementById('sl-price').addEventListener('change', saveSlTarget);
@@ -940,8 +1162,9 @@ function applySettings() {
             s.open = s.base;
             s.prevClose = s.base;
             s._prevTick = s.base;
-            s.history = Array(state.historyLen).fill(s.ltp);
-            s.volumeHistory = Array(state.historyLen).fill(0);
+            s.preHistory = generatePreHistory(s, 22);
+            s.history = [s.ltp];
+            s.volumeHistory = [0];
             s.volume = 0;
             s.circuitHit = null;
             s.ohlcHistory = [];
@@ -976,6 +1199,22 @@ function setChartType(type) {
     state.chartType = type;
     document.getElementById('btn-chart-line').classList.toggle('active', type === 'line');
     document.getElementById('btn-chart-candle').classList.toggle('active', type === 'candle');
+    if (state.activeStock) renderChart(state.activeStock);
+}
+
+// ==================== CHART SCALE TOGGLE ====================
+function setChartScale(scale) {
+    var wasLog = state.chartScale === 'log';
+    var willLog = scale === 'log';
+    state.chartScale = scale;
+    document.querySelectorAll('.scale-btn').forEach(function(b) { b.classList.remove('active'); });
+    var btn = document.getElementById('btn-scale-' + scale);
+    if (btn) btn.classList.add('active');
+    // Log ↔ Linear axis type switch requires chart rebuild
+    if (wasLog !== willLog && chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+    }
     if (state.activeStock) renderChart(state.activeStock);
 }
 
@@ -1234,7 +1473,7 @@ function startNewDay() {
         p.daysToExpiry = Math.max(0, p.daysToExpiry - 1);
     });
 
-    // Overnight gap
+    // Overnight gap + roll pre-history forward
     marketStocks.forEach(function(stock) {
         stock.prevClose = stock.ltp;  // save previous day's close
         var overnightChange = (Math.random() - 0.5) * 0.02;
@@ -1244,13 +1483,15 @@ function startNewDay() {
         stock._prevTick = stock.ltp;
         stock.volume = 0;
         stock.circuitHit = null;
-        var keepPoints = Math.min(375, stock.history.length);
-        var kept = stock.history.slice(-keepPoints);
-        var fill = Array(state.historyLen - keepPoints).fill(stock.ltp);
-        stock.history = fill.concat(kept);
-        stock.history.push(stock.ltp);
-        if (stock.history.length > state.historyLen) stock.history.shift();
-        stock.volumeHistory = Array(state.historyLen).fill(0);
+
+        // Roll preHistory: append this day's live ticks and trim to last 22 days (8250 ticks)
+        if (stock.preHistory && stock.history.length > 1) {
+            var todayTicks = stock.history.slice(1);  // skip the opening placeholder
+            stock.preHistory = stock.preHistory.concat(todayTicks).slice(-22 * 375);
+        }
+        // Reset live history for new day
+        stock.history = [stock.ltp];
+        stock.volumeHistory = [0];
         stock.ohlcHistory = [];
         stock.currentCandle = null;
     });
@@ -1814,31 +2055,32 @@ function formatVolume(v) {
 
 // ==================== CANDLE DATA BUILDER ====================
 function buildCandleData(stock) {
-    var candles = [];
     var period = state.candlePeriod;
-    var hist = stock.history.slice(-state.viewLen);
-    // Use stored OHLCV history if available and long enough
-    if (stock.ohlcHistory && stock.ohlcHistory.length >= 5) {
-        var avail = stock.ohlcHistory.slice(-Math.floor(state.viewLen / period));
-        if (avail.length > 0) {
-            return avail.map(function(c, i) {
-                return { x: i, o: c.o, h: c.h, l: c.l, c: c.c, v: c.v || 0 };
-            });
+    var totalNeeded = Math.min(200, Math.ceil(state.viewLen / period) + 2);
+
+    // ── Live OHLCV candles (from this session) ──
+    var liveCandles = [];
+    if (stock.ohlcHistory && stock.ohlcHistory.length > 0) {
+        liveCandles = stock.ohlcHistory.slice(-totalNeeded);
+    } else {
+        var hist = stock.history;
+        for (var i = 0; i < hist.length; i += period) {
+            var sl = hist.slice(i, i + period);
+            if (!sl.length) break;
+            liveCandles.push({ o: sl[0], h: Math.max.apply(null, sl), l: Math.min.apply(null, sl), c: sl[sl.length - 1], v: 0 });
         }
+        liveCandles = liveCandles.slice(-totalNeeded);
     }
-    for (var i = 0; i < hist.length; i += period) {
-        var slice = hist.slice(i, i + period);
-        if (slice.length < 1) break;
-        candles.push({
-            x: candles.length,
-            o: slice[0],
-            h: Math.max.apply(null, slice),
-            l: Math.min.apply(null, slice),
-            c: slice[slice.length - 1],
-            v: 0
-        });
-    }
-    return candles;
+
+    // ── Pre-history candles to fill remaining slots ──
+    var preCount = totalNeeded - liveCandles.length;
+    var preCandles = buildPreOHLC(stock, period, preCount);
+
+    // ── Combine and re-index ──
+    var combined = preCandles.concat(liveCandles).slice(-totalNeeded);
+    return combined.map(function(c, i) {
+        return { x: i, o: c.o, h: c.h, l: c.l, c: c.c, v: c.v || 0 };
+    });
 }
 
 // Fast in-place data mutator — never destroys the chart instance
@@ -1847,6 +2089,7 @@ function _applyChartData(stock, isLight) {
     var scX  = chartInstance.options.scales.x;
     var scY  = chartInstance.options.scales.y;
     var tip  = chartInstance.options.plugins.tooltip;
+    var isPct = state.chartScale === 'pct';
 
     if (state.chartType === 'candle') {
         var ohlcData = buildCandleData(stock);
@@ -1856,28 +2099,49 @@ function _applyChartData(stock, isLight) {
         var yMin = allL.length ? Math.min.apply(null, allL) : 0;
         var yRange = yMax - yMin || yMin * 0.01 || 1;
         var yPad = yRange * 0.06;
-        // Extra bottom padding to make room for volume bars (18% of chart area)
         var yBottomPad = yRange * 0.22;
 
-        chartInstance.data.labels      = ohlcData.map(function(_, i) { return i; });
-        ds.data                        = ohlcData.map(function(d) { return d.c; });
-        ds.borderColor                 = 'transparent';
-        ds.backgroundColor             = 'transparent';
-        ds.fill                        = false;
-        ds.tension                     = 0;
-        ds.pointHoverRadius            = 0;
-        chartInstance._ohlc            = ohlcData;
-        chartInstance._volumes         = ohlcData.map(function(d) { return d.v || 0; });
+        // % Change transform for candle
+        if (isPct) {
+            var baseC = ohlcData.length > 0 ? (ohlcData[0].o || 1) : 1;
+            ohlcData = ohlcData.map(function(d, i) {
+                return {
+                    x: i,
+                    o: ((d.o - baseC) / baseC) * 100,
+                    h: ((d.h - baseC) / baseC) * 100,
+                    l: ((d.l - baseC) / baseC) * 100,
+                    c: ((d.c - baseC) / baseC) * 100,
+                    v: d.v
+                };
+            });
+            var allHp = ohlcData.map(function(d) { return d.h; });
+            var allLp = ohlcData.map(function(d) { return d.l; });
+            yMax = allHp.length ? Math.max.apply(null, allHp) : 0;
+            yMin = allLp.length ? Math.min.apply(null, allLp) : 0;
+            yRange = yMax - yMin || 1;
+            yPad = yRange * 0.06;
+            yBottomPad = yRange * 0.22;
+        }
+
+        chartInstance.data.labels = ohlcData.map(function(_, i) { return i; });
+        ds.data                   = ohlcData.map(function(d) { return d.c; });
+        ds.borderColor            = 'transparent';
+        ds.backgroundColor        = 'transparent';
+        ds.fill                   = false;
+        ds.tension                = 0;
+        ds.pointHoverRadius       = 0;
+        chartInstance._ohlc       = ohlcData;
+        chartInstance._volumes    = ohlcData.map(function(d) { return d.v || 0; });
         scY.min = yMin - yBottomPad;
         scY.max = yMax + yPad;
 
-        // Prev close line (candle mode)
         var ds2c = chartInstance.data.datasets[1];
         if (stock.prevClose && ohlcData.length) {
-            ds2c.data = Array(ohlcData.length).fill(stock.prevClose);
+            var pc = isPct ? 0 : stock.prevClose; // 0% = prev close baseline in pct mode
+            ds2c.data   = Array(ohlcData.length).fill(pc);
             ds2c.hidden = false;
         } else {
-            ds2c.data = [];
+            ds2c.data   = [];
             ds2c.hidden = true;
         }
 
@@ -1891,40 +2155,58 @@ function _applyChartData(stock, isLight) {
                 var cd = tCtx.chart._ohlc;
                 var d  = cd && cd[tCtx.dataIndex];
                 if (!d) return '';
+                var fmt = isPct
+                    ? function(n) { return (n >= 0 ? '+' : '') + n.toFixed(2) + '%'; }
+                    : function(n) { return fmtPrice(state.activeStock, n); };
                 var volStr = d.v ? '  Vol: ' + formatVolume(d.v) : '';
                 return [
-                    'O: \u20b9' + d.o.toFixed(2),
-                    'H: \u20b9' + d.h.toFixed(2) + '  \u2197',
-                    'L: \u20b9' + d.l.toFixed(2) + '  \u2198',
-                    'C: \u20b9' + d.c.toFixed(2) + (d.c >= d.o ? '  \u25b2' : '  \u25bc') + volStr
+                    'O: ' + fmt(d.o),
+                    'H: ' + fmt(d.h) + '  \u2197',
+                    'L: ' + fmt(d.l) + '  \u2198',
+                    'C: ' + fmt(d.c) + (d.c >= d.o ? '  \u25b2' : '  \u25bc') + volStr
                 ];
             }
         };
     } else {
-        var lineSlice  = stock.history.slice(-state.viewLen);
+        // ── Line chart ──
+        // Merge preHistory + live history for full-depth view
+        var fullHistory = (stock.preHistory && stock.preHistory.length)
+            ? stock.preHistory.concat(stock.history)
+            : stock.history;
+        var lineSlice = fullHistory.slice(-state.viewLen);
+
+        var firstPrice = lineSlice[0] || 1;
         var lastPrice  = lineSlice[lineSlice.length - 1] || 0;
-        var firstPrice = lineSlice[0] || 0;
-        var lineColor  = lastPrice >= firstPrice
+
+        // % Change transform
+        if (isPct) {
+            lineSlice = lineSlice.map(function(p) { return ((p - firstPrice) / firstPrice) * 100; });
+            lastPrice  = lineSlice[lineSlice.length - 1] || 0;
+        }
+
+        var lineColor = (isPct ? lastPrice >= 0 : lastPrice >= firstPrice)
             ? (isLight ? '#00a846' : '#00c853')
             : (isLight ? '#d50032' : '#ff1744');
 
-        chartInstance.data.labels   = lineSlice.map(function(_, i) { return i; });
-        ds.data                     = lineSlice;
-        ds.borderColor              = lineColor;
+        chartInstance.data.labels = lineSlice.map(function(_, i) { return i; });
+        ds.data                   = lineSlice;
+        ds.borderColor            = lineColor;
         ds.pointHoverBackgroundColor = lineColor;
-        ds.fill                     = true;
-        ds.tension                  = lineSlice.length > 60 ? 0 : 0.3;
-        ds.pointHoverRadius         = 4;
-        chartInstance._ohlc         = null;
-        chartInstance._volumes      = (stock.volumeHistory && stock.volumeHistory.length)
-            ? stock.volumeHistory.slice(-state.viewLen) : null;
-        chartInstance._lineData     = lineSlice;
+        ds.fill                   = true;
+        ds.tension                = lineSlice.length > 60 ? 0 : 0.3;
+        ds.pointHoverRadius       = 4;
+        chartInstance._ohlc       = null;
+        chartInstance._volumes    = null; // no volume bars in pre-history view to keep chart clean
+        if (stock.volumeHistory && stock.volumeHistory.length && state.viewLen <= 375) {
+            chartInstance._volumes = stock.volumeHistory.slice(-state.viewLen);
+        }
+        chartInstance._lineData = lineSlice;
         scY.min = undefined;
         scY.max = undefined;
 
-        // Prev close dashed reference line
+        // Prev close reference line
         var ds2 = chartInstance.data.datasets[1];
-        if (stock.prevClose && lineSlice.length) {
+        if (!isPct && stock.prevClose && lineSlice.length) {
             ds2.data   = Array(lineSlice.length).fill(stock.prevClose);
             ds2.hidden = false;
         } else {
@@ -1932,7 +2214,6 @@ function _applyChartData(stock, isLight) {
             ds2.hidden = true;
         }
 
-        // Pre-compute gradient from existing chartArea (avoids per-frame callback overhead)
         var area = chartInstance.chartArea;
         if (area) {
             var grad = chartInstance.ctx.createLinearGradient(0, area.top, 0, area.bottom);
@@ -1945,18 +2226,33 @@ function _applyChartData(stock, isLight) {
 
         tip.callbacks = {
             title: function() { return state.activeStock ? state.activeStock.ticker : ''; },
-            label: function(tCtx) { return fmtPrice(state.activeStock, tCtx.parsed.y); }
+            label: function(tCtx) {
+                if (isPct) return (tCtx.parsed.y >= 0 ? '+' : '') + tCtx.parsed.y.toFixed(2) + '%';
+                return fmtPrice(state.activeStock, tCtx.parsed.y);
+            }
         };
     }
 
+    // Y-axis tick format (pct mode overrides price format)
+    scY.ticks.callback = isPct
+        ? function(v) { return (v >= 0 ? '+' : '') + v.toFixed(1) + '%'; }
+        : function(v) {
+            var cur = state.activeStock ? state.activeStock.currency : 'INR';
+            var sym = cur === 'USD' ? '$' : cur === 'CNY' ? '\u00a5' : cur === 'JPY' ? '\u00a5' : '\u20b9';
+            if (cur === 'JPY') return sym + v.toFixed(0);
+            if (v >= 10000) return sym + (v / 1000).toFixed(1) + 'k';
+            if (v >= 1000)  return sym + v.toFixed(0);
+            return sym + v.toFixed(2);
+        };
+
     // Theme colours
-    scX.grid.color        = isLight ? 'rgba(0,0,0,0.06)'    : 'rgba(255,255,255,0.03)';
-    scY.grid.color        = isLight ? 'rgba(0,0,0,0.07)'    : 'rgba(255,255,255,0.05)';
-    scY.ticks.color       = isLight ? '#666'                 : '#707888';
-    tip.backgroundColor   = isLight ? 'rgba(255,255,255,0.97)' : 'rgba(18,18,26,0.97)';
-    tip.titleColor        = isLight ? '#111'                 : '#eeeef2';
-    tip.bodyColor         = isLight ? '#333'                 : '#9ba0b0';
-    tip.borderColor       = isLight ? '#ddd'                 : '#2a2a3a';
+    scX.grid.color      = isLight ? 'rgba(0,0,0,0.06)'    : 'rgba(255,255,255,0.03)';
+    scY.grid.color      = isLight ? 'rgba(0,0,0,0.07)'    : 'rgba(255,255,255,0.05)';
+    scY.ticks.color     = isLight ? '#666'                 : '#707888';
+    tip.backgroundColor = isLight ? 'rgba(255,255,255,0.97)' : 'rgba(18,18,26,0.97)';
+    tip.titleColor      = isLight ? '#111'                 : '#eeeef2';
+    tip.bodyColor       = isLight ? '#333'                 : '#9ba0b0';
+    tip.borderColor     = isLight ? '#ddd'                 : '#2a2a3a';
 
     chartInstance.update('none');
 }
@@ -1965,6 +2261,16 @@ function renderChart(stock) {
     var canvas  = document.getElementById('main-chart');
     var ctx     = canvas.getContext('2d');
     var isLight = state.theme === 'light';
+    var needsLog = state.chartScale === 'log';
+
+    // Destroy chart if Y-axis type needs to change (log ↔ linear)
+    if (chartInstance) {
+        var curLog = chartInstance._isLogAxis || false;
+        if (curLog !== needsLog) {
+            chartInstance.destroy();
+            chartInstance = null;
+        }
+    }
 
     // Fast path — chart already exists, just mutate data in-place
     if (chartInstance) {
@@ -1972,7 +2278,7 @@ function renderChart(stock) {
         return;
     }
 
-    // Create the single chart instance (used for BOTH line and candle modes)
+    // Create the single chart instance
     chartInstance = new Chart(ctx, {
         type: 'line',
         plugins: [candlestickPlugin],
@@ -2028,6 +2334,7 @@ function renderChart(stock) {
                     ticks: { display: false }
                 },
                 y: {
+                    type: needsLog ? 'logarithmic' : 'linear',
                     display: true,
                     position: 'right',
                     grid: {
@@ -2044,7 +2351,7 @@ function renderChart(stock) {
                             var sym = cur === 'USD' ? '$' : cur === 'CNY' ? '\u00a5' : cur === 'JPY' ? '\u00a5' : '\u20b9';
                             if (cur === 'JPY') return sym + v.toFixed(0);
                             if (v >= 10000) return sym + (v / 1000).toFixed(1) + 'k';
-                            if (v >= 1000) return sym + v.toFixed(0);
+                            if (v >= 1000)  return sym + v.toFixed(0);
                             return sym + v.toFixed(2);
                         }
                     }
@@ -2059,6 +2366,7 @@ function renderChart(stock) {
         }
     });
 
+    chartInstance._isLogAxis = needsLog;
     _applyChartData(stock, isLight);
 }
 
@@ -2308,6 +2616,82 @@ function renderHistoryTable() {
             '<td class="r">' + fmtCur(trade.value) + '</td>';
         tbody.appendChild(tr);
     });
+}
+
+function exportTradeHistoryCSV() {
+    if (state.tradeHistory.length === 0) {
+        toast("Export", "No trade history to export", "error");
+        return;
+    }
+
+    // Header row
+    var rows = ['"Time","Day","Symbol","Side","Type","Qty","Price (Native)","Value (INR)"'];
+
+    // Trade rows – oldest first (tradeHistory is stored newest-first)
+    var history = state.tradeHistory.slice().reverse();
+    history.forEach(function(trade) {
+        rows.push([
+            '"' + trade.time + '"',
+            '"Day ' + trade.day + '"',
+            '"' + trade.ticker + '"',
+            '"' + trade.side + '"',
+            '"' + trade.type + '"',
+            trade.qty,
+            trade.price.toFixed(2),
+            trade.value.toFixed(2)
+        ].join(','));
+    });
+
+    // ── Portfolio Summary ──
+    rows.push('');
+    rows.push('"=== PORTFOLIO SUMMARY ==="');
+    rows.push('"Starting Capital (INR)",' + INITIAL_MARGIN.toFixed(2));
+    rows.push('"Current Cash (INR)",' + state.margin.toFixed(2));
+
+    // Value of all open equity positions at current LTP
+    var posValue = 0;
+    Object.values(state.positions).forEach(function(pos) {
+        var s = marketStocks.find(function(x) { return x.ticker === pos.ticker; });
+        if (!s) return;
+        posValue += toINR(Math.abs(pos.qty) * s.ltp, s.currency);
+    });
+
+    // Value of all open options at current premium
+    var optValue = 0;
+    Object.values(state.optionsPositions).forEach(function(pos) {
+        var s = marketStocks.find(function(x) { return x.ticker === pos.ticker; });
+        if (!s) return;
+        var curPrem = calcPremium(pos.type, pos.strike, s.ltp, pos.daysToExpiry);
+        optValue += toINR(curPrem * pos.lots * pos.lotSize, s.currency);
+    });
+
+    var unrealizedPNL = calcTotalPNL();
+    var portfolioValue = state.margin + posValue + optValue;
+    var overallPNL = portfolioValue - INITIAL_MARGIN;
+    var overallPNLPct = ((overallPNL / INITIAL_MARGIN) * 100).toFixed(2);
+
+    rows.push('"Open Positions Value (INR)",' + posValue.toFixed(2));
+    rows.push('"Options Value (INR)",' + optValue.toFixed(2));
+    rows.push('"Unrealized P&L (INR)",' + unrealizedPNL.toFixed(2));
+    rows.push('"Portfolio Value (INR)",' + portfolioValue.toFixed(2));
+    rows.push('"Overall P&L (INR)",' + overallPNL.toFixed(2));
+    rows.push('"Overall P&L %",' + overallPNLPct + '%');
+    rows.push('"Total Trades",' + state.tradeHistory.length);
+    rows.push('"Exported on Day",' + state.day);
+
+    // BOM prefix for Excel UTF-8 compatibility
+    var csv = '\uFEFF' + rows.join('\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'trade_history_day' + state.day + '.csv';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast("Export", "Trade history exported to CSV!", "success");
 }
 
 // ==================== UTILS ====================

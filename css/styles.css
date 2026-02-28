@@ -303,6 +303,13 @@ body {
     border-color: var(--accent);
     color: #fff;
 }
+/* Scale buttons use orange accent to distinguish from chart-type buttons */
+.chart-type-btn.scale-btn.active {
+    background: var(--orange);
+    border-color: var(--orange);
+    color: #fff;
+}
+.chart-type-btn.scale-btn { font-size: 10px; padding: 4px 8px; }
 
 .chart-container {
     flex: 1;
@@ -631,8 +638,14 @@ body {
 .b-tab i { font-size: 11px; }
 
 /* Close All button floats right */
-.b-tab.close-all-btn {
+.b-tab.export-csv-btn {
     margin-left: auto;
+    color: var(--green);
+    border-bottom-color: transparent !important;
+}
+.b-tab.export-csv-btn:hover { background: rgba(0,200,83,0.08); color: var(--green); }
+
+.b-tab.close-all-btn {
     color: var(--red);
     border-bottom-color: transparent !important;
 }

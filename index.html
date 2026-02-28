@@ -113,9 +113,14 @@
                         <button class="tf-btn" id="tf-1H">1H</button>
                         <button class="tf-btn" id="tf-Day">Day</button>
                         <button class="tf-btn" id="tf-Week">Week</button>
+                        <button class="tf-btn" id="tf-1M">1M</button>
                         <span class="ct-type-sep"></span>
                         <button class="chart-type-btn active" id="btn-chart-line" title="Line Chart"><i class="fa-solid fa-chart-line"></i> Line</button>
                         <button class="chart-type-btn" id="btn-chart-candle" title="Candlestick Chart">&#8718; Candles</button>
+                        <span class="ct-type-sep"></span>
+                        <button class="chart-type-btn scale-btn active" id="btn-scale-linear" title="Linear price scale">Linear</button>
+                        <button class="chart-type-btn scale-btn" id="btn-scale-log" title="Logarithmic price scale">Log</button>
+                        <button class="chart-type-btn scale-btn" id="btn-scale-pct" title="% Change from view start">%Chg</button>
                     </div>
                     <div class="ct-right">
                         <span class="ct-price mono" id="active-price">2500.00</span>
@@ -273,6 +278,7 @@
                 <button class="b-tab active" id="positions-tab"><i class="fa-solid fa-chart-pie"></i> Positions</button>
                 <button class="b-tab" id="options-pos-tab"><i class="fa-solid fa-layer-group"></i> Options</button>
                 <button class="b-tab" id="history-tab"><i class="fa-solid fa-clock-rotate-left"></i> Trade History</button>
+                <button class="b-tab export-csv-btn" id="btn-export-csv" title="Export trade history to CSV"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
                 <button class="b-tab close-all-btn" id="btn-close-all" title="Close all open positions"><i class="fa-solid fa-xmark"></i> Close All</button>
             </div>
             <div class="table-area" id="equity-table">
