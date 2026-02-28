@@ -12,6 +12,9 @@ var NEWS_FREQ = 0.04;           // 4% per tick
 var VOL_MULTIPLIER = 1;         // volatility multiplier
 var CIRCUIT_LIMIT = 0.10;       // 10% upper/lower circuit
 
+// Currency exchange rates: 1 unit of foreign currency = X INR
+var EXCHANGE_RATES = { INR: 1, USD: 87.0, CNY: 12.0, JPY: 0.57 };
+
 var TIMEFRAMES = [
     { label: '5M',   viewLen: 5,    candlePeriod: 1  },
     { label: '15M',  viewLen: 15,   candlePeriod: 3  },
@@ -728,6 +731,7 @@ document.addEventListener("DOMContentLoaded", function() {
     initMarket();
     setupListeners();
     renderAll();
+    renderFxRates();
     startClock();
 });
 
@@ -1371,77 +1375,82 @@ function executeTrade(side) {
     if (isNaN(qty) || qty <= 0) { toast("Error", "Invalid quantity", "error"); return; }
 
     var price = stock.ltp;
-    var cost = price * qty;
+    var fxRate = EXCHANGE_RATES[stock.currency] || 1;  // INR per 1 unit of stock's currency
+    var cost = price * qty;          // in native currency
+    var costINR = cost * fxRate;     // in INR (deducted from portfolio)
     var pos = state.positions[stock.ticker] || { qty: 0, avgPrice: 0 };
     var tradeType = '';
 
     if (side === 'BUY') {
         if (pos.qty < 0) {
             var coverQty = Math.min(qty, Math.abs(pos.qty));
-            var pnl = (pos.avgPrice - price) * coverQty;
-            state.margin += pnl;
+            var pnl = (pos.avgPrice - price) * coverQty;   // native currency
+            state.margin += pnl * fxRate;                  // convert PnL to INR
             pos.qty += coverQty;
 
             var remaining = qty - coverQty;
             if (remaining > 0) {
-                var addCost = price * remaining;
-                if (state.margin < addCost) { toast("Error", "Insufficient margin", "error"); return; }
+                var addCost = price * remaining;                // native
+                var addCostINR = addCost * fxRate;              // INR
+                if (state.margin < addCostINR) { toast("Error", "Insufficient margin", "error"); return; }
                 if (pos.qty === 0) pos.avgPrice = price;
-                var totalCost = pos.avgPrice * pos.qty + price * remaining;
+                var totalCost = pos.avgPrice * pos.qty + price * remaining;  // native
                 pos.qty += remaining;
-                pos.avgPrice = totalCost / pos.qty;
-                state.margin -= addCost;
+                pos.avgPrice = totalCost / pos.qty;             // stored in native currency
+                state.margin -= addCostINR;
             }
             if (pos.qty === 0) pos.avgPrice = 0;
             tradeType = 'COVER';
-            toast("Covered", 'Covered ' + coverQty + ' ' + stock.ticker + ' @ \u20b9' + price, 'success');
+            toast("Covered", 'Covered ' + coverQty + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price) + ' (\u20b9' + (price * fxRate).toFixed(2) + ')', 'success');
         } else {
-            if (state.margin < cost) { toast("Error", "Insufficient margin for BUY", "error"); return; }
-            var totalCost2 = (pos.qty * pos.avgPrice) + cost;
+            if (state.margin < costINR) { toast("Error", "Insufficient margin for BUY", "error"); return; }
+            var totalCost2 = (pos.qty * pos.avgPrice) + cost;  // native
             pos.qty += qty;
-            pos.avgPrice = totalCost2 / pos.qty;
-            state.margin -= cost;
+            pos.avgPrice = totalCost2 / pos.qty;               // stored in native currency
+            state.margin -= costINR;
             tradeType = 'BUY';
-            toast("BUY", 'Bought ' + qty + ' ' + stock.ticker + ' @ \u20b9' + price, 'success');
+            toast("BUY", 'Bought ' + qty + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price) + ' (\u20b9' + costINR.toFixed(2) + ' deducted)', 'success');
         }
     } else {
         if (pos.qty > 0) {
             var sellQty = Math.min(qty, pos.qty);
-            state.margin += price * sellQty;
+            state.margin += price * sellQty * fxRate;   // convert proceeds to INR
             pos.qty -= sellQty;
 
             var remaining2 = qty - sellQty;
             if (remaining2 > 0) {
-                var shortMargin = price * remaining2 * 0.2;
-                if (state.margin < shortMargin) { toast("Error", "Insufficient margin for short", "error"); return; }
+                var shortMargin = price * remaining2 * 0.2;        // native
+                var shortMarginINR = shortMargin * fxRate;          // INR
+                if (state.margin < shortMarginINR) { toast("Error", "Insufficient margin for short", "error"); return; }
                 pos.qty -= remaining2;
-                pos.avgPrice = price;
-                state.margin -= shortMargin;
+                pos.avgPrice = price;                               // stored in native currency
+                state.margin -= shortMarginINR;
                 tradeType = 'SHORT';
-                toast("SHORT", 'Shorted ' + remaining2 + ' ' + stock.ticker + ' @ \u20b9' + price, 'error');
+                toast("SHORT", 'Shorted ' + remaining2 + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price), 'error');
             } else {
                 tradeType = 'SELL';
-                toast("SELL", 'Sold ' + sellQty + ' ' + stock.ticker + ' @ \u20b9' + price, 'error');
+                toast("SELL", 'Sold ' + sellQty + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price) + ' (\u20b9' + (price * sellQty * fxRate).toFixed(2) + ' added)', 'success');
             }
             if (pos.qty === 0) pos.avgPrice = 0;
         } else {
-            var shortMargin2 = price * qty * 0.2;
-            if (state.margin < shortMargin2) { toast("Error", "Insufficient margin for short", "error"); return; }
+            var shortMargin2 = price * qty * 0.2;             // native
+            var shortMargin2INR = shortMargin2 * fxRate;       // INR
+            if (state.margin < shortMargin2INR) { toast("Error", "Insufficient margin for short", "error"); return; }
             if (pos.qty === 0) {
-                pos.avgPrice = price;
+                pos.avgPrice = price;                          // stored in native currency
                 pos.qty = -qty;
             } else {
-                var totalVal = Math.abs(pos.qty) * pos.avgPrice + qty * price;
+                var totalVal = Math.abs(pos.qty) * pos.avgPrice + qty * price;  // native
                 pos.qty -= qty;
-                pos.avgPrice = totalVal / Math.abs(pos.qty);
+                pos.avgPrice = totalVal / Math.abs(pos.qty);  // stored in native currency
             }
-            state.margin -= shortMargin2;
+            state.margin -= shortMargin2INR;
             tradeType = 'SHORT';
-            toast("SHORT", 'Shorted ' + qty + ' ' + stock.ticker + ' @ \u20b9' + price, 'error');
+            toast("SHORT", 'Shorted ' + qty + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price), 'error');
         }
     }
 
-    // Record trade history
+    // Record trade history (value stored in INR)
     state.tradeHistory.unshift({
         time: formatTime(state.time),
         day: state.day,
@@ -1450,7 +1459,7 @@ function executeTrade(side) {
         type: 'Equity',
         qty: qty,
         price: price,
-        value: cost
+        value: costINR
     });
 
     // Add to volume
@@ -1645,12 +1654,12 @@ function renderTopBar() {
     elPnl.textContent = fmtCur(pnl);
     elPnl.className = 'stat-val mono ' + (pnl > 0 ? 'up' : pnl < 0 ? 'dn' : '');
 
-    // Portfolio
+    // Portfolio (all positions converted to INR)
     var posVal = 0;
     Object.entries(state.positions).forEach(function(entry) {
         var t = entry[0], p = entry[1];
         var s = marketStocks.find(function(x) { return x.ticker === t; });
-        if (s) posVal += s.ltp * Math.abs(p.qty);
+        if (s) posVal += toINR(s.ltp * Math.abs(p.qty), s.currency);
     });
     document.getElementById('portfolio-value').textContent = fmtCur(state.margin + posVal);
 }
@@ -2034,7 +2043,7 @@ function renderChart(stock) {
 function updateOrderMargin() {
     if (!state.activeStock) return;
     var qty = parseInt(document.getElementById('order-qty').value) || 0;
-    var req = state.activeStock.ltp * qty;
+    var req = toINR(state.activeStock.ltp * qty, state.activeStock.currency);
     document.getElementById('req-margin').textContent = fmtCur(req);
 }
 
@@ -2051,8 +2060,8 @@ function renderPositionCard(stock) {
     }
 
     var pnl = pos.qty > 0
-        ? (stock.ltp - pos.avgPrice) * pos.qty
-        : (pos.avgPrice - stock.ltp) * Math.abs(pos.qty);
+        ? toINR((stock.ltp - pos.avgPrice) * pos.qty, stock.currency)
+        : toINR((pos.avgPrice - stock.ltp) * Math.abs(pos.qty), stock.currency);
 
     document.getElementById('pos-qty').textContent = pos.qty;
     document.getElementById('pos-avg').textContent = pos.avgPrice.toFixed(2);
@@ -2070,13 +2079,15 @@ function closeEquityPosition(ticker, silent) {
 
     var absQty = Math.abs(pos.qty);
     var price = stock.ltp;
+    var fxRate = EXCHANGE_RATES[stock.currency] || 1;
     var isShort = pos.qty < 0;
-    var pnl = isShort ? (pos.avgPrice - price) * absQty : (price - pos.avgPrice) * absQty;
+    var pnl = isShort ? (pos.avgPrice - price) * absQty : (price - pos.avgPrice) * absQty;  // native
+    var pnlINR = pnl * fxRate;
 
     if (isShort) {
-        state.margin += pos.avgPrice * absQty * 0.2 + pnl;
+        state.margin += (pos.avgPrice * absQty * 0.2 + pnl) * fxRate;
     } else {
-        state.margin += price * absQty;
+        state.margin += price * absQty * fxRate;
     }
 
     state.tradeHistory.unshift({
@@ -2087,7 +2098,7 @@ function closeEquityPosition(ticker, silent) {
         type: 'Equity',
         qty: absQty,
         price: price,
-        value: price * absQty
+        value: price * absQty * fxRate
     });
 
     delete state.positions[ticker];
@@ -2100,7 +2111,7 @@ function closeEquityPosition(ticker, silent) {
     }
 
     if (!silent) {
-        toast('Closed', ticker + ' position closed @ \u20b9' + price.toFixed(2) + '  P&L: ' + (pnl >= 0 ? '+' : '') + fmtCur(pnl), pnl >= 0 ? 'success' : 'error');
+        toast('Closed', ticker + ' position closed @ ' + fmtPrice(stock, price) + '  P&L: ' + (pnlINR >= 0 ? '+' : '') + fmtCur(pnlINR), pnlINR >= 0 ? 'success' : 'error');
         renderAll();
     }
 }
@@ -2179,11 +2190,11 @@ function renderPositionsTable() {
 
         var isShort = pos.qty < 0;
         var absQty = Math.abs(pos.qty);
-        var curVal = absQty * stock.ltp;
+        var curVal = toINR(absQty * stock.ltp, stock.currency);
         var pnl = isShort
-            ? (pos.avgPrice - stock.ltp) * absQty
-            : (stock.ltp - pos.avgPrice) * absQty;
-        var pnlPct = ((pnl / (pos.avgPrice * absQty)) * 100).toFixed(2);
+            ? toINR((pos.avgPrice - stock.ltp) * absQty, stock.currency)
+            : toINR((stock.ltp - pos.avgPrice) * absQty, stock.currency);
+        var pnlPct = ((pnl / toINR(pos.avgPrice * absQty, stock.currency)) * 100).toFixed(2);
         var pnlCls = pnl >= 0 ? 'up' : 'dn';
         var hasSl = state.slTargets[ticker] && (state.slTargets[ticker].sl || state.slTargets[ticker].target);
 
@@ -2281,9 +2292,10 @@ function calcTotalPNL() {
         var t = entry[0], p = entry[1];
         var s = marketStocks.find(function(x) { return x.ticker === t; });
         if (!s) return;
-        total += p.qty > 0
+        var pnlNative = p.qty > 0
             ? (s.ltp - p.avgPrice) * p.qty
             : (p.avgPrice - s.ltp) * Math.abs(p.qty);
+        total += toINR(pnlNative, s.currency);
     });
     Object.values(state.optionsPositions).forEach(function(p) {
         var s = marketStocks.find(function(x) { return x.ticker === p.ticker; });
@@ -2294,8 +2306,21 @@ function calcTotalPNL() {
     return total;
 }
 
+function toINR(amount, currency) {
+    return amount * (EXCHANGE_RATES[currency] || 1);
+}
+
 function fmtCur(n) {
     return '\u20b9 ' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function renderFxRates() {
+    var usdEl = document.getElementById('fx-usd');
+    var cnyEl = document.getElementById('fx-cny');
+    var jpyEl = document.getElementById('fx-jpy');
+    if (usdEl) usdEl.textContent = EXCHANGE_RATES.USD.toFixed(2);
+    if (cnyEl) cnyEl.textContent = EXCHANGE_RATES.CNY.toFixed(2);
+    if (jpyEl) jpyEl.textContent = EXCHANGE_RATES.JPY.toFixed(2);
 }
 
 function fmtPrice(stock, value) {

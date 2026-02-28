@@ -66,7 +66,7 @@ body {
 /* ========== APP FRAME ========== */
 .app {
     display: grid;
-    grid-template-rows: 48px 1fr 180px;
+    grid-template-rows: 48px 28px 1fr 180px;
     height: 100vh;
     overflow: hidden;
 }
@@ -127,6 +127,45 @@ body {
 .ctrl-btn:hover { background: var(--bg-3); color: var(--text); }
 .ctrl-btn.on { background: var(--accent); color: #fff; }
 .ctrl-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+
+/* ========== FX RATES BAR ========== */
+.fx-bar {
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 10px;
+    height: 28px;
+    font-size: 11px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.fx-label {
+    color: var(--text-dim);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-right: 4px;
+}
+.fx-label i { color: var(--accent); margin-right: 4px; }
+.fx-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.fx-cur { color: var(--text-dim); font-size: 11px; }
+.fx-eq { color: var(--text-dim); font-size: 10px; }
+.fx-val { color: var(--accent); font-size: 12px; font-weight: 600; }
+.fx-unit { color: var(--text-dim); font-size: 11px; }
+.fx-sep { width: 1px; height: 14px; background: var(--border); flex-shrink: 0; }
+.fx-hint {
+    color: var(--text-dim);
+    font-size: 10px;
+    margin-left: auto;
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.fx-hint i { margin-right: 3px; }
 
 /* ========== MAIN GRID ========== */
 .main-grid {
