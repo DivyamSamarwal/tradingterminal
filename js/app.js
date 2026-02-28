@@ -34,12 +34,21 @@ var LOT_SIZES = {
     MM: 700, EICHERMOT: 125, CIPLA: 650, DRREDDY: 125,
     BRITANNIA: 200, NESTLEIND: 25, TATACONSUM: 575,
     ONGC: 1775, BPCL: 1800, TITAN: 375, ULTRACEMCO: 100,
-    PAYTM: 4350, IRCTC: 450, BEL: 3500
+    PAYTM: 4350, IRCTC: 450, BEL: 3500,
+    // NASDAQ
+    AAPL: 100, MSFT: 100, NVDA: 100, TSLA: 100, META: 100, GOOGL: 100, AMZN: 100, NFLX: 100,
+    // SSE
+    MOUTAI: 100, ICBC: 1000, CMBANK: 500, PINGAN: 500, PETROCH: 1000,
+    // TSE
+    TOYOTA: 100, SONY: 100, SOFTBNK: 100, HONDA: 100, NINTNDO: 100,
+    // Commodities
+    GOLD: 10, SILVER: 100, COPPER: 10, ALUM: 10, ZINC: 10
 };
 
 // Helper to make a stock entry cleanly
-function mkStock(ticker, name, ltp, vol, sector) {
-    return { ticker: ticker, name: name, ltp: ltp, vol: vol, base: ltp, history: [], open: ltp, sector: sector, volume: 0, circuitHit: null, _prevTick: ltp };
+function mkStock(ticker, name, ltp, vol, sector, market, currency) {
+    market = market || 'NSE'; currency = currency || 'INR';
+    return { ticker: ticker, name: name, ltp: ltp, vol: vol, base: ltp, history: [], open: ltp, sector: sector, volume: 0, circuitHit: null, _prevTick: ltp, market: market, currency: currency, volumeHistory: [] };
 }
 
 var marketStocks = [
@@ -97,7 +106,34 @@ var marketStocks = [
     // ── New Age Tech ──
     mkStock("ZOMATO",     "Zomato Ltd",                222,  0.0050, "Tech"),
     mkStock("PAYTM",      "One97 Communications",      695,  0.0060, "Tech"),
-    mkStock("IRCTC",      "IRCTC Ltd",                 820,  0.0030, "Tech")
+    mkStock("IRCTC",      "IRCTC Ltd",                 820,  0.0030, "Tech"),
+    // ── NASDAQ ──
+    mkStock("AAPL",    "Apple Inc.",              205,  0.0018, "Tech",       "NASDAQ", "USD"),
+    mkStock("MSFT",    "Microsoft Corp.",          415,  0.0016, "Tech",       "NASDAQ", "USD"),
+    mkStock("NVDA",    "NVIDIA Corp.",             870,  0.0040, "Semicon",    "NASDAQ", "USD"),
+    mkStock("TSLA",    "Tesla Inc.",               280,  0.0055, "EV",         "NASDAQ", "USD"),
+    mkStock("META",    "Meta Platforms",           560,  0.0030, "SocMedia",   "NASDAQ", "USD"),
+    mkStock("GOOGL",   "Alphabet Inc.",            195,  0.0020, "Tech",       "NASDAQ", "USD"),
+    mkStock("AMZN",    "Amazon.com Inc.",          210,  0.0025, "E-Comm",     "NASDAQ", "USD"),
+    mkStock("NFLX",    "Netflix Inc.",             960,  0.0035, "Streaming",  "NASDAQ", "USD"),
+    // ── SSE (Shanghai) ──
+    mkStock("MOUTAI",  "Kweichow Moutai",         1620, 0.0018, "Liquor",     "SSE",    "CNY"),
+    mkStock("ICBC",    "Ind & Comm Bank China",     5.9, 0.0015, "Banking",    "SSE",    "CNY"),
+    mkStock("CMBANK",  "China Merchants Bank",      43,  0.0020, "Banking",    "SSE",    "CNY"),
+    mkStock("PINGAN",  "Ping An Insurance",          46, 0.0022, "Insurance",  "SSE",    "CNY"),
+    mkStock("PETROCH", "PetroChina Co.",             9.6, 0.0020, "Energy",    "SSE",    "CNY"),
+    // ── TSE (Japan) ──
+    mkStock("TOYOTA",  "Toyota Motor Corp.",      2250, 0.0018, "Auto",       "TSE",    "JPY"),
+    mkStock("SONY",    "Sony Group Corp.",        13200, 0.0025, "Consumer",   "TSE",    "JPY"),
+    mkStock("SOFTBNK", "SoftBank Group Corp.",    8100, 0.0035, "Tech",       "TSE",    "JPY"),
+    mkStock("HONDA",   "Honda Motor Co.",          1720, 0.0022, "Auto",       "TSE",    "JPY"),
+    mkStock("NINTNDO", "Nintendo Co. Ltd.",        6800, 0.0028, "Gaming",     "TSE",    "JPY"),
+    // ── Commodities ──
+    mkStock("GOLD",    "Gold (USD/oz)",            2900, 0.0012, "Precious",   "COMM",   "USD"),
+    mkStock("SILVER",  "Silver (USD/oz)",            33, 0.0025, "Precious",   "COMM",   "USD"),
+    mkStock("COPPER",  "Copper (USD/ton)",          9900, 0.0025, "Industrial", "COMM",   "USD"),
+    mkStock("ALUM",    "Aluminium (USD/ton)",       2750, 0.0020, "Industrial", "COMM",   "USD"),
+    mkStock("ZINC",    "Zinc (USD/ton)",            2950, 0.0022, "Industrial", "COMM",   "USD")
 ];
 
 // ==================== NEWS EVENTS (80+) ====================
@@ -433,32 +469,125 @@ var newsEvents = [
     { text: "FII buying resumes: ₹12,000 Cr net inflows in single week.", impact: 0.018, target: "ALL" },
     { text: "Nifty 50 PE crosses 25x. High valuations spark profit booking.", impact: -0.015, target: "ALL" },
     { text: "Dollar index surges to 108. EM currencies under pressure including rupee.", impact: -0.018, target: "ALL" },
-    { text: "China manufacturing data beats expectations. Metal and energy stocks rally.", impact: 0.020, target: "METAL" }
+    { text: "China manufacturing data beats expectations. Metal and energy stocks rally.", impact: 0.020, target: "METAL" },
+
+    // ---- WAR / GEOPOLITICAL ----
+    { text: "Russia-Ukraine conflict escalates. European gas prices spike 30%. Markets risk-off.", impact: -0.018, target: "ALL", market: "WAR" },
+    { text: "NATO activates Article 5 for the first time. Global equity sell-off intensifies.", impact: -0.025, target: "ALL", market: "WAR" },
+    { text: "Middle East war expands. Strait of Hormuz shipping route disrupted.", impact: -0.030, target: "ALL", market: "WAR" },
+    { text: "Oil tanker attacked in Red Sea. Crude surges $8/bbl on supply fears.", impact: -0.020, target: "ENERGY", market: "WAR" },
+    { text: "India-Pakistan border tensions flare. Indian defence stocks surge.", impact: 0.040, target: "DEFENSE", market: "WAR" },
+    { text: "India-Pakistan military standoff deepens. Markets enter risk-off mode.", impact: -0.018, target: "ALL", market: "WAR" },
+    { text: "US-Iran standoff: aircraft carrier deployed to Persian Gulf.", impact: -0.022, target: "ALL", market: "WAR" },
+    { text: "Taiwan Strait crisis: China PLA military drills near Taiwan.", impact: -0.025, target: "ALL", market: "WAR" },
+    { text: "Ceasefire in Gaza announced. Oil eases, risk assets globally recover.", impact: 0.018, target: "ALL", market: "WAR" },
+    { text: "North Korea fires ballistic missiles over Japan. Nikkei drops 2%.", impact: -0.020, target: "ALL", market: "WAR" },
+    { text: "Sanctions on Russia energy exports expanded. Oil & gas prices spike.", impact: -0.015, target: "ENERGY", market: "WAR" },
+    { text: "Ukraine drone attack on Russian oil depot. Energy prices surge.", impact: 0.022, target: "ENERGY", market: "WAR" },
+    { text: "Ballistic missile strikes near Suez Canal. Global shipping halted.", impact: -0.020, target: "ALL", market: "WAR" },
+    { text: "China invades Taiwan: worst-case geopolitical scenario hits global markets.", impact: -0.050, target: "ALL", market: "WAR" },
+    { text: "UN Security Council emergency meeting on Middle East. Markets stabilize.", impact: 0.010, target: "ALL", market: "WAR" },
+    { text: "War premium in gold prices rises $150/oz. Safe haven demand surges.", impact: 0.035, target: "GOLD", market: "WAR" },
+    { text: "Conflict in Eastern Europe disrupts wheat supply. Global food inflation spike.", impact: -0.010, target: "FMCG", market: "WAR" },
+
+    // ---- NASDAQ ----
+    { text: "Apple iPhone 17 pre-orders hit record 50M units in first week.", impact: 0.030, target: "AAPL", market: "NASDAQ" },
+    { text: "Apple Vision Pro 2 sells out in 4 hours. Services revenue upgraded.", impact: 0.022, target: "AAPL", market: "NASDAQ" },
+    { text: "Microsoft Azure revenue grows 33% YoY. AI workload demand explosively.", impact: 0.025, target: "MSFT", market: "NASDAQ" },
+    { text: "Microsoft Copilot enterprise subscriptions cross 50M. AI monetization.", impact: 0.030, target: "MSFT", market: "NASDAQ" },
+    { text: "NVIDIA Blackwell chip demand exceeds supply. Waitlist grows to 18 months.", impact: 0.045, target: "NVDA", market: "NASDAQ" },
+    { text: "US-China chip export ban tightened. NVIDIA China revenue at risk.", impact: -0.040, target: "NVDA", market: "NASDAQ" },
+    { text: "Tesla misses Q4 delivery estimates. EV demand slowdown globally.", impact: -0.040, target: "TSLA", market: "NASDAQ" },
+    { text: "Tesla Full Self-Driving V13 gets regulatory approval in 3 US states.", impact: 0.038, target: "TSLA", market: "NASDAQ" },
+    { text: "Meta AI ad revenue surges 40%. Largest quarter in company history.", impact: 0.035, target: "META", market: "NASDAQ" },
+    { text: "Meta Llama 4 model outperforms GPT on all benchmarks. Stock rockets.", impact: 0.040, target: "META", market: "NASDAQ" },
+    { text: "Google loses landmark antitrust case. DOJ seeks structural breakup.", impact: -0.050, target: "GOOGL", market: "NASDAQ" },
+    { text: "Google Gemini Ultra 2.0 dominates AI market. Search revenue intact.", impact: 0.025, target: "GOOGL", market: "NASDAQ" },
+    { text: "Amazon AWS profitability hits all-time high. Operating margin crosses 38%.", impact: 0.030, target: "AMZN", market: "NASDAQ" },
+    { text: "Amazon pharmacy segment revenue doubles. Healthcare expansion gains.", impact: 0.025, target: "AMZN", market: "NASDAQ" },
+    { text: "Netflix adds 20M subscribers in Q4. Password-sharing crackdown a success.", impact: 0.040, target: "NFLX", market: "NASDAQ" },
+    { text: "Netflix ad-supported tier revenue exceeds subscription in 8 countries.", impact: 0.035, target: "NFLX", market: "NASDAQ" },
+    { text: "Fed cuts rates 25bps. NASDAQ 100 rallies 2.5% on liquidity hopes.", impact: 0.022, target: "ALL_NASDAQ", market: "NASDAQ" },
+    { text: "US CPI surprise: inflation at 3.8%. Rate cut hopes fade, tech sells off.", impact: -0.020, target: "ALL_NASDAQ", market: "NASDAQ" },
+    { text: "US recession fears mount. NASDAQ 100 drops 4% on PMI miss.", impact: -0.028, target: "ALL_NASDAQ", market: "NASDAQ" },
+    { text: "Buffett increases tech holdings. NASDAQ sentiment improves sharply.", impact: 0.018, target: "ALL_NASDAQ", market: "NASDAQ" },
+
+    // ---- SSE (Shanghai Stock Exchange) ----
+    { text: "China PBOC cuts RRR by 50bps. Massive liquidity injected into market.", impact: 0.025, target: "ALL_SSE", market: "SSE" },
+    { text: "China Q3 GDP growth beats at 5.4%. Market rally on economic recovery.", impact: 0.030, target: "ALL_SSE", market: "SSE" },
+    { text: "China slows: PMI falls to 48.2. Factory output at 3-year low.", impact: -0.025, target: "ALL_SSE", market: "SSE" },
+    { text: "China announces RMB 10 trillion stimulus package. SSE surges.", impact: 0.040, target: "ALL_SSE", market: "SSE" },
+    { text: "Evergrande liquidation completed. Property sector fears re-emerge.", impact: -0.030, target: "ALL_SSE", market: "SSE" },
+    { text: "Kweichow Moutai Q3 revenue hits record 30B CNY. Premium liquor boom.", impact: 0.030, target: "MOUTAI", market: "SSE" },
+    { text: "Moutai export to 60 countries launched. International expansion.", impact: 0.025, target: "MOUTAI", market: "SSE" },
+    { text: "ICBC bad loan ratio rises to 1.8%. Property sector NPAs rise.", impact: -0.020, target: "ICBC", market: "SSE" },
+    { text: "ICBC dividend yield at 6.5%. Value investors accumulate.", impact: 0.015, target: "ICBC", market: "SSE" },
+    { text: "China Merchants Bank wealth management AUM crosses CNY 4T.", impact: 0.022, target: "CMBANK", market: "SSE" },
+    { text: "Ping An Insurance dividend increased 15%. Record payout.", impact: 0.020, target: "PINGAN", market: "SSE" },
+    { text: "PetroChina crude output hits 4.5M bbl/day record. Best in decade.", impact: 0.025, target: "PETROCH", market: "SSE" },
+    { text: "US-China trade war re-escalates. 60% tariffs on Chinese goods.", impact: -0.035, target: "ALL_SSE", market: "SSE" },
+
+    // ---- TSE (Tokyo Stock Exchange / Japan) ----
+    { text: "Bank of Japan raises rates to 1.0%. Yen strengthens, Nikkei corrects.", impact: -0.025, target: "ALL_TSE", market: "TSE" },
+    { text: "Japan GDP growth surprises at 3.1% annualized. Nikkei rally.", impact: 0.020, target: "ALL_TSE", market: "TSE" },
+    { text: "Yen hits 160 vs USD. Japan exporters rally on currency tailwind.", impact: 0.018, target: "TOYOTA", market: "TSE" },
+    { text: "Toyota FY net profit hits record. Hybrid vehicles outsell pure EVs.", impact: 0.030, target: "TOYOTA", market: "TSE" },
+    { text: "Toyota solid-state battery production starts. EV range 900km.", impact: 0.040, target: "TOYOTA", market: "TSE" },
+    { text: "Sony PlayStation 6 announcement: 40M pre-orders in 24 hours.", impact: 0.035, target: "SONY", market: "TSE" },
+    { text: "Sony Music Entertainment acquires major label. IP portfolio doubles.", impact: 0.022, target: "SONY", market: "TSE" },
+    { text: "SoftBank Vision Fund 3 posts $12B gain. AI startup portfolio boom.", impact: 0.040, target: "SOFTBNK", market: "TSE" },
+    { text: "SoftBank ARM IPO proceeds used for $20B AI investment spree.", impact: 0.030, target: "SOFTBNK", market: "TSE" },
+    { text: "Honda-Nissan merger approved by regulators. Auto consolidation.", impact: 0.025, target: "HONDA", market: "TSE" },
+    { text: "Nintendo Switch 2 sells 5M units in first week. All-time record.", impact: 0.045, target: "NINTNDO", market: "TSE" },
+    { text: "Nintendo next Pokemon game breaks franchise records. Stock surges.", impact: 0.030, target: "NINTNDO", market: "TSE" },
+    { text: "Japan earthquake disrupts auto supply chain. Production halted.", impact: -0.030, target: "TOYOTA", market: "TSE" },
+
+    // ---- COMMODITIES ----
+    { text: "Gold hits all-time high $3,050/oz. War fears drive safe haven demand.", impact: 0.028, target: "GOLD", market: "COMM" },
+    { text: "Gold falls $120/oz as US dollar strengthens sharply.", impact: -0.020, target: "GOLD", market: "COMM" },
+    { text: "Central banks buy record 1,000 tonnes of gold. De-dollarization trend.", impact: 0.025, target: "GOLD", market: "COMM" },
+    { text: "Silver surges on industrial demand from solar panel manufacturers.", impact: 0.030, target: "SILVER", market: "COMM" },
+    { text: "Silver industrial demand from EVs grows 30% YoY. Supply deficit.", impact: 0.025, target: "SILVER", market: "COMM" },
+    { text: "Silver short squeeze: hedge funds scramble to cover positions.", impact: 0.045, target: "SILVER", market: "COMM" },
+    { text: "Copper prices jump 8% on China infrastructure stimulus news.", impact: 0.028, target: "COPPER", market: "COMM" },
+    { text: "Copper mine strike in Chile halts 15% of global production.", impact: 0.035, target: "COPPER", market: "COMM" },
+    { text: "Copper drops on slowing EV demand outlook. Surplus forecast rises.", impact: -0.022, target: "COPPER", market: "COMM" },
+    { text: "Aluminium supply glut: China production surge leads to 10% price crash.", impact: -0.038, target: "ALUM", market: "COMM" },
+    { text: "Aluminium demand from aircraft manufacturing hits record. Prices recover.", impact: 0.022, target: "ALUM", market: "COMM" },
+    { text: "EU carbon tax on aluminium imports pressures producers.", impact: -0.018, target: "ALUM", market: "COMM" },
+    { text: "Zinc mine closure in Peru disrupts 8% of global supply.", impact: 0.028, target: "ZINC", market: "COMM" },
+    { text: "Zinc galvanization demand from construction sector at 5-year high.", impact: 0.020, target: "ZINC", market: "COMM" },
+    { text: "Zinc prices plunge on weak Chinese steel sector demand.", impact: -0.025, target: "ZINC", market: "COMM" }
 ];
 
 // Map target keywords to stocks
 function getNewsTargets(target) {
     switch (target) {
         case "RANDOM":
-            var s = marketStocks[Math.floor(Math.random() * marketStocks.length)];
+            var nseStocks = marketStocks.filter(function(s){ return s.market === 'NSE'; });
+            var s = nseStocks[Math.floor(Math.random() * nseStocks.length)];
             return { stocks: [s], name: s.name };
-        case "IT":       return { stocks: marketStocks.filter(function(s) { return s.sector === "IT"; }) };
-        case "BANK":     return { stocks: marketStocks.filter(function(s) { return s.sector === "Banking" || s.sector === "Finance"; }) };
-        case "ENERGY":   return { stocks: marketStocks.filter(function(s) { return s.sector === "Energy"; }) };
-        case "AUTO":     return { stocks: marketStocks.filter(function(s) { return s.sector === "Auto"; }) };
-        case "PHARMA":   return { stocks: marketStocks.filter(function(s) { return s.sector === "Pharma"; }) };
-        case "METAL":    return { stocks: marketStocks.filter(function(s) { return s.sector === "Metal"; }) };
-        case "FMCG":     return { stocks: marketStocks.filter(function(s) { return s.sector === "FMCG"; }) };
-        case "TELECOM":  return { stocks: marketStocks.filter(function(s) { return s.sector === "Telecom"; }) };
-        case "INFRA":    return { stocks: marketStocks.filter(function(s) { return s.sector === "Infra"; }) };
-        case "POWER":    return { stocks: marketStocks.filter(function(s) { return s.sector === "Power"; }) };
-        case "CEMENT":   return { stocks: marketStocks.filter(function(s) { return s.sector === "Cement"; }) };
-        case "CONSUMER": return { stocks: marketStocks.filter(function(s) { return s.sector === "Consumer"; }) };
-        case "TECH":     return { stocks: marketStocks.filter(function(s) { return s.sector === "Tech"; }) };
-        case "DEFENSE":  return { stocks: marketStocks.filter(function(s) { return s.ticker === "BEL"; }) };
-        case "OILGAS":   return { stocks: marketStocks.filter(function(s) { return s.ticker === "ONGC" || s.ticker === "BPCL"; }) };
-        case "ALL":      return { stocks: marketStocks };
-        default:         return { stocks: marketStocks.filter(function(s) { return s.ticker === target; }) };
+        case "IT":         return { stocks: marketStocks.filter(function(s) { return s.sector === "IT" && s.market === 'NSE'; }) };
+        case "BANK":       return { stocks: marketStocks.filter(function(s) { return (s.sector === "Banking" || s.sector === "Finance") && s.market === 'NSE'; }) };
+        case "ENERGY":     return { stocks: marketStocks.filter(function(s) { return s.sector === "Energy" && s.market === 'NSE'; }) };
+        case "AUTO":       return { stocks: marketStocks.filter(function(s) { return s.sector === "Auto" && s.market === 'NSE'; }) };
+        case "PHARMA":     return { stocks: marketStocks.filter(function(s) { return s.sector === "Pharma"; }) };
+        case "METAL":      return { stocks: marketStocks.filter(function(s) { return s.sector === "Metal" && s.market === 'NSE'; }) };
+        case "FMCG":       return { stocks: marketStocks.filter(function(s) { return s.sector === "FMCG"; }) };
+        case "TELECOM":    return { stocks: marketStocks.filter(function(s) { return s.sector === "Telecom"; }) };
+        case "INFRA":      return { stocks: marketStocks.filter(function(s) { return s.sector === "Infra"; }) };
+        case "POWER":      return { stocks: marketStocks.filter(function(s) { return s.sector === "Power"; }) };
+        case "CEMENT":     return { stocks: marketStocks.filter(function(s) { return s.sector === "Cement"; }) };
+        case "CONSUMER":   return { stocks: marketStocks.filter(function(s) { return s.sector === "Consumer"; }) };
+        case "TECH":       return { stocks: marketStocks.filter(function(s) { return s.sector === "Tech" && s.market === 'NSE'; }) };
+        case "DEFENSE":    return { stocks: marketStocks.filter(function(s) { return s.ticker === "BEL"; }) };
+        case "OILGAS":     return { stocks: marketStocks.filter(function(s) { return s.ticker === "ONGC" || s.ticker === "BPCL"; }) };
+        case "ALL":        return { stocks: marketStocks.filter(function(s) { return s.market === 'NSE'; }) };
+        case "ALL_NASDAQ": return { stocks: marketStocks.filter(function(s) { return s.market === 'NASDAQ'; }) };
+        case "ALL_SSE":    return { stocks: marketStocks.filter(function(s) { return s.market === 'SSE'; }) };
+        case "ALL_TSE":    return { stocks: marketStocks.filter(function(s) { return s.market === 'TSE'; }) };
+        case "ALL_COMM":   return { stocks: marketStocks.filter(function(s) { return s.market === 'COMM'; }) };
+        default:           return { stocks: marketStocks.filter(function(s) { return s.ticker === target; }) };
     }
 }
 
@@ -489,7 +618,9 @@ var state = {
     timeframe: '30M',
     viewLen: 30,
     candlePeriod: 5,
-    slTargets: {}   // { ticker: { sl: num|null, target: num|null } }
+    slTargets: {},   // { ticker: { sl: num|null, target: num|null } }
+    wlMarketFilter: 'ALL',   // watchlist market filter
+    newsMarketFilter: 'ALL'  // news feed market filter
 };
 
 var marketInterval;
@@ -521,7 +652,9 @@ var candlestickPlugin = {
                     if (!volumes[vi2]) continue;
                     var xv = xScale.getPixelForValue(vi2);
                     var barH = (volumes[vi2] / maxVol) * volAreaH * 0.88;
-                    var isBullV = ohlc && ohlc[vi2] ? ohlc[vi2].c >= ohlc[vi2].o : true;
+                    var isBullV = ohlc && ohlc[vi2]
+                        ? ohlc[vi2].c >= ohlc[vi2].o
+                        : (chart._lineData && vi2 > 0 ? chart._lineData[vi2] >= chart._lineData[vi2 - 1] : true);
                     ctx.fillStyle = isBullV
                         ? (isLight ? 'rgba(0,168,70,0.30)' : 'rgba(0,200,83,0.25)')
                         : (isLight ? 'rgba(213,0,50,0.30)'  : 'rgba(255,23,68,0.25)');
@@ -601,6 +734,7 @@ document.addEventListener("DOMContentLoaded", function() {
 function initMarket() {
     marketStocks.forEach(function(s) {
         s.history = Array(state.historyLen).fill(s.ltp);
+        s.volumeHistory = Array(state.historyLen).fill(0);
         s.open = s.ltp;
         s.prevClose = s.ltp;
         s._prevTick = s.ltp;
@@ -700,6 +834,36 @@ function setupListeners() {
             if (e.key === 'Escape') { searchInp.value = ''; renderWatchlist(); }
         });
     }
+
+    // Watchlist market filter buttons
+    document.querySelectorAll('.wl-mf-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.wl-mf-btn').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            state.wlMarketFilter = btn.dataset.market;
+            renderWatchlist();
+        });
+    });
+
+    // News market filter buttons
+    document.querySelectorAll('.news-mf-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.news-mf-btn').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            state.newsMarketFilter = btn.dataset.market;
+            // Show/hide existing news items
+            var nf = state.newsMarketFilter;
+            var container = document.getElementById('news-container');
+            Array.from(container.children).forEach(function(el) {
+                if (nf === 'ALL') {
+                    el.style.display = '';
+                } else {
+                    var dm = el.getAttribute('data-market') || 'NSE';
+                    el.style.display = (dm === nf) ? '' : 'none';
+                }
+            });
+        });
+    });
 }
 
 // ==================== SETTINGS / MODIFIABLE CASH ====================
@@ -754,6 +918,7 @@ function applySettings() {
             s.prevClose = s.base;
             s._prevTick = s.base;
             s.history = Array(state.historyLen).fill(s.ltp);
+            s.volumeHistory = Array(state.historyLen).fill(0);
             s.volume = 0;
             s.circuitHit = null;
             s.ohlcHistory = [];
@@ -934,6 +1099,8 @@ function tickMinute() {
 
         // OHLCV candle aggregation
         var tickVol = Math.floor(Math.random() * 8000 + 800);
+        stock.volumeHistory.push(tickVol);
+        if (stock.volumeHistory.length > state.historyLen) stock.volumeHistory.shift();
         if (!stock.currentCandle) {
             stock.currentCandle = { o: stock.ltp, h: stock.ltp, l: stock.ltp, c: stock.ltp, v: tickVol, ticks: 1 };
         } else {
@@ -1060,6 +1227,7 @@ function startNewDay() {
         stock.history = fill.concat(kept);
         stock.history.push(stock.ltp);
         if (stock.history.length > state.historyLen) stock.history.shift();
+        stock.volumeHistory = Array(state.historyLen).fill(0);
         stock.ohlcHistory = [];
         stock.currentCandle = null;
     });
@@ -1129,8 +1297,11 @@ function triggerNewsEvent() {
     var ev = newsEvents[Math.floor(Math.random() * newsEvents.length)];
     var text = ev.text;
     var result = getNewsTargets(ev.target);
+    if (!result.stocks || result.stocks.length === 0) return;
 
     if (result.name) text = text.replace("{name}", result.name);
+
+    var evMarket = ev.market || 'NSE';
 
     // Apply impact with volatility multiplier
     var impact = ev.impact * VOL_MULTIPLIER;
@@ -1161,7 +1332,16 @@ function triggerNewsEvent() {
     var container = document.getElementById('news-container');
     var el = document.createElement('div');
     el.className = 'news-item ' + (impact >= 0 ? 'positive' : 'negative');
-    el.innerHTML = '<span class="news-time">' + formatTime(state.time) + '</span><span class="news-text">' + text + '</span>';
+    el.setAttribute('data-market', evMarket);
+
+    // Show/hide based on current news filter
+    var nf = state.newsMarketFilter;
+    if (nf !== 'ALL' && evMarket !== nf) el.style.display = 'none';
+
+    var warIcon = evMarket === 'WAR' ? '<i class="fa-solid fa-gun" style="color:#ff9100;font-size:9px"></i> ' : '';
+    var badgeCls = 'news-mkt-badge nmb-' + evMarket.toLowerCase();
+    var marketBadge = '<span class="' + badgeCls + '">' + evMarket + '</span>';
+    el.innerHTML = '<span class="news-time">' + formatTime(state.time) + '</span>' + marketBadge + '<span class="news-text">' + warIcon + text + '</span>';
     container.prepend(el);
     if (container.children.length > 100) container.removeChild(container.lastChild);
 
@@ -1479,13 +1659,18 @@ function renderWatchlist() {
     var list = document.getElementById('watchlist');
     var searchEl = document.getElementById('wl-search-input');
     var query = searchEl ? searchEl.value.trim().toUpperCase() : '';
+
+    // Apply market filter
+    var mf = state.wlMarketFilter;
+    var byMarket = mf === 'ALL' ? marketStocks : marketStocks.filter(function(s) { return s.market === mf; });
+
     var filtered = query
-        ? marketStocks.filter(function(s) {
+        ? byMarket.filter(function(s) {
             return s.ticker.indexOf(query) !== -1 ||
                    s.name.toUpperCase().indexOf(query) !== -1 ||
                    s.sector.toUpperCase().indexOf(query) !== -1;
           })
-        : marketStocks;
+        : byMarket;
 
     // Preserve scroll position
     var scrollTop = list.scrollTop;
@@ -1516,10 +1701,13 @@ function renderWatchlist() {
 
         var maxVol = 300000;
         var volPct = Math.min(100, (s.volume / maxVol) * 100);
-        var ltpDisplay = s.ltp.toFixed(2);
+        var ltpDisplay = fmtPrice(s, s.ltp);
+
+        // Market badge color class
+        var mktBadge = s.market !== 'NSE' ? '<span class="wl-mkt-badge wlm-' + s.market.toLowerCase() + '">' + s.market + '</span>' : '';
 
         row.innerHTML = '<div style="flex:1.5">' +
-            '<span class="wl-sym">' + s.ticker + circuitBadge + '</span>' +
+            '<span class="wl-sym">' + s.ticker + circuitBadge + mktBadge + '</span>' +
             '<div class="wl-sector">' + s.sector + '</div>' +
             '<div class="vol-bar"><div class="vol-fill" style="width:' + volPct + '%"></div></div></div>' +
             '<span class="wl-ltp ' + cls + '">' + ltpDisplay + '</span>' +
@@ -1546,7 +1734,7 @@ function renderActiveStock() {
     if (!stock) return;
 
     document.getElementById('active-symbol').textContent = stock.ticker;
-    document.getElementById('active-name').textContent = stock.name + ' \u00b7 ' + stock.sector;
+    document.getElementById('active-name').textContent = stock.name + ' \u00b7 ' + stock.sector + ' [' + stock.market + ']';
     document.getElementById('order-symbol').textContent = stock.ticker;
 
     var dayChg = stock.ltp - stock.open;
@@ -1554,7 +1742,7 @@ function renderActiveStock() {
     var isUp = dayChg >= 0;
 
     var elPrice = document.getElementById('active-price');
-    elPrice.textContent = stock.ltp.toFixed(2);
+    elPrice.textContent = fmtPrice(stock, stock.ltp);
     elPrice.className = 'ct-price mono ' + (isUp ? 'up' : 'dn');
 
     var elChg = document.getElementById('active-change');
@@ -1568,7 +1756,7 @@ function renderActiveStock() {
         if (stock.prevClose) {
             var chgFromPrev = stock.ltp - stock.prevClose;
             var pctFromPrev = (chgFromPrev / stock.prevClose * 100);
-            elPrev.textContent = 'Prev Close: \u20b9' + stock.prevClose.toFixed(2) +
+            elPrev.textContent = 'Prev Close: ' + fmtPrice(stock, stock.prevClose) +
                 '  (' + (chgFromPrev >= 0 ? '+' : '') + pctFromPrev.toFixed(2) + '% from prev)';
             elPrev.className = 'ct-prev-close mono ' + (chgFromPrev >= 0 ? 'up' : 'dn');
         } else {
@@ -1697,7 +1885,9 @@ function _applyChartData(stock, isLight) {
         ds.tension                  = lineSlice.length > 60 ? 0 : 0.3;
         ds.pointHoverRadius         = 4;
         chartInstance._ohlc         = null;
-        chartInstance._volumes      = null;
+        chartInstance._volumes      = (stock.volumeHistory && stock.volumeHistory.length)
+            ? stock.volumeHistory.slice(-state.viewLen) : null;
+        chartInstance._lineData     = lineSlice;
         scY.min = undefined;
         scY.max = undefined;
 
@@ -1724,7 +1914,7 @@ function _applyChartData(stock, isLight) {
 
         tip.callbacks = {
             title: function() { return state.activeStock ? state.activeStock.ticker : ''; },
-            label: function(tCtx) { return '\u20b9 ' + tCtx.parsed.y.toFixed(2); }
+            label: function(tCtx) { return fmtPrice(state.activeStock, tCtx.parsed.y); }
         };
     }
 
@@ -1819,9 +2009,12 @@ function renderChart(stock) {
                         padding: 10,
                         maxTicksLimit: 12,
                         callback: function(v) {
-                            if (v >= 10000) return '\u20b9' + (v / 1000).toFixed(1) + 'k';
-                            if (v >= 1000) return '\u20b9' + v.toFixed(0);
-                            return '\u20b9' + v.toFixed(1);
+                            var cur = state.activeStock ? state.activeStock.currency : 'INR';
+                            var sym = cur === 'USD' ? '$' : cur === 'CNY' ? '\u00a5' : cur === 'JPY' ? '\u00a5' : '\u20b9';
+                            if (cur === 'JPY') return sym + v.toFixed(0);
+                            if (v >= 10000) return sym + (v / 1000).toFixed(1) + 'k';
+                            if (v >= 1000) return sym + v.toFixed(0);
+                            return sym + v.toFixed(2);
                         }
                     }
                 }
@@ -2103,6 +2296,18 @@ function calcTotalPNL() {
 
 function fmtCur(n) {
     return '\u20b9 ' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtPrice(stock, value) {
+    if (!stock || stock.currency === 'INR')
+        return '\u20b9' + value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (stock.currency === 'USD')
+        return '$' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (stock.currency === 'CNY')
+        return '\u00a5' + value.toFixed(2);
+    if (stock.currency === 'JPY')
+        return '\u00a5' + value.toFixed(0);
+    return value.toFixed(2);
 }
 
 function formatTime(mins) {

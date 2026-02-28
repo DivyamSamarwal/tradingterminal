@@ -279,7 +279,7 @@ body {
 
 /* ========== NEWS PANEL ========== */
 .news-panel {
-    height: 150px;
+    height: 185px;
     border-top: 1px solid var(--border);
     background: var(--bg-1);
     display: flex;
@@ -1048,3 +1048,115 @@ body {
 #nifty-value, #sensex-value {
     font-size: 13px;
 }
+
+/* ========== WATCHLIST MARKET FILTER ========== */
+.wl-market-filters {
+    display: flex;
+    gap: 3px;
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+.wl-mf-btn {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-3);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: 0.15s;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    font-family: var(--mono);
+}
+.wl-mf-btn:hover { border-color: var(--accent); color: var(--accent); }
+.wl-mf-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ========== WATCHLIST MARKET BADGE ========== */
+.wl-mkt-badge {
+    display: inline-block;
+    font-size: 8px;
+    font-weight: 700;
+    padding: 0px 4px;
+    border-radius: 3px;
+    margin-left: 4px;
+    font-family: var(--mono);
+    vertical-align: middle;
+}
+.wlm-nasdaq { background: rgba(41,98,255,0.2); color: #6ea5ff; border: 1px solid rgba(41,98,255,0.4); }
+.wlm-sse    { background: rgba(255,82,82,0.2);  color: #ff8080; border: 1px solid rgba(255,82,82,0.4); }
+.wlm-tse    { background: rgba(255,145,0,0.2);  color: #ffc46e; border: 1px solid rgba(255,145,0,0.4); }
+.wlm-comm   { background: rgba(255,214,0,0.2);  color: #ffd600; border: 1px solid rgba(255,214,0,0.4); }
+
+/* ========== NEWS MARKET FILTER ========== */
+.news-market-filters {
+    display: flex;
+    gap: 3px;
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.news-mf-btn {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-3);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: 0.15s;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    font-family: var(--mono);
+}
+.news-mf-btn:hover { border-color: var(--accent); color: var(--accent); }
+.news-mf-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.nmf-nasdaq, .nmf-sse, .nmf-tse, .nmf-comm { cursor: pointer; }
+.nmf-war.active {
+    background: var(--orange);
+    border-color: var(--orange);
+    color: #000;
+}
+.nmf-war:hover { border-color: var(--orange); color: var(--orange); }
+
+/* ========== NEWS MARKET BADGE ========== */
+.news-mkt-badge {
+    display: inline-block;
+    font-size: 8px;
+    font-weight: 700;
+    padding: 0 5px;
+    border-radius: 3px;
+    font-family: var(--mono);
+    white-space: nowrap;
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 2px;
+    text-transform: uppercase;
+}
+.nmb-nse    { background: rgba(0,200,83,0.15);   color: #00c853; border: 1px solid rgba(0,200,83,0.35); }
+.nmb-nasdaq { background: rgba(41,98,255,0.15);  color: #6ea5ff; border: 1px solid rgba(41,98,255,0.35); }
+.nmb-sse    { background: rgba(255,82,82,0.15);   color: #ff8080; border: 1px solid rgba(255,82,82,0.35); }
+.nmb-tse    { background: rgba(255,145,0,0.15);   color: #ffc46e; border: 1px solid rgba(255,145,0,0.35); }
+.nmb-comm   { background: rgba(255,214,0,0.15);   color: #ffd600; border: 1px solid rgba(255,214,0,0.35); }
+.nmb-war    { background: rgba(255,62,0,0.20);    color: #ff6e40; border: 1px solid rgba(255,62,0,0.45); }
+.news-item .news-mkt-badge { margin-right: 2px; }
+
+/* ========== LIGHT MODE ADJUSTMENTS ========== */
+body.light .wlm-nasdaq { background: rgba(41,98,255,0.1); color: #2962ff; }
+body.light .wlm-sse    { background: rgba(213,0,50,0.1);  color: #c62828; }
+body.light .wlm-tse    { background: rgba(245,124,0,0.1); color: #e65100; }
+body.light .wlm-comm   { background: rgba(245,177,0,0.1); color: #f57f17; }
+body.light .nmb-nse    { color: #00a846; }
+body.light .nmb-nasdaq { color: #2962ff; }
+body.light .nmb-sse    { color: #c62828; }
+body.light .nmb-tse    { color: #e65100; }
+body.light .nmb-comm   { color: #f57f17; }
+body.light .nmb-war    { color: #b71c1c; }
