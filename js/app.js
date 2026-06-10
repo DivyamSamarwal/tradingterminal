@@ -1435,8 +1435,10 @@ function tickMinute() {
         if (stock.circuitHit) return;
 
         var v = stock.vol * VOL_MULTIPLIER;
-        var upperCircuit = stock.open * (1 + CIRCUIT_LIMIT);
-        var lowerCircuit = stock.open * (1 - CIRCUIT_LIMIT);
+        var isNoCircuit = stock.market === 'CRYPTO' || stock.market === 'FX';
+        var limitMult = isNoCircuit ? 100.0 : CIRCUIT_LIMIT;
+        var upperCircuit = stock.open * (1 + limitMult);
+        var lowerCircuit = stock.open * (1 - limitMult);
         var price = stock.ltp;
 
         // Sector factor (each sector moves together slightly)
@@ -1759,8 +1761,10 @@ function triggerNewsEvent() {
     result.stocks.forEach(function(s) {
         if (s.circuitHit) return; // skip frozen stocks
         var newPrice = parseFloat((s.ltp * (1 + impact)).toFixed(2));
-        var upperCircuit = s.open * (1 + CIRCUIT_LIMIT);
-        var lowerCircuit = s.open * (1 - CIRCUIT_LIMIT);
+        var isNoCircuit = s.market === 'CRYPTO' || s.market === 'FX';
+        var limitMult = isNoCircuit ? 100.0 : CIRCUIT_LIMIT;
+        var upperCircuit = s.open * (1 + limitMult);
+        var lowerCircuit = s.open * (1 - limitMult);
         if (newPrice >= upperCircuit) {
             newPrice = parseFloat(upperCircuit.toFixed(2));
             s.circuitHit = 'UC';
