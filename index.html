@@ -30,7 +30,7 @@
                 <div class="stat-sep"></div>
                 <div class="stat"><span class="stat-label">Portfolio</span><span class="stat-val mono" id="portfolio-value">₹ 1,00,000.00</span></div>
                 <div class="stat-sep"></div>
-                <div class="stat clickable" id="cash-stat" title="Click to modify cash">
+                <div class="stat clickable" id="cash-stat" title="Click to modify cash" role="button" tabindex="0" aria-label="Open cash and simulation settings">
                     <span class="stat-label">Cash <i class="fa-solid fa-pen-to-square" style="font-size:8px;opacity:0.5"></i></span>
                     <span class="stat-val mono" id="cash-balance">₹ 1,00,000.00</span>
                 </div>
@@ -38,12 +38,12 @@
                 <div class="stat"><span class="stat-label">Day P&L</span><span class="stat-val mono" id="total-pnl">₹ 0.00</span></div>
             </div>
             <div class="topbar-controls">
-                <button class="ctrl-btn" id="btn-pause" title="Pause"><i class="fa-solid fa-pause"></i></button>
-                <button class="ctrl-btn on" id="btn-play" title="1x Speed"><i class="fa-solid fa-play"></i></button>
-                <button class="ctrl-btn" id="btn-fast" title="10x Speed"><i class="fa-solid fa-forward-fast"></i></button>
+                <button class="ctrl-btn" id="btn-pause" title="Pause" aria-label="Pause simulation"><i class="fa-solid fa-pause"></i></button>
+                <button class="ctrl-btn on" id="btn-play" title="1x Speed" aria-label="Run simulation at 1x speed"><i class="fa-solid fa-play"></i></button>
+                <button class="ctrl-btn" id="btn-fast" title="10x Speed" aria-label="Run simulation at 10x speed"><i class="fa-solid fa-forward-fast"></i></button>
                 <span class="ctrl-sep"></span>
-                <button class="ctrl-btn" id="btn-settings" title="Settings"><i class="fa-solid fa-gear"></i></button>
-                <button class="ctrl-btn" id="btn-theme" title="Toggle Light/Dark"><i class="fa-solid fa-sun"></i></button>
+                <button class="ctrl-btn" id="btn-settings" title="Settings" aria-label="Open settings"><i class="fa-solid fa-gear"></i></button>
+                <button class="ctrl-btn" id="btn-theme" title="Toggle Light/Dark" aria-label="Toggle light or dark theme"><i class="fa-solid fa-sun"></i></button>
             </div>
         </header>
 
@@ -131,7 +131,7 @@
 
                 <!-- Chart -->
                 <div class="chart-container">
-                    <canvas id="main-chart"></canvas>
+                    <canvas id="main-chart" role="img" aria-label="Price chart for the selected instrument"></canvas>
                 </div>
 
                 <!-- News Feed -->
@@ -174,15 +174,17 @@
                 <!-- Equity Form -->
                 <div class="order-form" id="equity-form">
                     <div class="fg">
-                        <label>Product</label>
-                        <select class="fc"><option>MIS (Intraday)</option><option>CNC (Delivery)</option></select>
+                        <label for="order-product">Product</label>
+                        <select class="fc" id="order-product" disabled aria-describedby="order-product-note"><option>MIS (Intraday)</option></select>
+                        <div class="field-note" id="order-product-note">Only intraday simulation is supported.</div>
                     </div>
                     <div class="fg">
-                        <label>Order Type</label>
-                        <select class="fc"><option>MARKET</option><option>LIMIT</option></select>
+                        <label for="order-type">Order Type</label>
+                        <select class="fc" id="order-type" disabled aria-describedby="order-type-note"><option>MARKET</option></select>
+                        <div class="field-note" id="order-type-note">Orders execute immediately at LTP.</div>
                     </div>
                     <div class="fg">
-                        <label>Quantity</label>
+                        <label for="order-qty">Quantity</label>
                         <input type="number" id="order-qty" class="fc mono qty-big" value="1" min="1">
                         <div class="presets">
                             <button class="preset" data-v="1">+1</button>
@@ -196,11 +198,11 @@
                     </div>
                     <div class="sl-target-row">
                         <div class="sl-field">
-                            <label>Stop Loss</label>
+                            <label for="sl-price">Stop Loss</label>
                             <input type="number" id="sl-price" class="fc mono" placeholder="0.00" step="0.05" min="0">
                         </div>
                         <div class="sl-field">
-                            <label>Target</label>
+                            <label for="target-price">Target</label>
                             <input type="number" id="target-price" class="fc mono" placeholder="0.00" step="0.05" min="0">
                         </div>
                     </div>
@@ -225,15 +227,15 @@
                         <input type="hidden" id="option-type" value="CALL">
                     </div>
                     <div class="fg">
-                        <label>Strike Price</label>
+                        <label for="strike-price">Strike Price</label>
                         <select class="fc mono" id="strike-price"><option>Select Stock</option></select>
                     </div>
                     <div class="fg">
-                        <label>Expiry</label>
+                        <label for="expiry-date">Expiry</label>
                         <select class="fc" id="expiry-date"><option>Weekly</option><option>Monthly</option></select>
                     </div>
                     <div class="fg">
-                        <label>Lots</label>
+                        <label for="option-lots">Lots</label>
                         <input type="number" id="option-lots" class="fc mono qty-big" value="1" min="1">
                         <div class="presets">
                             <button class="preset-opt" data-v="1">+1</button>
@@ -347,7 +349,7 @@
             <p class="ov-sub">Configure your trading simulation</p>
             <div class="settings-form">
                 <div class="settings-group">
-                    <label class="settings-label"><i class="fa-solid fa-wallet"></i> Starting Capital</label>
+                    <label class="settings-label" for="settings-cash"><i class="fa-solid fa-wallet"></i> Starting Capital</label>
                     <div class="cash-input-row">
                         <span class="cash-prefix">₹</span>
                         <input type="number" id="settings-cash" class="fc mono" value="100000" min="10000" step="10000">
@@ -362,7 +364,7 @@
                     </div>
                 </div>
                 <div class="settings-group">
-                    <label class="settings-label"><i class="fa-solid fa-gauge-high"></i> News Frequency</label>
+                    <label class="settings-label" for="settings-news-freq"><i class="fa-solid fa-gauge-high"></i> News Frequency</label>
                     <select class="fc" id="settings-news-freq">
                         <option value="0.02">Low (2%)</option>
                         <option value="0.04" selected>Normal (4%)</option>
@@ -371,7 +373,7 @@
                     </select>
                 </div>
                 <div class="settings-group">
-                    <label class="settings-label"><i class="fa-solid fa-chart-line"></i> Volatility</label>
+                    <label class="settings-label" for="settings-volatility"><i class="fa-solid fa-chart-line"></i> Volatility</label>
                     <select class="fc" id="settings-volatility">
                         <option value="0.5">Low</option>
                         <option value="1" selected>Normal</option>

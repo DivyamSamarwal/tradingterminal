@@ -1001,6 +1001,12 @@ function setupListeners() {
     document.getElementById('btn-apply-settings').addEventListener('click', applySettings);
     document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
     document.getElementById('cash-stat').addEventListener('click', openSettings);
+    document.getElementById('cash-stat').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openSettings();
+        }
+    });
     document.getElementById('btn-chart-line').addEventListener('click', function() { setChartType('line'); });
     document.getElementById('btn-chart-candle').addEventListener('click', function() { setChartType('candle'); });
 
@@ -1436,18 +1442,12 @@ function tickMinute() {
 // ==================== NEW DAY ====================
 function showDayEndOverlay() {
     var pnl = calcTotalPNL();
-    var posVal = 0;
-    Object.entries(state.positions).forEach(function(entry) {
-        var t = entry[0], p = entry[1];
-        var s = stockMap[t];
-        if (s) posVal += s.ltp * Math.abs(p.qty);
-    });
 
     document.getElementById('ov-day-label').textContent = 'Day ' + state.day;
     var pnlEl = document.getElementById('ov-day-pnl');
     pnlEl.textContent = fmtCur(pnl);
     pnlEl.className = 'ov-stat-val mono ' + (pnl >= 0 ? 'up' : 'dn');
-    document.getElementById('ov-portfolio').textContent = fmtCur(state.margin + posVal);
+    document.getElementById('ov-portfolio').textContent = fmtCur(calcPortfolioValue());
     document.getElementById('ov-cash').textContent = fmtCur(state.margin);
     document.getElementById('ov-positions').textContent = Object.keys(state.positions).length + Object.keys(state.optionsPositions).length;
 
@@ -1545,9 +1545,11 @@ function settleExpiredOptions() {
             var totalQty = pos.lots * pos.lotSize;
             var settlementValue = intrinsic * totalQty;
             var costBasis = pos.avgPremium * totalQty;
-            var pnl = settlementValue - costBasis;
+            var fxRate = EXCHANGE_RATES[stock.currency] || 1;
+            var settlementValueINR = settlementValue * fxRate;
+            var pnl = (settlementValue - costBasis) * fxRate;
 
-            state.margin += settlementValue;
+            state.margin += settlementValueINR;
             expired.push({ id: id, ticker: pos.ticker, type: pos.type, strike: pos.strike, pnl: pnl });
             delete state.optionsPositions[id];
         }
@@ -1644,64 +1646,68 @@ function executeTrade(side) {
     var fxRate = EXCHANGE_RATES[stock.currency] || 1;  // INR per 1 unit of stock's currency
     var cost = price * qty;          // in native currency
     var costINR = cost * fxRate;     // in INR (deducted from portfolio)
-    var pos = state.positions[stock.ticker] || { qty: 0, avgPrice: 0 };
+    var currentPos = state.positions[stock.ticker] || { qty: 0, avgPrice: 0 };
+    var pos = { qty: currentPos.qty, avgPrice: currentPos.avgPrice };
+    var nextMargin = state.margin;
     var tradeType = '';
+    var toastArgs = null;
 
     if (side === 'BUY') {
         if (pos.qty < 0) {
             var coverQty = Math.min(qty, Math.abs(pos.qty));
             var pnl = (pos.avgPrice - price) * coverQty;   // native currency
-            state.margin += pnl * fxRate;                  // convert PnL to INR
+            var releasedShortMargin = pos.avgPrice * coverQty * 0.2;
+            nextMargin += (releasedShortMargin + pnl) * fxRate;
             pos.qty += coverQty;
 
             var remaining = qty - coverQty;
             if (remaining > 0) {
                 var addCost = price * remaining;                // native
                 var addCostINR = addCost * fxRate;              // INR
-                if (state.margin < addCostINR) { toast("Error", "Insufficient margin", "error"); return; }
+                if (nextMargin < addCostINR) { toast("Error", "Insufficient margin", "error"); return; }
                 if (pos.qty === 0) pos.avgPrice = price;
                 var totalCost = pos.avgPrice * pos.qty + price * remaining;  // native
                 pos.qty += remaining;
                 pos.avgPrice = totalCost / pos.qty;             // stored in native currency
-                state.margin -= addCostINR;
+                nextMargin -= addCostINR;
             }
             if (pos.qty === 0) pos.avgPrice = 0;
             tradeType = 'COVER';
-            toast("Covered", 'Covered ' + coverQty + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price) + ' (\u20b9' + (price * fxRate).toFixed(2) + ')', 'success');
+            toastArgs = ["Covered", 'Covered ' + coverQty + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price) + ' (\u20b9' + (price * fxRate).toFixed(2) + ')', 'success'];
         } else {
-            if (state.margin < costINR) { toast("Error", "Insufficient margin for BUY", "error"); return; }
+            if (nextMargin < costINR) { toast("Error", "Insufficient margin for BUY", "error"); return; }
             var totalCost2 = (pos.qty * pos.avgPrice) + cost;  // native
             pos.qty += qty;
             pos.avgPrice = totalCost2 / pos.qty;               // stored in native currency
-            state.margin -= costINR;
+            nextMargin -= costINR;
             tradeType = 'BUY';
-            toast("BUY", 'Bought ' + qty + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price) + ' (\u20b9' + costINR.toFixed(2) + ' deducted)', 'success');
+            toastArgs = ["BUY", 'Bought ' + qty + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price) + ' (\u20b9' + costINR.toFixed(2) + ' deducted)', 'success'];
         }
     } else {
         if (pos.qty > 0) {
             var sellQty = Math.min(qty, pos.qty);
-            state.margin += price * sellQty * fxRate;   // convert proceeds to INR
+            nextMargin += price * sellQty * fxRate;      // convert proceeds to INR
             pos.qty -= sellQty;
 
             var remaining2 = qty - sellQty;
             if (remaining2 > 0) {
                 var shortMargin = price * remaining2 * 0.2;        // native
                 var shortMarginINR = shortMargin * fxRate;          // INR
-                if (state.margin < shortMarginINR) { toast("Error", "Insufficient margin for short", "error"); return; }
+                if (nextMargin < shortMarginINR) { toast("Error", "Insufficient margin for short", "error"); return; }
                 pos.qty -= remaining2;
                 pos.avgPrice = price;                               // stored in native currency
-                state.margin -= shortMarginINR;
+                nextMargin -= shortMarginINR;
                 tradeType = 'SHORT';
-                toast("SHORT", 'Shorted ' + remaining2 + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price), 'error');
+                toastArgs = ["SHORT", 'Shorted ' + remaining2 + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price), 'error'];
             } else {
                 tradeType = 'SELL';
-                toast("SELL", 'Sold ' + sellQty + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price) + ' (\u20b9' + (price * sellQty * fxRate).toFixed(2) + ' added)', 'success');
+                toastArgs = ["SELL", 'Sold ' + sellQty + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price) + ' (\u20b9' + (price * sellQty * fxRate).toFixed(2) + ' added)', 'success'];
             }
             if (pos.qty === 0) pos.avgPrice = 0;
         } else {
             var shortMargin2 = price * qty * 0.2;             // native
             var shortMargin2INR = shortMargin2 * fxRate;       // INR
-            if (state.margin < shortMargin2INR) { toast("Error", "Insufficient margin for short", "error"); return; }
+            if (nextMargin < shortMargin2INR) { toast("Error", "Insufficient margin for short", "error"); return; }
             if (pos.qty === 0) {
                 pos.avgPrice = price;                          // stored in native currency
                 pos.qty = -qty;
@@ -1710,11 +1716,13 @@ function executeTrade(side) {
                 pos.qty -= qty;
                 pos.avgPrice = totalVal / Math.abs(pos.qty);  // stored in native currency
             }
-            state.margin -= shortMargin2INR;
+            nextMargin -= shortMargin2INR;
             tradeType = 'SHORT';
-            toast("SHORT", 'Shorted ' + qty + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price), 'error');
+            toastArgs = ["SHORT", 'Shorted ' + qty + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price), 'error'];
         }
     }
+
+    state.margin = nextMargin;
 
     // Record trade history (value stored in INR)
     state.tradeHistory.unshift({
@@ -1738,6 +1746,7 @@ function executeTrade(side) {
     }
 
     document.getElementById('order-qty').value = 1;
+    if (toastArgs) toast(toastArgs[0], toastArgs[1], toastArgs[2]);
     renderAll();
 }
 
@@ -1934,14 +1943,7 @@ function renderTopBar() {
     elPnl.textContent = fmtCur(pnl);
     elPnl.className = 'stat-val mono ' + (pnl > 0 ? 'up' : pnl < 0 ? 'dn' : '');
 
-    // Portfolio (all positions converted to INR)
-    var posVal = 0;
-    Object.entries(state.positions).forEach(function(entry) {
-        var t = entry[0], p = entry[1];
-        var s = stockMap[t];
-        if (s) posVal += toINR(s.ltp * Math.abs(p.qty), s.currency);
-    });
-    document.getElementById('portfolio-value').textContent = fmtCur(state.margin + posVal);
+    document.getElementById('portfolio-value').textContent = fmtCur(calcPortfolioValue());
 }
 
 function renderWatchlist() {
@@ -2479,7 +2481,8 @@ function renderPositionCard(stock) {
 // ==================== CLOSE POSITION HELPERS ====================
 function closeEquityPosition(ticker, silent) {
     var pos = state.positions[ticker];
-        var stock = stockMap[ticker];
+    var stock = stockMap[ticker];
+    if (!pos || !stock) return;
 
     var absQty = Math.abs(pos.qty);
     var price = stock.ltp;
@@ -2716,25 +2719,11 @@ function exportTradeHistoryCSV() {
     rows.push('"Starting Capital (INR)",' + INITIAL_MARGIN.toFixed(2));
     rows.push('"Current Cash (INR)",' + state.margin.toFixed(2));
 
-    // Value of all open equity positions at current LTP
-    var posValue = 0;
-    Object.entries(state.positions).forEach(function(entry) {
-        var s = stockMap[entry[0]];
-        if (!s) return;
-        posValue += toINR(Math.abs(entry[1].qty) * s.ltp, s.currency);
-    });
-
-    // Value of all open options at current premium
-    var optValue = 0;
-    Object.values(state.optionsPositions).forEach(function(pos) {
-        var s = stockMap[pos.ticker];
-        if (!s) return;
-        var curPrem = calcPremium(pos.type, pos.strike, s.ltp, pos.daysToExpiry);
-        optValue += toINR(curPrem * pos.lots * pos.lotSize, s.currency);
-    });
+    var posValue = calcEquityValue();
+    var optValue = calcOptionsValue();
 
     var unrealizedPNL = calcTotalPNL();
-    var portfolioValue = state.margin + posValue + optValue;
+    var portfolioValue = calcPortfolioValue();
     var overallPNL = portfolioValue - INITIAL_MARGIN;
     var overallPNLPct = ((overallPNL / INITIAL_MARGIN) * 100).toFixed(2);
 
@@ -2789,6 +2778,39 @@ function toINR(amount, currency) {
 
 function fmtCur(n) {
     return '\u20b9 ' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function calcEquityValue() {
+    var total = 0;
+    Object.entries(state.positions).forEach(function(entry) {
+        var ticker = entry[0], pos = entry[1];
+        var stock = stockMap[ticker];
+        if (!stock) return;
+        if (pos.qty > 0) {
+            total += toINR(stock.ltp * pos.qty, stock.currency);
+        } else {
+            var absQty = Math.abs(pos.qty);
+            var reservedMargin = pos.avgPrice * absQty * 0.2;
+            var unrealized = (pos.avgPrice - stock.ltp) * absQty;
+            total += toINR(reservedMargin + unrealized, stock.currency);
+        }
+    });
+    return total;
+}
+
+function calcOptionsValue() {
+    var total = 0;
+    Object.values(state.optionsPositions).forEach(function(pos) {
+        var stock = stockMap[pos.ticker];
+        if (!stock) return;
+        var curPrem = calcPremium(pos.type, pos.strike, stock.ltp, pos.daysToExpiry);
+        total += toINR(curPrem * pos.lots * pos.lotSize, stock.currency);
+    });
+    return total;
+}
+
+function calcPortfolioValue() {
+    return state.margin + calcEquityValue() + calcOptionsValue();
 }
 
 function renderFxRates() {
