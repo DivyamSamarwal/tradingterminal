@@ -251,7 +251,12 @@ var marketStocks = [
     mkStock("SILVER",  "Silver (USD/oz)",             93, 0.0025, "Precious",   "COMM",   "USD"),
     mkStock("COPPER",  "Copper (USD/ton)",         13360, 0.0025, "Industrial", "COMM",   "USD"),
     mkStock("ALUM",    "Aluminium (USD/ton)",       2645, 0.0020, "Industrial", "COMM",   "USD"),
-    mkStock("ZINC",    "Zinc (USD/ton)",            2955, 0.0022, "Industrial", "COMM",   "USD")
+    mkStock("ZINC",    "Zinc (USD/ton)",            2955, 0.0022, "Industrial", "COMM",   "USD"),
+    mkStock("CRUDE",   "Crude Oil (WTI)",             78, 0.0150, "Energy",     "COMM",   "USD"),
+    mkStock("NATGAS",  "Natural Gas",                  2.5,0.0250, "Energy",     "COMM",   "USD"),
+    mkStock("PLAT",    "Platinum (USD/oz)",          985, 0.0030, "Precious",   "COMM",   "USD"),
+    mkStock("PALLAD",  "Palladium (USD/oz)",         950, 0.0040, "Precious",   "COMM",   "USD"),
+    mkStock("LEAD",    "Lead (USD/ton)",            2100, 0.0020, "Industrial", "COMM",   "USD")
 ];
 
 // O(1) ticker → stock reference map (references, so in-place stock mutations are always reflected)
@@ -680,6 +685,12 @@ var newsEvents = [
     { text: "Zinc mine closure in Peru disrupts 8% of global supply.", impact: 0.028, target: "ZINC", market: "COMM" },
     { text: "Zinc galvanization demand from construction sector at 5-year high.", impact: 0.020, target: "ZINC", market: "COMM" },
     { text: "Zinc prices plunge on weak Chinese steel sector demand.", impact: -0.025, target: "ZINC", market: "COMM" },
+    { text: "OPEC+ announces surprise crude oil production cut.", impact: 0.045, target: "CRUDE", market: "COMM" },
+    { text: "US crude inventories rise unexpectedly, easing supply fears.", impact: -0.035, target: "CRUDE", market: "COMM" },
+    { text: "Natural gas futures spike 10% on severe winter storm forecast.", impact: 0.055, target: "NATGAS", market: "COMM" },
+    { text: "Platinum deficit deepens as South African power cuts hit mines.", impact: 0.032, target: "PLAT", market: "COMM" },
+    { text: "Palladium slumps to 4-year low as automakers switch to platinum.", impact: -0.042, target: "PALLAD", market: "COMM" },
+    { text: "Lead batteries recycling rate hits new highs, pressuring primary lead prices.", impact: -0.015, target: "LEAD", market: "COMM" },,
 
     // ---- NASDAQ — AMD ----
     { text: "AMD MI300X AI accelerator ships to 12 new hyperscaler clients. Data center revenue doubles.", impact: 0.040, target: "AMD", market: "NASDAQ" },
@@ -858,7 +869,11 @@ var state = {
     candlePeriod: 5,
     slTargets: {},   // { ticker: { sl: num|null, target: num|null } }
     wlMarketFilter: 'ALL',   // watchlist market filter
-    newsMarketFilter: 'ALL'  // news feed market filter
+    newsMarketFilter: 'ALL',  // news feed market filter
+    showSMA: false,
+    showEMA: false,
+    pendingOrders: [],
+    marginCallThrottle: 0
 };
 
 var marketInterval;
@@ -1010,10 +1025,36 @@ function setupListeners() {
     document.getElementById('btn-chart-line').addEventListener('click', function() { setChartType('line'); });
     document.getElementById('btn-chart-candle').addEventListener('click', function() { setChartType('candle'); });
 
+    // Order type change (Market vs Limit)
+    document.getElementById('order-type').addEventListener('change', function(e) {
+        var grp = document.getElementById('limit-price-group');
+        if (e.target.value === 'LIMIT') {
+            grp.classList.remove('hidden');
+            var stock = state.activeStock;
+            if (stock) {
+                document.getElementById('order-limit-price').value = stock.ltp;
+            }
+        } else {
+            grp.classList.add('hidden');
+        }
+    });
+
     // Scale buttons
     document.getElementById('btn-scale-linear').addEventListener('click', function() { setChartScale('linear'); });
     document.getElementById('btn-scale-log').addEventListener('click', function() { setChartScale('log'); });
     document.getElementById('btn-scale-pct').addEventListener('click', function() { setChartScale('pct'); });
+
+    // Technical Indicators
+    document.getElementById('btn-toggle-sma').addEventListener('click', function(e) {
+        state.showSMA = !state.showSMA;
+        e.currentTarget.classList.toggle('active', state.showSMA);
+        if (state.activeStock) renderChart(state.activeStock);
+    });
+    document.getElementById('btn-toggle-ema').addEventListener('click', function(e) {
+        state.showEMA = !state.showEMA;
+        e.currentTarget.classList.toggle('active', state.showEMA);
+        if (state.activeStock) renderChart(state.activeStock);
+    });
     TIMEFRAMES.forEach(function(tf) {
         var btn = document.getElementById('tf-' + tf.label);
         if (btn) btn.addEventListener('click', function() { setTimeframe(tf.label); });
@@ -1073,6 +1114,7 @@ function setupListeners() {
 
     document.getElementById('positions-tab').addEventListener('click', function() { switchBottomTab('equity'); });
     document.getElementById('options-pos-tab').addEventListener('click', function() { switchBottomTab('options'); });
+    document.getElementById('pending-orders-tab').addEventListener('click', function() { switchBottomTab('pending'); });
     document.getElementById('history-tab').addEventListener('click', function() { switchBottomTab('history'); });
     document.getElementById('btn-close-all').addEventListener('click', closeAllPositions);
     document.getElementById('btn-export-csv').addEventListener('click', exportTradeHistoryCSV);
@@ -1155,6 +1197,7 @@ function applySettings() {
         state.positions = {};
         state.optionsPositions = {};
         state.slTargets = {};
+        state.pendingOrders = [];
         state.tradeHistory = [];
         state.day = 1;
         state.time = START_TIME;
@@ -1265,13 +1308,16 @@ function switchBottomTab(tab) {
     document.querySelectorAll('.b-tab').forEach(function(t) { t.classList.remove('active'); });
     if (tab === 'equity') document.getElementById('positions-tab').classList.add('active');
     else if (tab === 'options') document.getElementById('options-pos-tab').classList.add('active');
+    else if (tab === 'pending') document.getElementById('pending-orders-tab').classList.add('active');
     else document.getElementById('history-tab').classList.add('active');
 
     document.getElementById('equity-table').classList.toggle('hidden', tab !== 'equity');
     document.getElementById('options-table').classList.toggle('hidden', tab !== 'options');
+    document.getElementById('pending-table').classList.toggle('hidden', tab !== 'pending');
     document.getElementById('history-table').classList.toggle('hidden', tab !== 'history');
 
     if (tab === 'options') renderOptionsTable();
+    if (tab === 'pending') renderPendingTable();
     if (tab === 'history') renderHistoryTable();
 }
 
@@ -1433,6 +1479,67 @@ function tickMinute() {
         }
     });
 
+    // Forex Fluctuation (±0.05% every tick)
+    EXCHANGE_RATES.USD *= (1 + (Math.random() - 0.5) * 0.001);
+    EXCHANGE_RATES.CNY *= (1 + (Math.random() - 0.5) * 0.001);
+    EXCHANGE_RATES.JPY *= (1 + (Math.random() - 0.5) * 0.001);
+    renderFxRates();
+
+    // Margin Check Loop
+    if (state.margin < 0) {
+        if (state.marginCallThrottle <= 0) {
+            toast("MARGIN CALL", "Your cash balance is below zero (\u20b9" + state.margin.toFixed(2) + ")! Square off some positions to avoid forced liquidation.", "error");
+            state.marginCallThrottle = 15; // throttle warning toast
+        } else {
+            state.marginCallThrottle--;
+        }
+    } else {
+        state.marginCallThrottle = 0;
+    }
+
+    // Forced Liquidation Check
+    var portVal = calcPortfolioValue();
+    var hasOpenPositions = Object.keys(state.positions).length > 0 || Object.keys(state.optionsPositions).length > 0;
+    if (portVal < INITIAL_MARGIN * 0.1 && hasOpenPositions) {
+        liquidateAllForced();
+    }
+
+    // Limit Order Matching
+    if (state.pendingOrders && state.pendingOrders.length > 0) {
+        var remainingPending = [];
+        state.pendingOrders.forEach(function(order) {
+            var stock = stockMap[order.ticker];
+            if (!stock) return;
+            var ltp = stock.ltp;
+            var triggered = false;
+
+            if (order.side === 'BUY' || order.side === 'COVER') {
+                if (ltp <= order.limitPrice) triggered = true;
+            } else if (order.side === 'SELL' || order.side === 'SHORT') {
+                if (ltp >= order.limitPrice) triggered = true;
+            }
+
+            if (triggered) {
+                // Block execution on circuit hit
+                if (stock.circuitHit === 'UC' && (order.side === 'BUY' || order.side === 'COVER')) {
+                    remainingPending.push(order);
+                } else if (stock.circuitHit === 'LC' && (order.side === 'SELL' || order.side === 'SHORT')) {
+                    remainingPending.push(order);
+                } else {
+                    var success = processEquityTrade(stock, order.side, order.qty, order.limitPrice);
+                    if (success) {
+                        toast("Order Executed", "Limit order filled: " + order.side + " " + order.qty + " " + order.ticker + " @ " + order.limitPrice.toFixed(2), "success");
+                    } else {
+                        toast("Order Cancelled", "Limit order cancelled (Insufficient Margin): " + order.side + " " + order.qty + " " + order.ticker + " @ " + order.limitPrice.toFixed(2), "error");
+                    }
+                }
+            } else {
+                remainingPending.push(order);
+            }
+        });
+        state.pendingOrders = remainingPending;
+    }
+
     // News events
     if (Math.random() < NEWS_FREQ) triggerNewsEvent();
 
@@ -1451,12 +1558,12 @@ function showDayEndOverlay() {
     document.getElementById('ov-cash').textContent = fmtCur(state.margin);
     document.getElementById('ov-positions').textContent = Object.keys(state.positions).length + Object.keys(state.optionsPositions).length;
 
-    var expiringWeekly = Object.values(state.optionsPositions).filter(function(p) {
-        return p.daysToExpiry <= 1 && p.expiryType === 'Weekly';
+    var expiringOptions = Object.values(state.optionsPositions).filter(function(p) {
+        return p.daysToExpiry <= 1;
     });
-    if (expiringWeekly.length > 0) {
+    if (expiringOptions.length > 0) {
         document.getElementById('ov-expiry-info').classList.remove('hidden');
-        document.getElementById('ov-expiry-text').textContent = expiringWeekly.length + ' weekly option(s) will expire and be auto-settled.';
+        document.getElementById('ov-expiry-text').textContent = expiringOptions.length + ' option(s) will expire and be auto-settled.';
     } else {
         document.getElementById('ov-expiry-info').classList.add('hidden');
     }
@@ -1551,6 +1658,19 @@ function settleExpiredOptions() {
 
             state.margin += settlementValueINR;
             expired.push({ id: id, ticker: pos.ticker, type: pos.type, strike: pos.strike, pnl: pnl });
+
+            // Record trade history for settlement
+            state.tradeHistory.unshift({
+                time: formatTime(state.time),
+                day: state.day,
+                ticker: pos.ticker,
+                side: intrinsic > 0 ? 'SETTLE' : 'EXPIRED',
+                type: pos.type + ' ' + pos.strike + ' EXPIRY',
+                qty: totalQty,
+                price: intrinsic,
+                value: settlementValueINR
+            });
+
             delete state.optionsPositions[id];
         }
     });
@@ -1642,7 +1762,37 @@ function executeTrade(side) {
     var qty = parseInt(document.getElementById('order-qty').value);
     if (isNaN(qty) || qty <= 0) { toast("Error", "Invalid quantity", "error"); return; }
 
-    var price = stock.ltp;
+    var orderType = document.getElementById('order-type').value;
+    if (orderType === 'LIMIT') {
+        var limitPrice = parseFloat(document.getElementById('order-limit-price').value);
+        if (isNaN(limitPrice) || limitPrice <= 0) {
+            toast("Error", "Invalid limit price", "error");
+            return;
+        }
+        state.pendingOrders.push({
+            time: formatTime(state.time),
+            day: state.day,
+            ticker: stock.ticker,
+            side: side,
+            qty: qty,
+            limitPrice: limitPrice,
+            currency: stock.currency
+        });
+        toast("Pending Order", "Limit order placed: " + side + " " + qty + " " + stock.ticker + " @ " + limitPrice.toFixed(2), "info");
+        document.getElementById('order-qty').value = 1;
+        document.getElementById('order-type').value = 'MARKET';
+        document.getElementById('limit-price-group').classList.add('hidden');
+        renderAll();
+        return;
+    }
+
+    if (processEquityTrade(stock, side, qty, stock.ltp)) {
+        document.getElementById('order-qty').value = 1;
+        renderAll();
+    }
+}
+
+function processEquityTrade(stock, side, qty, price) {
     var fxRate = EXCHANGE_RATES[stock.currency] || 1;  // INR per 1 unit of stock's currency
     var cost = price * qty;          // in native currency
     var costINR = cost * fxRate;     // in INR (deducted from portfolio)
@@ -1664,7 +1814,7 @@ function executeTrade(side) {
             if (remaining > 0) {
                 var addCost = price * remaining;                // native
                 var addCostINR = addCost * fxRate;              // INR
-                if (nextMargin < addCostINR) { toast("Error", "Insufficient margin", "error"); return; }
+                if (nextMargin < addCostINR) { toast("Error", "Insufficient margin", "error"); return false; }
                 if (pos.qty === 0) pos.avgPrice = price;
                 var totalCost = pos.avgPrice * pos.qty + price * remaining;  // native
                 pos.qty += remaining;
@@ -1675,7 +1825,7 @@ function executeTrade(side) {
             tradeType = 'COVER';
             toastArgs = ["Covered", 'Covered ' + coverQty + ' ' + stock.ticker + ' @ ' + fmtPrice(stock, price) + ' (\u20b9' + (price * fxRate).toFixed(2) + ')', 'success'];
         } else {
-            if (nextMargin < costINR) { toast("Error", "Insufficient margin for BUY", "error"); return; }
+            if (nextMargin < costINR) { toast("Error", "Insufficient margin for BUY", "error"); return false; }
             var totalCost2 = (pos.qty * pos.avgPrice) + cost;  // native
             pos.qty += qty;
             pos.avgPrice = totalCost2 / pos.qty;               // stored in native currency
@@ -1693,7 +1843,7 @@ function executeTrade(side) {
             if (remaining2 > 0) {
                 var shortMargin = price * remaining2 * 0.2;        // native
                 var shortMarginINR = shortMargin * fxRate;          // INR
-                if (nextMargin < shortMarginINR) { toast("Error", "Insufficient margin for short", "error"); return; }
+                if (nextMargin < shortMarginINR) { toast("Error", "Insufficient margin for short", "error"); return false; }
                 pos.qty -= remaining2;
                 pos.avgPrice = price;                               // stored in native currency
                 nextMargin -= shortMarginINR;
@@ -1707,7 +1857,7 @@ function executeTrade(side) {
         } else {
             var shortMargin2 = price * qty * 0.2;             // native
             var shortMargin2INR = shortMargin2 * fxRate;       // INR
-            if (nextMargin < shortMargin2INR) { toast("Error", "Insufficient margin for short", "error"); return; }
+            if (nextMargin < shortMargin2INR) { toast("Error", "Insufficient margin for short", "error"); return false; }
             if (pos.qty === 0) {
                 pos.avgPrice = price;                          // stored in native currency
                 pos.qty = -qty;
@@ -1745,15 +1895,18 @@ function executeTrade(side) {
         state.positions[stock.ticker] = pos;
     }
 
-    document.getElementById('order-qty').value = 1;
     if (toastArgs) toast(toastArgs[0], toastArgs[1], toastArgs[2]);
-    renderAll();
+    return true;
 }
 
 // ==================== OPTIONS ====================
 function getExpiryDays() {
     var sel = document.getElementById('expiry-date');
     return sel.value === 'Monthly' ? 20 : 5;
+}
+
+function getDayFraction() {
+    return (state.time - START_TIME) / 375;
 }
 
 function generateStrikes(ltp) {
@@ -1765,9 +1918,12 @@ function generateStrikes(ltp) {
 }
 
 function calcPremium(type, strike, ltp, days) {
-    if (days === undefined) days = getExpiryDays();
+    if (days === undefined) days = getExpiryDays() - getDayFraction();
     var intrinsic = type === 'CALL' ? Math.max(0, ltp - strike) : Math.max(0, strike - ltp);
-    var timeVal = Math.sqrt(Math.max(0.01, days) / 252) * ltp * 0.20;
+    // Gaussian moneyness-based extrinsic value decay
+    var distance = Math.abs(ltp - strike) / ltp;
+    var timeValScale = Math.exp(- (distance * distance) / (2 * 0.08 * 0.08));
+    var timeVal = Math.sqrt(Math.max(0.001, days) / 252) * ltp * 0.20 * timeValScale;
     return Math.max(0.5, intrinsic + timeVal);
 }
 
@@ -1777,7 +1933,7 @@ function updateStrikesAndPremium() {
     var strikes = generateStrikes(stock.ltp);
     var sel = document.getElementById('strike-price');
     var optType = document.getElementById('option-type').value;
-    var days = getExpiryDays();
+    var days = getExpiryDays() - getDayFraction();
 
     sel.innerHTML = '';
     strikes.forEach(function(s) {
@@ -1800,7 +1956,7 @@ function updateOptionMargin() {
     var lots = parseInt(document.getElementById('option-lots').value) || 0;
     var lotSize = LOT_SIZES[stock.ticker] || 100;
     var totalQty = lots * lotSize;
-    var days = getExpiryDays();
+    var days = getExpiryDays() - getDayFraction();
     var premium = calcPremium(optType, strike, stock.ltp, days);
     var fxRate = EXCHANGE_RATES[stock.currency] || 1;
     var req = premium * totalQty * fxRate;   // convert to INR
@@ -1820,7 +1976,6 @@ function executeOptionTrade(side) {
     var optType = document.getElementById('option-type').value;
     var strike = parseFloat(document.getElementById('strike-price').value);
     var expiryType = document.getElementById('expiry-date').value;
-    var days = getExpiryDays();
     var lots = parseInt(document.getElementById('option-lots').value) || 0;
     var lotSize = LOT_SIZES[stock.ticker] || 100;
     var totalQty = lots * lotSize;
@@ -1828,17 +1983,25 @@ function executeOptionTrade(side) {
     if (lots <= 0) { toast("Error", "Invalid lot count", "error"); return; }
 
     var fxRate = EXCHANGE_RATES[stock.currency] || 1;
-    var premium = calcPremium(optType, strike, stock.ltp, days);
-    var cost = premium * totalQty;          // in native currency
-    var costINR = cost * fxRate;            // converted to INR
+    var premium = 0;
+    var cost = 0;
+    var costINR = 0;
     var optionId = stock.ticker + '_' + optType + '_' + strike + '_' + expiryType;
 
     if (side === 'BUY') {
+        var pos = state.optionsPositions[optionId];
+        var remainingDays = pos ? pos.daysToExpiry - getDayFraction() : getExpiryDays() - getDayFraction();
+        premium = calcPremium(optType, strike, stock.ltp, remainingDays);
+        cost = premium * totalQty;          // in native currency
+        costINR = cost * fxRate;            // converted to INR
+
         if (state.margin < costINR) { toast("Error", "Insufficient margin", "error"); return; }
-        var pos = state.optionsPositions[optionId] || {
-            ticker: stock.ticker, type: optType, strike: strike, expiryType: expiryType,
-            daysToExpiry: days, lots: 0, avgPremium: 0, lotSize: lotSize
-        };
+        if (!pos) {
+            pos = {
+                ticker: stock.ticker, type: optType, strike: strike, expiryType: expiryType,
+                daysToExpiry: getExpiryDays(), lots: 0, avgPremium: 0, lotSize: lotSize
+            };
+        }
         var oldTotal = pos.lots * pos.lotSize * pos.avgPremium;
         pos.lots += lots;
         pos.avgPremium = (oldTotal + cost) / (pos.lots * pos.lotSize);  // stored in native currency
@@ -1848,7 +2011,12 @@ function executeOptionTrade(side) {
     } else {
         var pos2 = state.optionsPositions[optionId];
         if (!pos2 || pos2.lots < lots) { toast("Error", "Insufficient option holdings", "error"); return; }
-        state.margin += premium * totalQty * fxRate;   // convert proceeds to INR
+        var remainingDays = pos2.daysToExpiry - getDayFraction();
+        premium = calcPremium(optType, strike, stock.ltp, remainingDays);
+        cost = premium * totalQty;          // in native currency
+        costINR = cost * fxRate;            // converted to INR
+
+        state.margin += costINR;   // convert proceeds to INR
         pos2.lots -= lots;
         if (pos2.lots === 0) delete state.optionsPositions[optionId];
         toast("Option SELL", lots + 'L ' + stock.ticker + ' ' + optType + ' ' + strike + ' ' + expiryType + ' @ ' + fmtPrice(stock, premium), 'error');
@@ -1883,6 +2051,7 @@ function renderAll() {
         renderActiveStock();
         renderPositionsTable();
         if (state.activeBottomTab === 'options') renderOptionsTable();
+        if (state.activeBottomTab === 'pending') renderPendingTable();
         if (state.activeBottomTab === 'history') renderHistoryTable();
     });
 }
@@ -1944,6 +2113,8 @@ function renderTopBar() {
     elPnl.className = 'stat-val mono ' + (pnl > 0 ? 'up' : pnl < 0 ? 'dn' : '');
 
     document.getElementById('portfolio-value').textContent = fmtCur(calcPortfolioValue());
+    var pendingCountEl = document.getElementById('pending-count');
+    if (pendingCountEl) pendingCountEl.textContent = state.pendingOrders.length;
 }
 
 function renderWatchlist() {
@@ -2124,6 +2295,59 @@ function renderActiveStock() {
     var st = state.slTargets[stock.ticker];
     document.getElementById('sl-price').value     = (st && st.sl)     ? st.sl     : '';
     document.getElementById('target-price').value = (st && st.target) ? st.target : '';
+
+    renderMarketDepth(stock);
+}
+
+function renderMarketDepth(stock) {
+    if (!stock) return;
+    var bidsContainer = document.getElementById('l2-bids');
+    var asksContainer = document.getElementById('l2-asks');
+    if (!bidsContainer || !asksContainer) return;
+
+    var step = stock.ltp > 5000 ? 5 : stock.ltp > 1000 ? 1 : stock.ltp > 200 ? 0.5 : 0.05;
+    var decimals = stock.currency === 'JPY' ? 0 : 2;
+
+    // Seeded-ish quantities that fluctuate with time
+    var baseSeed = stock.ticker.charCodeAt(0) + state.time;
+    function getQty(level, isBid) {
+        var rand = Math.sin(baseSeed + level + (isBid ? 10 : 20));
+        return Math.floor(500 + Math.abs(rand) * 3500);
+    }
+
+    var bidHTML = '';
+    var askHTML = '';
+    var totalBidQty = 0;
+    var totalAskQty = 0;
+
+    for (var i = 0; i < 5; i++) {
+        var bidPrice = stock.ltp - (i + 1) * step;
+        var bidQty = getQty(i, true);
+        totalBidQty += bidQty;
+        bidHTML += '<div class="l2-row"><span class="up mono">' + bidPrice.toFixed(decimals) + '</span><span class="mono">' + bidQty + '</span></div>';
+
+        var askPrice = stock.ltp + (i + 1) * step;
+        var askQty = getQty(i, false);
+        totalAskQty += askQty;
+        askHTML += '<div class="l2-row"><span class="dn mono">' + askPrice.toFixed(decimals) + '</span><span class="mono">' + askQty + '</span></div>';
+    }
+
+    bidsContainer.innerHTML = bidHTML;
+    asksContainer.innerHTML = askHTML;
+
+    var total = totalBidQty + totalAskQty;
+    var bidPct = total > 0 ? (totalBidQty / total * 100) : 50;
+    var askPct = 100 - bidPct;
+
+    var ratioBidEl = document.getElementById('l2-ratio-bid');
+    var ratioAskEl = document.getElementById('l2-ratio-ask');
+    if (ratioBidEl) ratioBidEl.style.width = bidPct + '%';
+    if (ratioAskEl) ratioAskEl.style.width = askPct + '%';
+
+    var bidPctEl = document.getElementById('l2-bid-pct');
+    var askPctEl = document.getElementById('l2-ask-pct');
+    if (bidPctEl) bidPctEl.textContent = Math.round(bidPct) + '%';
+    if (askPctEl) askPctEl.textContent = Math.round(askPct) + '%';
 }
 
 function formatVolume(v) {
@@ -2134,9 +2358,11 @@ function formatVolume(v) {
 }
 
 // ==================== CANDLE DATA BUILDER ====================
-function buildCandleData(stock) {
+function buildCandleData(stock, totalNeeded) {
     var period = state.candlePeriod;
-    var totalNeeded = Math.min(200, Math.ceil(state.viewLen / period) + 2);
+    if (totalNeeded === undefined) {
+        totalNeeded = Math.min(200, Math.ceil(state.viewLen / period) + 2);
+    }
 
     // ── Live OHLCV candles (from this session) ──
     var liveCandles = [];
@@ -2171,8 +2397,21 @@ function _applyChartData(stock, isLight) {
     var tip  = chartInstance.options.plugins.tooltip;
     var isPct = state.chartScale === 'pct';
 
+    var firstPrice = 1;
+    var dataLen = 0;
+    var smaData = [];
+    var emaData = [];
+
     if (state.chartType === 'candle') {
-        var ohlcData = buildCandleData(stock);
+        var baseTotal = Math.min(200, Math.ceil(state.viewLen / state.candlePeriod) + 2);
+        var ohlcData = buildCandleData(stock, baseTotal);
+        var ohlcDataForIndicators = buildCandleData(stock, baseTotal + 20); // extra 20 for indicators
+        firstPrice = ohlcData.length > 0 ? (ohlcData[0].o || 1) : 1;
+
+        var closePrices = ohlcDataForIndicators.map(function(c) { return c.c; });
+        var rawSMA = calcSMA(closePrices, 20).slice(-ohlcData.length);
+        var rawEMA = calcEMA(closePrices, 20).slice(-ohlcData.length);
+
         var allH = ohlcData.map(function(d) { return d.h; });
         var allL = ohlcData.map(function(d) { return d.l; });
         var yMax = allH.length ? Math.max.apply(null, allH) : 0;
@@ -2183,7 +2422,7 @@ function _applyChartData(stock, isLight) {
 
         // % Change transform for candle
         if (isPct) {
-            var baseC = ohlcData.length > 0 ? (ohlcData[0].o || 1) : 1;
+            var baseC = firstPrice;
             ohlcData = ohlcData.map(function(d, i) {
                 return {
                     x: i,
@@ -2201,6 +2440,12 @@ function _applyChartData(stock, isLight) {
             yRange = yMax - yMin || 1;
             yPad = yRange * 0.06;
             yBottomPad = yRange * 0.22;
+
+            smaData = rawSMA.map(function(v) { return v === null ? null : ((v - baseC) / baseC) * 100; });
+            emaData = rawEMA.map(function(v) { return v === null ? null : ((v - baseC) / baseC) * 100; });
+        } else {
+            smaData = rawSMA;
+            emaData = rawEMA;
         }
 
         chartInstance.data.labels = ohlcData.map(function(_, i) { return i; });
@@ -2224,6 +2469,7 @@ function _applyChartData(stock, isLight) {
             ds2c.data   = [];
             ds2c.hidden = true;
         }
+        dataLen = ohlcData.length;
 
         tip.callbacks = {
             title: function(ctx) {
@@ -2255,13 +2501,23 @@ function _applyChartData(stock, isLight) {
             : stock.history;
         var lineSlice = fullHistory.slice(-state.viewLen);
 
-        var firstPrice = lineSlice[0] || 1;
+        firstPrice = lineSlice[0] || 1;
         var lastPrice  = lineSlice[lineSlice.length - 1] || 0;
+
+        // Indicators for line chart
+        var lineSliceForIndicators = fullHistory.slice(-(state.viewLen + 20));
+        var rawSMA = calcSMA(lineSliceForIndicators, 20).slice(-lineSlice.length);
+        var rawEMA = calcEMA(lineSliceForIndicators, 20).slice(-lineSlice.length);
 
         // % Change transform
         if (isPct) {
             lineSlice = lineSlice.map(function(p) { return ((p - firstPrice) / firstPrice) * 100; });
             lastPrice  = lineSlice[lineSlice.length - 1] || 0;
+            smaData = rawSMA.map(function(v) { return v === null ? null : ((v - firstPrice) / firstPrice) * 100; });
+            emaData = rawEMA.map(function(v) { return v === null ? null : ((v - firstPrice) / firstPrice) * 100; });
+        } else {
+            smaData = rawSMA;
+            emaData = rawEMA;
         }
 
         var lineColor = (isPct ? lastPrice >= 0 : lastPrice >= firstPrice)
@@ -2300,6 +2556,7 @@ function _applyChartData(stock, isLight) {
         } else {
             ds.backgroundColor = lineColor + '15';
         }
+        dataLen = lineSlice.length;
 
         tip.callbacks = {
             title: function() { return state.activeStock ? state.activeStock.ticker : ''; },
@@ -2308,6 +2565,58 @@ function _applyChartData(stock, isLight) {
                 return fmtPrice(state.activeStock, tCtx.parsed.y);
             }
         };
+    }
+
+    // ── Update Position Cost, SL, Target Lines ──
+    var dsAvg = chartInstance.data.datasets[2];
+    var pos = state.positions[stock.ticker];
+    if (pos && dataLen) {
+        var avgVal = isPct ? ((pos.avgPrice - firstPrice) / firstPrice) * 100 : pos.avgPrice;
+        dsAvg.data = Array(dataLen).fill(avgVal);
+        dsAvg.hidden = false;
+    } else {
+        dsAvg.data = [];
+        dsAvg.hidden = true;
+    }
+
+    var dsSL = chartInstance.data.datasets[3];
+    var st = state.slTargets[stock.ticker];
+    if (st && st.sl && dataLen) {
+        var slVal = isPct ? ((st.sl - firstPrice) / firstPrice) * 100 : st.sl;
+        dsSL.data = Array(dataLen).fill(slVal);
+        dsSL.hidden = false;
+    } else {
+        dsSL.data = [];
+        dsSL.hidden = true;
+    }
+
+    var dsTgt = chartInstance.data.datasets[4];
+    if (st && st.target && dataLen) {
+        var tgtVal = isPct ? ((st.target - firstPrice) / firstPrice) * 100 : st.target;
+        dsTgt.data = Array(dataLen).fill(tgtVal);
+        dsTgt.hidden = false;
+    } else {
+        dsTgt.data = [];
+        dsTgt.hidden = true;
+    }
+
+    // ── Update SMA & EMA Indicators ──
+    var dsSMA = chartInstance.data.datasets[5];
+    if (state.showSMA && dataLen) {
+        dsSMA.data = smaData;
+        dsSMA.hidden = false;
+    } else {
+        dsSMA.data = [];
+        dsSMA.hidden = true;
+    }
+
+    var dsEMA = chartInstance.data.datasets[6];
+    if (state.showEMA && dataLen) {
+        dsEMA.data = emaData;
+        dsEMA.hidden = false;
+    } else {
+        dsEMA.data = [];
+        dsEMA.hidden = true;
     }
 
     // Y-axis tick format (pct mode overrides price format)
@@ -2362,6 +2671,7 @@ function renderChart(stock) {
         data: {
             labels: [],
             datasets: [{
+                // 0: Main price line
                 data: [],
                 borderWidth: 2,
                 pointRadius: 0,
@@ -2369,7 +2679,7 @@ function renderChart(stock) {
                 pointHoverBorderColor: '#fff',
                 pointHoverBorderWidth: 2
             }, {
-                // Prev close reference line
+                // 1: Prev close reference line
                 data: [],
                 borderWidth: 1.5,
                 borderDash: [6, 4],
@@ -2379,6 +2689,69 @@ function renderChart(stock) {
                 pointHoverRadius: 0,
                 fill: false,
                 tension: 0
+            }, {
+                // 2: Avg Buy Price Line (blue dotted)
+                label: 'Avg Cost',
+                data: [],
+                borderWidth: 1.5,
+                borderDash: [5, 5],
+                borderColor: 'rgba(41, 98, 255, 0.8)',
+                backgroundColor: 'transparent',
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                fill: false,
+                tension: 0,
+                hidden: true
+            }, {
+                // 3: Stop Loss Line (red dotted)
+                label: 'Stop Loss',
+                data: [],
+                borderWidth: 1.5,
+                borderDash: [5, 5],
+                borderColor: 'rgba(255, 23, 68, 0.8)',
+                backgroundColor: 'transparent',
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                fill: false,
+                tension: 0,
+                hidden: true
+            }, {
+                // 4: Target Line (green dotted)
+                label: 'Target',
+                data: [],
+                borderWidth: 1.5,
+                borderDash: [5, 5],
+                borderColor: 'rgba(0, 200, 83, 0.8)',
+                backgroundColor: 'transparent',
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                fill: false,
+                tension: 0,
+                hidden: true
+            }, {
+                // 5: SMA 20 (orange solid line)
+                label: 'SMA 20',
+                data: [],
+                borderWidth: 1.5,
+                borderColor: 'rgba(255, 152, 0, 0.85)',
+                backgroundColor: 'transparent',
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                fill: false,
+                tension: 0.1,
+                hidden: true
+            }, {
+                // 6: EMA 20 (purple solid line)
+                label: 'EMA 20',
+                data: [],
+                borderWidth: 1.5,
+                borderColor: 'rgba(156, 39, 176, 0.85)',
+                backgroundColor: 'transparent',
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                fill: false,
+                tension: 0.1,
+                hidden: true
             }]
         },
         options: {
@@ -2529,7 +2902,8 @@ function closeOptionPosition(id, silent) {
     if (!pos || !stock) return;
 
     var fxRate = EXCHANGE_RATES[stock.currency] || 1;
-    var curPrem = calcPremium(pos.type, pos.strike, stock.ltp, pos.daysToExpiry);
+    var remainingDays = pos.daysToExpiry - getDayFraction();
+    var curPrem = calcPremium(pos.type, pos.strike, stock.ltp, remainingDays);
     var totalQty = pos.lots * pos.lotSize;
     var pnlNative = (curPrem - pos.avgPremium) * totalQty;
     var pnlINR = pnlNative * fxRate;
@@ -2564,6 +2938,74 @@ function closeAllPositions() {
     optionKeys.slice().forEach(function(id) { closeOptionPosition(id, true); });
     equityKeys.slice().forEach(function(t) { closeEquityPosition(t, true); });
     toast('Closed All', count + ' position(s) squared off at market price', 'success');
+    renderAll();
+}
+
+function liquidateAllForced() {
+    var equityKeys = Object.keys(state.positions);
+    var optionKeys = Object.keys(state.optionsPositions);
+    if (equityKeys.length === 0 && optionKeys.length === 0) return;
+
+    equityKeys.forEach(function(ticker) {
+        var pos = state.positions[ticker];
+        var stock = stockMap[ticker];
+        if (!pos || !stock) return;
+
+        var absQty = Math.abs(pos.qty);
+        var price = stock.ltp;
+        var fxRate = EXCHANGE_RATES[stock.currency] || 1;
+        var isShort = pos.qty < 0;
+        var pnl = isShort ? (pos.avgPrice - price) * absQty : (price - pos.avgPrice) * absQty;
+
+        if (isShort) {
+            state.margin += (pos.avgPrice * absQty * 0.2 + pnl) * fxRate;
+        } else {
+            state.margin += price * absQty * fxRate;
+        }
+
+        state.tradeHistory.unshift({
+            time: formatTime(state.time),
+            day: state.day,
+            ticker: ticker,
+            side: 'LIQUIDATED',
+            type: 'Equity',
+            qty: absQty,
+            price: price,
+            value: price * absQty * fxRate
+        });
+
+        delete state.positions[ticker];
+        delete state.slTargets[ticker];
+        stock.volume += absQty * 100;
+    });
+
+    optionKeys.forEach(function(id) {
+        var pos = state.optionsPositions[id];
+        var stock = stockMap[pos && pos.ticker];
+        if (!pos || !stock) return;
+
+        var fxRate = EXCHANGE_RATES[stock.currency] || 1;
+        var remainingDays = pos.daysToExpiry - getDayFraction();
+        var curPrem = calcPremium(pos.type, pos.strike, stock.ltp, remainingDays);
+        var totalQty = pos.lots * pos.lotSize;
+        state.margin += curPrem * totalQty * fxRate;
+
+        state.tradeHistory.unshift({
+            time: formatTime(state.time),
+            day: state.day,
+            ticker: pos.ticker,
+            side: 'LIQUIDATED',
+            type: pos.type + ' OPT',
+            qty: totalQty,
+            price: curPrem,
+            value: curPrem * totalQty * fxRate
+        });
+
+        delete state.optionsPositions[id];
+    });
+
+    state.pendingOrders = [];
+    toast("PORTFOLIO LIQUIDATED", "All positions force closed: Portfolio value fell below 10% of starting capital!", "error");
     renderAll();
 }
 
@@ -2613,7 +3055,7 @@ function renderPositionsTable() {
         tr.innerHTML =
             '<td class="sym-cell">' + ticker + (hasSl ? ' <i class="fa-solid fa-bell" style="font-size:9px;color:var(--orange)"></i>' : '') + '</td>' +
             '<td class="' + (isShort ? 'side-short' : 'side-long') + '">' + (isShort ? 'SHORT' : 'LONG') + '</td>' +
-            '<td>MIS</td>' +
+            '<td>CNC</td>' +
             '<td class="r">' + pos.qty + '</td>' +
             '<td class="r">' + pos.avgPrice.toFixed(2) + '</td>' +
             '<td class="r">' + stock.ltp.toFixed(2) + '</td>' +
@@ -2641,7 +3083,8 @@ function renderOptionsTable() {
         var stock = stockMap[pos.ticker];
         if (!stock) return;
 
-        var curPrem = calcPremium(pos.type, pos.strike, stock.ltp, pos.daysToExpiry);
+        var remainingDays = pos.daysToExpiry - getDayFraction();
+        var curPrem = calcPremium(pos.type, pos.strike, stock.ltp, remainingDays);
         var totalQty = pos.lots * pos.lotSize;
         var pnlNative = (curPrem - pos.avgPremium) * totalQty;
         var pnlINR = toINR(pnlNative, stock.currency);  // convert P&L to INR
@@ -2663,6 +3106,47 @@ function renderOptionsTable() {
         tr.onclick = function() { selectStock(stockMap[pos.ticker]); };
         tbody.appendChild(tr);
     });
+}
+
+function renderPendingTable() {
+    var tbody = document.getElementById('pending-tbody');
+    if (state.pendingOrders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="empty">No pending orders</td></tr>';
+        return;
+    }
+    tbody.innerHTML = '';
+    state.pendingOrders.forEach(function(order, index) {
+        var stock = stockMap[order.ticker];
+        var curLTP = stock ? stock.ltp : 0;
+        var tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.title = 'Click to select ' + order.ticker;
+        var sideClass = (order.side === 'BUY' || order.side === 'COVER') ? 'side-long' : 'side-short';
+
+        tr.innerHTML = '<td class="mono">' + order.time + '</td>' +
+            '<td>Day ' + order.day + '</td>' +
+            '<td class="sym-cell">' + order.ticker + '</td>' +
+            '<td class="' + sideClass + '">' + order.side + '</td>' +
+            '<td>LIMIT</td>' +
+            '<td class="r">' + order.qty + '</td>' +
+            '<td class="r">' + (stock ? fmtPrice(stock, order.limitPrice) : order.limitPrice.toFixed(2)) + '</td>' +
+            '<td class="r">' + (stock ? fmtPrice(stock, curLTP) : '0.00') + '</td>' +
+            '<td class="r"><button class="btn-cancel-order" onclick="event.stopPropagation();cancelPendingOrder(' + index + ')" title="Cancel order">&#x2715; Cancel</button></td>';
+
+        if (stock) {
+            tr.onclick = function() { selectStock(stock); };
+        }
+        tbody.appendChild(tr);
+    });
+}
+
+function cancelPendingOrder(index) {
+    if (index >= 0 && index < state.pendingOrders.length) {
+        var order = state.pendingOrders[index];
+        state.pendingOrders.splice(index, 1);
+        toast("Pending Order", "Limit order cancelled: " + order.side + " " + order.qty + " " + order.ticker + " @ " + order.limitPrice.toFixed(2), "info");
+        renderAll();
+    }
 }
 
 function renderHistoryTable() {
@@ -2766,7 +3250,8 @@ function calcTotalPNL() {
     Object.values(state.optionsPositions).forEach(function(p) {
         var s = stockMap[p.ticker];
         if (!s) return;
-        var cur = calcPremium(p.type, p.strike, s.ltp, p.daysToExpiry);
+        var remainingDays = p.daysToExpiry - getDayFraction();
+        var cur = calcPremium(p.type, p.strike, s.ltp, remainingDays);
         total += toINR((cur - p.avgPremium) * p.lots * p.lotSize, s.currency);  // convert to INR
     });
     return total;
@@ -2803,7 +3288,8 @@ function calcOptionsValue() {
     Object.values(state.optionsPositions).forEach(function(pos) {
         var stock = stockMap[pos.ticker];
         if (!stock) return;
-        var curPrem = calcPremium(pos.type, pos.strike, stock.ltp, pos.daysToExpiry);
+        var remainingDays = pos.daysToExpiry - getDayFraction();
+        var curPrem = calcPremium(pos.type, pos.strike, stock.ltp, remainingDays);
         total += toINR(curPrem * pos.lots * pos.lotSize, stock.currency);
     });
     return total;
@@ -2819,7 +3305,7 @@ function renderFxRates() {
     var jpyEl = document.getElementById('fx-jpy');
     if (usdEl) usdEl.textContent = EXCHANGE_RATES.USD.toFixed(2);
     if (cnyEl) cnyEl.textContent = EXCHANGE_RATES.CNY.toFixed(2);
-    if (jpyEl) jpyEl.textContent = EXCHANGE_RATES.JPY.toFixed(2);
+    if (jpyEl) jpyEl.textContent = EXCHANGE_RATES.JPY.toFixed(3);
 }
 
 function fmtPrice(stock, value) {
@@ -2855,4 +3341,38 @@ function toast(title, msg, type) {
         el.style.transition = '0.2s';
         setTimeout(function() { el.remove(); }, 200);
     }, 3000);
+}
+
+function calcSMA(prices, period) {
+    var sma = [];
+    for (var i = 0; i < prices.length; i++) {
+        if (i < period - 1) {
+            sma.push(null);
+        } else {
+            var sum = 0;
+            for (var j = 0; j < period; j++) sum += prices[i - j];
+            sma.push(sum / period);
+        }
+    }
+    return sma;
+}
+
+function calcEMA(prices, period) {
+    var ema = [];
+    var k = 2 / (period + 1);
+    var emaVal = 0;
+    for (var i = 0; i < prices.length; i++) {
+        if (i < period - 1) {
+            ema.push(null);
+        } else if (i === period - 1) {
+            var sum = 0;
+            for (var j = 0; j < period; j++) sum += prices[i - j];
+            emaVal = sum / period;
+            ema.push(emaVal);
+        } else {
+            emaVal = prices[i] * k + emaVal * (1 - k);
+            ema.push(emaVal);
+        }
+    }
+    return ema;
 }

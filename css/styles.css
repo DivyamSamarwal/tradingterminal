@@ -36,12 +36,12 @@ body.light {
     --text-bright: #0a0a12;
     --accent: #2962ff;
     --accent-hover: #1e50d8;
-    --green: #00a846;
+    --green: #008c3a;
     --green-dim: rgba(0, 168, 70, 0.08);
-    --green-hover: #008c3a;
-    --red: #d50032;
+    --green-hover: #00662a;
+    --red: #b8002a;
     --red-dim: rgba(213, 0, 50, 0.08);
-    --red-hover: #b8002a;
+    --red-hover: #8f0020;
     --shadow: 0 2px 12px rgba(0,0,0,0.08);
 }
 
@@ -262,14 +262,20 @@ body {
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
 }
-.ct-left { display: flex; flex-direction: column; }
+.ct-left { display: flex; flex-direction: column; flex-shrink: 0; }
 .ct-symbol { font-size: 18px; font-weight: 700; color: var(--text-bright); line-height: 1.2; }
 .ct-name { font-size: 11px; color: var(--text-dim); }
-.ct-right { text-align: right; display: flex; flex-direction: column; }
+.ct-right { text-align: right; display: flex; flex-direction: column; flex-shrink: 0; }
 .ct-price { font-size: 22px; font-weight: 700; }
 .ct-change { font-size: 12px; }
 .ct-prev-close { font-size: 11px; opacity: 0.75; margin-top: 2px; }
-.ct-chart-type { display: flex; gap: 4px; align-items: center; }
+.ct-chart-type {
+    display: flex; gap: 4px; align-items: center;
+    flex: 1;
+    overflow-x: auto;
+    padding: 0 10px;
+}
+.ct-chart-type::-webkit-scrollbar { display: none; }
 .ct-type-sep { width: 1px; height: 16px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
 .tf-btn {
     background: var(--bg-2);
@@ -311,6 +317,13 @@ body {
     color: #fff;
 }
 .chart-type-btn.scale-btn { font-size: 10px; padding: 4px 8px; }
+/* Indicator buttons use purple accent */
+.chart-type-btn.indicator-btn.active {
+    background: #9c27b0;
+    border-color: #9c27b0;
+    color: #fff;
+}
+.chart-type-btn.indicator-btn { font-size: 10px; padding: 4px 8px; }
 
 .chart-container {
     flex: 1;
@@ -714,6 +727,21 @@ body {
     white-space: nowrap;
 }
 .btn-close-pos:hover { background: var(--red); color: #fff; }
+
+.btn-cancel-order {
+    background: transparent;
+    border: 1px solid var(--orange);
+    color: var(--orange);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: 0.15s;
+    white-space: nowrap;
+}
+.btn-cancel-order:hover { background: var(--orange); color: #fff; }
 
 .empty {
     text-align: center;
@@ -1225,7 +1253,75 @@ body.light .nmb-nasdaq { color: #2962ff; }
 body.light .nmb-sse    { color: #c62828; }
 body.light .nmb-tse    { color: #e65100; }
 body.light .nmb-comm   { color: #f57f17; }
-body.light .nmb-war    { color: #b71c1c; }
+/* ========== MARKET DEPTH (L2) ========== */
+.l2-depth {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+}
+.l2-header {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+}
+.l2-table {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.l2-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.l2-row-head, .l2-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+}
+.l2-row-head {
+    color: var(--text-dim);
+    font-weight: 500;
+    padding-bottom: 2px;
+    border-bottom: 1px dashed var(--border);
+}
+.l2-row {
+    color: var(--text);
+}
+.l2-ratio-bar {
+    display: flex;
+    height: 4px;
+    border-radius: 2px;
+    overflow: hidden;
+    background: var(--border);
+    margin-top: 4px;
+}
+.l2-ratio-bid {
+    background: var(--green);
+    transition: width 0.3s ease;
+}
+.l2-ratio-ask {
+    background: var(--red);
+    transition: width 0.3s ease;
+}
+.l2-ratio-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-dim);
+}
+#l2-bid-pct { color: var(--green); }
+#l2-ask-pct { color: var(--red); }
 
 /* ========== RESPONSIVE LAYOUT ========== */
 @media (max-width: 1180px) {

@@ -121,6 +121,9 @@
                         <button class="chart-type-btn scale-btn active" id="btn-scale-linear" title="Linear price scale">Linear</button>
                         <button class="chart-type-btn scale-btn" id="btn-scale-log" title="Logarithmic price scale">Log</button>
                         <button class="chart-type-btn scale-btn" id="btn-scale-pct" title="% Change from view start">%Chg</button>
+                        <span class="ct-type-sep"></span>
+                        <button class="chart-type-btn indicator-btn" id="btn-toggle-sma" title="Toggle SMA (20)">SMA</button>
+                        <button class="chart-type-btn indicator-btn" id="btn-toggle-ema" title="Toggle EMA (20)">EMA</button>
                     </div>
                     <div class="ct-right">
                         <span class="ct-price mono" id="active-price">2500.00</span>
@@ -175,13 +178,20 @@
                 <div class="order-form" id="equity-form">
                     <div class="fg">
                         <label for="order-product">Product</label>
-                        <select class="fc" id="order-product" disabled aria-describedby="order-product-note"><option>MIS (Intraday)</option></select>
-                        <div class="field-note" id="order-product-note">Only intraday simulation is supported.</div>
+                        <select class="fc" id="order-product" disabled aria-describedby="order-product-note"><option>CNC (Delivery)</option></select>
+                        <div class="field-note" id="order-product-note">Positions carry forward overnight.</div>
                     </div>
                     <div class="fg">
                         <label for="order-type">Order Type</label>
-                        <select class="fc" id="order-type" disabled aria-describedby="order-type-note"><option>MARKET</option></select>
-                        <div class="field-note" id="order-type-note">Orders execute immediately at LTP.</div>
+                        <select class="fc" id="order-type">
+                            <option value="MARKET">MARKET</option>
+                            <option value="LIMIT">LIMIT</option>
+                        </select>
+                        <div class="field-note" id="order-type-note">MARKET executes at LTP; LIMIT executes at target price.</div>
+                    </div>
+                    <div class="fg hidden" id="limit-price-group">
+                        <label for="order-limit-price">Limit Price</label>
+                        <input type="number" id="order-limit-price" class="fc mono" placeholder="0.00" step="0.05" min="0">
                     </div>
                     <div class="fg">
                         <label for="order-qty">Quantity</label>
@@ -207,6 +217,30 @@
                         </div>
                     </div>
                     <div class="sl-hint"><i class="fa-solid fa-bell"></i> Auto square-off when SL/Target hit</div>
+                    
+                    <!-- Market Depth (L2) -->
+                    <div class="l2-depth">
+                        <div class="l2-header">Market Depth</div>
+                        <div class="l2-table">
+                            <div class="l2-col">
+                                <div class="l2-row-head"><span>Bid Price</span><span>Qty</span></div>
+                                <div id="l2-bids"></div>
+                            </div>
+                            <div class="l2-col">
+                                <div class="l2-row-head"><span>Ask Price</span><span>Qty</span></div>
+                                <div id="l2-asks"></div>
+                            </div>
+                        </div>
+                        <div class="l2-ratio-bar">
+                            <div class="l2-ratio-bid" id="l2-ratio-bid" style="width: 50%"></div>
+                            <div class="l2-ratio-ask" id="l2-ratio-ask" style="width: 50%"></div>
+                        </div>
+                        <div class="l2-ratio-labels">
+                            <span id="l2-bid-pct">50%</span>
+                            <span id="l2-ask-pct">50%</span>
+                        </div>
+                    </div>
+
                     <div class="order-actions">
                         <button class="btn-buy" id="btn-buy"><i class="fa-solid fa-arrow-up"></i> BUY</button>
                         <button class="btn-sell" id="btn-sell"><i class="fa-solid fa-arrow-down"></i> SELL / SHORT</button>
@@ -279,6 +313,7 @@
             <div class="bottom-tabs">
                 <button class="b-tab active" id="positions-tab"><i class="fa-solid fa-chart-pie"></i> Positions</button>
                 <button class="b-tab" id="options-pos-tab"><i class="fa-solid fa-layer-group"></i> Options</button>
+                <button class="b-tab" id="pending-orders-tab"><i class="fa-solid fa-hourglass-half"></i> Pending <span class="badge mono" id="pending-count" style="padding:1px 5px;font-size:9px;background:var(--orange)">0</span></button>
                 <button class="b-tab" id="history-tab"><i class="fa-solid fa-clock-rotate-left"></i> Trade History</button>
                 <button class="b-tab export-csv-btn" id="btn-export-csv" title="Export trade history to CSV"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
                 <button class="b-tab close-all-btn" id="btn-close-all" title="Close all open positions"><i class="fa-solid fa-xmark"></i> Close All</button>
@@ -304,6 +339,17 @@
                     </tr></thead>
                     <tbody id="options-tbody">
                         <tr><td colspan="10" class="empty">No option positions</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-area hidden" id="pending-table">
+                <table class="dtable">
+                    <thead><tr>
+                        <th>Time</th><th>Day</th><th>Symbol</th><th>Side</th><th>Type</th>
+                        <th class="r">Qty</th><th class="r">Limit Price</th><th class="r">LTP</th><th class="r">Action</th>
+                    </tr></thead>
+                    <tbody id="pending-tbody">
+                        <tr><td colspan="9" class="empty">No pending orders</td></tr>
                     </tbody>
                 </table>
             </div>
