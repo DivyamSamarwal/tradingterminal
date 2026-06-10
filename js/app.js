@@ -1617,6 +1617,8 @@ function showDayEndOverlay() {
     pnlEl.className = 'ov-stat-val mono ' + (pnl >= 0 ? 'up' : 'dn');
     document.getElementById('ov-portfolio').textContent = fmtCur(calcPortfolioValue());
     document.getElementById('ov-cash').textContent = fmtCur(state.margin);
+    var ovBrokerageEl = document.getElementById('ov-brokerage');
+    if (ovBrokerageEl) ovBrokerageEl.textContent = fmtCur(state.totalBrokerage || 0);
     document.getElementById('ov-positions').textContent = Object.keys(state.positions).length + Object.keys(state.optionsPositions).length;
 
     var expiringOptions = Object.values(state.optionsPositions).filter(function(p) {
@@ -1715,9 +1717,11 @@ function settleExpiredOptions() {
             var costBasis = pos.avgPremium * totalQty;
             var fxRate = EXCHANGE_RATES[stock.currency] || 1;
             var settlementValueINR = settlementValue * fxRate;
-            var pnl = (settlementValue - costBasis) * fxRate;
+            var brokerage = settlementValueINR * 0.001;
+            var pnl = (settlementValue - costBasis) * fxRate - brokerage;
 
-            state.margin += settlementValueINR;
+            state.margin += (settlementValueINR - brokerage);
+            state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
             expired.push({ id: id, ticker: pos.ticker, type: pos.type, strike: pos.strike, pnl: pnl });
 
             // Record trade history for settlement
@@ -1858,7 +1862,8 @@ function executeTrade(side) {
 function processEquityTrade(stock, side, qty, price) {
     var fxRate = EXCHANGE_RATES[stock.currency] || 1;  // INR per 1 unit of stock's currency
     var cost = price * qty;          // in native currency
-    var costINR = cost * fxRate;     // in INR (deducted from portfolio)
+    var costINR = cost * fxRate;     // in INR
+    var brokerage = costINR * 0.001; // 0.1% Brokerage
     var currentPos = state.positions[stock.ticker] || { qty: 0, avgPrice: 0 };
     var pos = { qty: currentPos.qty, avgPrice: currentPos.avgPrice };
     var nextMargin = state.margin;
@@ -1951,7 +1956,16 @@ function processEquityTrade(stock, side, qty, price) {
 
     // Add to volume
     stock.volume += qty * 100;
+    
+    // Check if margin is sufficient to cover brokerage too
+    if (nextMargin - brokerage < 0 && side === 'BUY') {
+        toast("Error", "Insufficient margin to cover brokerage", "error");
+        return false;
+    }
 
+    state.margin = nextMargin - brokerage;
+    state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
+    
     if (pos.qty === 0) {
         delete state.positions[stock.ticker];
     } else {
@@ -1972,16 +1986,28 @@ function getDayFraction() {
     return (state.time - START_TIME) / 375;
 }
 
-function generateStrikes(ltp) {
+function generateStrikes(stock) {
+    var ltp = stock.ltp;
     var step;
-    if (ltp > 5000) step = 100;
-    else if (ltp > 1000) step = 50;
-    else if (ltp > 200) step = 10;
-    else if (ltp > 50) step = 5;
-    else if (ltp > 10) step = 1;
-    else if (ltp > 2) step = 0.5;
-    else if (ltp > 0.5) step = 0.1;
-    else step = 0.05;
+    if (stock.market === 'FX') {
+        step = ltp > 50 ? 0.5 : 0.005; // USDJPY vs others
+    } else if (stock.market === 'CRYPTO') {
+        if (ltp > 10000) step = 1000;
+        else if (ltp > 1000) step = 50;
+        else if (ltp > 100) step = 5;
+        else if (ltp > 10) step = 1;
+        else if (ltp > 0.5) step = 0.05;
+        else step = 0.01;
+    } else {
+        if (ltp > 5000) step = 100;
+        else if (ltp > 1000) step = 50;
+        else if (ltp > 200) step = 10;
+        else if (ltp > 50) step = 5;
+        else if (ltp > 10) step = 1;
+        else if (ltp > 2) step = 0.5;
+        else if (ltp > 0.5) step = 0.1;
+        else step = 0.05;
+    }
 
     var base = Math.round(ltp / step) * step;
     var strikes = [];
@@ -2073,7 +2099,7 @@ function updateGreeksUI(greeks) {
 function updateStrikesAndPremium() {
     if (!state.activeStock) return;
     var stock = state.activeStock;
-    var strikes = generateStrikes(stock.ltp);
+    var strikes = generateStrikes(stock);
     var sel = document.getElementById('strike-price');
     var optType = document.getElementById('option-type').value;
     var days = getExpiryDays() - getDayFraction();
@@ -2150,7 +2176,8 @@ function executeOptionTrade(side) {
         cost = premium * totalQty;          // in native currency
         costINR = cost * fxRate;            // converted to INR
 
-        if (state.margin < costINR) { toast("Error", "Insufficient margin", "error"); return; }
+        var brokerage = costINR * 0.001;
+        if (state.margin < costINR + brokerage) { toast("Error", "Insufficient margin including brokerage", "error"); return; }
         if (!pos) {
             pos = {
                 ticker: stock.ticker, type: optType, strike: strike, expiryType: expiryType,
@@ -2161,7 +2188,8 @@ function executeOptionTrade(side) {
         pos.lots += lots;
         pos.avgPremium = (oldTotal + cost) / (pos.lots * pos.lotSize);  // stored in native currency
         state.optionsPositions[optionId] = pos;
-        state.margin -= costINR;
+        state.margin -= (costINR + brokerage);
+        state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
         toast("Option BUY", lots + 'L ' + stock.ticker + ' ' + optType + ' ' + strike + ' ' + expiryType + ' @ ' + fmtPrice(stock, premium), 'success');
     } else {
         var pos2 = state.optionsPositions[optionId];
@@ -2171,7 +2199,10 @@ function executeOptionTrade(side) {
         cost = premium * totalQty;          // in native currency
         costINR = cost * fxRate;            // converted to INR
 
-        state.margin += costINR;   // convert proceeds to INR
+        var brokerage = costINR * 0.001;
+        if (state.margin + costINR - brokerage < 0) { toast("Error", "Insufficient margin for brokerage", "error"); return; }
+        state.margin += (costINR - brokerage);   // convert proceeds to INR minus brokerage
+        state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
         pos2.lots -= lots;
         if (pos2.lots === 0) delete state.optionsPositions[optionId];
         toast("Option SELL", lots + 'L ' + stock.ticker + ' ' + optType + ' ' + strike + ' ' + expiryType + ' @ ' + fmtPrice(stock, premium), 'error');
@@ -2271,6 +2302,9 @@ function renderTopBar() {
     document.getElementById('portfolio-value').textContent = fmtCur(calcPortfolioValue());
     var pendingCountEl = document.getElementById('pending-count');
     if (pendingCountEl) pendingCountEl.textContent = state.pendingOrders.length;
+    
+    var brokerageEl = document.getElementById('brokerage-paid');
+    if (brokerageEl) brokerageEl.textContent = fmtCur(state.totalBrokerage || 0);
 }
 
 function renderWatchlist() {
@@ -3118,6 +3152,10 @@ function liquidateAllForced() {
         } else {
             state.margin += price * absQty * fxRate;
         }
+        
+        var brokerage = price * absQty * fxRate * 0.001;
+        state.margin -= brokerage;
+        state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
 
         state.tradeHistory.unshift({
             time: formatTime(state.time),
@@ -3144,7 +3182,10 @@ function liquidateAllForced() {
         var remainingDays = pos.daysToExpiry - getDayFraction();
         var curPrem = calcPremium(pos.type, pos.strike, stock.ltp, remainingDays);
         var totalQty = pos.lots * pos.lotSize;
-        state.margin += curPrem * totalQty * fxRate;
+        var valueINR = curPrem * totalQty * fxRate;
+        var brokerage = valueINR * 0.001;
+        state.margin += (valueINR - brokerage);
+        state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
 
         state.tradeHistory.unshift({
             time: formatTime(state.time),
