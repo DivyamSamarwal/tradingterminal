@@ -235,6 +235,11 @@ var marketStocks = [
     mkStock("LONGI",   "LONGi Green Energy",         18,  0.0040, "Solar",      "SSE",    "CNY"),
     mkStock("SAIC",    "SAIC Motor Corp.",           22,  0.0028, "Auto",       "SSE",    "CNY"),
     mkStock("CITICS",  "CITIC Securities",           28,  0.0025, "Finance",    "SSE",    "CNY"),
+    mkStock("SINOPEC", "Sinopec Corp.",             6.5,  0.0018, "Energy",     "SSE",    "CNY"),
+    mkStock("AGBANK",  "Agricultural Bank",         4.5,  0.0015, "Banking",    "SSE",    "CNY"),
+    mkStock("CHINALIFE","China Life Insurance",      45,  0.0020, "Insurance",  "SSE",    "CNY"),
+    mkStock("ZTE",     "ZTE Corporation",            35,  0.0035, "Telecom",    "SSE",    "CNY"),
+    mkStock("BAOSTEEL","Baoshan Iron & Steel",      6.8,  0.0022, "Steel",      "SSE",    "CNY"),
     // ── TSE (Japan) ──  (JPY)
     mkStock("TOYOTA",  "Toyota Motor Corp.",      2755, 0.0018, "Auto",       "TSE",    "JPY"),
     mkStock("SONY",    "Sony Group Corp.",        2850, 0.0025, "Consumer",   "TSE",    "JPY"),
@@ -246,6 +251,11 @@ var marketStocks = [
     mkStock("KEYENCE", "Keyence Corp.",           63000, 0.0018, "Automation", "TSE",    "JPY"),
     mkStock("DAIKIN",  "Daikin Industries",       22500, 0.0022, "HVAC",       "TSE",    "JPY"),
     mkStock("CANON7751","Canon Inc.",              4250, 0.0020, "Tech",       "TSE",    "JPY"),
+    mkStock("NISSAN",  "Nissan Motor Co.",          650, 0.0025, "Auto",       "TSE",    "JPY"),
+    mkStock("PANASONIC","Panasonic Holdings",      1450, 0.0022, "Electronics","TSE",    "JPY"),
+    mkStock("HITACHI", "Hitachi Ltd.",            13500, 0.0020, "Industrial", "TSE",    "JPY"),
+    mkStock("MITSUI",  "Mitsui & Co.",             7200, 0.0025, "Trading",    "TSE",    "JPY"),
+    mkStock("NIDEC",   "Nidec Corp.",              6800, 0.0030, "Components", "TSE",    "JPY"),
     // ── Commodities ──  (USD)
     mkStock("GOLD",    "Gold (USD/oz)",            5248, 0.0012, "Precious",   "COMM",   "USD"),
     mkStock("SILVER",  "Silver (USD/oz)",             93, 0.0025, "Precious",   "COMM",   "USD"),
@@ -256,7 +266,20 @@ var marketStocks = [
     mkStock("NATGAS",  "Natural Gas",                  2.5,0.0250, "Energy",     "COMM",   "USD"),
     mkStock("PLAT",    "Platinum (USD/oz)",          985, 0.0030, "Precious",   "COMM",   "USD"),
     mkStock("PALLAD",  "Palladium (USD/oz)",         950, 0.0040, "Precious",   "COMM",   "USD"),
-    mkStock("LEAD",    "Lead (USD/ton)",            2100, 0.0020, "Industrial", "COMM",   "USD")
+    mkStock("LEAD",    "Lead (USD/ton)",            2100, 0.0020, "Industrial", "COMM",   "USD"),
+    // ── Crypto ──  (USD)
+    mkStock("BTC",     "Bitcoin",                  65000, 0.0120, "Crypto",     "CRYPTO", "USD"),
+    mkStock("ETH",     "Ethereum",                  3500, 0.0150, "Crypto",     "CRYPTO", "USD"),
+    mkStock("SOL",     "Solana",                     145, 0.0250, "Crypto",     "CRYPTO", "USD"),
+    mkStock("BNB",     "Binance Coin",               580, 0.0180, "Crypto",     "CRYPTO", "USD"),
+    mkStock("XRP",     "Ripple",                    0.55, 0.0200, "Crypto",     "CRYPTO", "USD"),
+    mkStock("DOGE",    "Dogecoin",                  0.15, 0.0400, "Crypto",     "CRYPTO", "USD"),
+    // ── Forex ──
+    mkStock("EURUSD",  "EUR/USD",                   1.08, 0.0015, "Currency",   "FX",     "USD"),
+    mkStock("GBPUSD",  "GBP/USD",                   1.25, 0.0020, "Currency",   "FX",     "USD"),
+    mkStock("USDJPY",  "USD/JPY",                 155.50, 0.0025, "Currency",   "FX",     "JPY"),
+    mkStock("AUDUSD",  "AUD/USD",                   0.65, 0.0020, "Currency",   "FX",     "USD"),
+    mkStock("USDCAD",  "USD/CAD",                   1.37, 0.0018, "Currency",   "FX",     "USD")
 ];
 
 // O(1) ticker → stock reference map (references, so in-place stock mutations are always reflected)
@@ -690,7 +713,28 @@ var newsEvents = [
     { text: "Natural gas futures spike 10% on severe winter storm forecast.", impact: 0.055, target: "NATGAS", market: "COMM" },
     { text: "Platinum deficit deepens as South African power cuts hit mines.", impact: 0.032, target: "PLAT", market: "COMM" },
     { text: "Palladium slumps to 4-year low as automakers switch to platinum.", impact: -0.042, target: "PALLAD", market: "COMM" },
-    { text: "Lead batteries recycling rate hits new highs, pressuring primary lead prices.", impact: -0.015, target: "LEAD", market: "COMM" },,
+    { text: "Lead batteries recycling rate hits new highs, pressuring primary lead prices.", impact: -0.015, target: "LEAD", market: "COMM" },
+
+    // ---- CRYPTO ----
+    { text: "SEC approves Ethereum spot ETF. Institutional inflows expected to surge.", impact: 0.060, target: "ETH", market: "CRYPTO" },
+    { text: "Bitcoin halving event completed successfully. Block reward slashed.", impact: 0.045, target: "BTC", market: "CRYPTO" },
+    { text: "Solana network suffers 4-hour outage. Price dumps on stability concerns.", impact: -0.080, target: "SOL", market: "CRYPTO" },
+    { text: "Major US bank announces Bitcoin custody services for high-net-worth clients.", impact: 0.035, target: "BTC", market: "CRYPTO" },
+    { text: "Binance reaches settlement with US DOJ. Regulatory overhang cleared.", impact: 0.050, target: "BNB", market: "CRYPTO" },
+    { text: "Ripple wins major court ruling against SEC. XRP labeled not a security.", impact: 0.120, target: "XRP", market: "CRYPTO" },
+    { text: "Elon Musk tweets picture of his dog. Dogecoin rallies instantly.", impact: 0.090, target: "DOGE", market: "CRYPTO" },
+    { text: "US Government transfers 10,000 seized BTC to Coinbase. Massive dump expected.", impact: -0.050, target: "BTC", market: "CRYPTO" },
+    { text: "Crypto exchange hacked for $500M. Sector-wide panic selling.", impact: -0.040, target: "ALL_CRYPTO", market: "CRYPTO" },
+    { text: "Global crypto adoption hits 10% milestone. Strong retail buying.", impact: 0.030, target: "ALL_CRYPTO", market: "CRYPTO" },
+
+    // ---- FOREX ----
+    { text: "ECB cuts interest rates by 25bps. Euro weakens against the Dollar.", impact: -0.008, target: "EURUSD", market: "FX" },
+    { text: "Bank of England unexpectedly raises rates to fight inflation. Pound surges.", impact: 0.012, target: "GBPUSD", market: "FX" },
+    { text: "Bank of Japan intervenes in FX market. Massive yen buying seen.", impact: -0.020, target: "USDJPY", market: "FX" },
+    { text: "US Non-Farm Payrolls crush expectations. Dollar rallies across the board.", impact: -0.006, target: "EURUSD", market: "FX" },
+    { text: "US Non-Farm Payrolls crush expectations. Dollar rallies across the board.", impact: 0.010, target: "USDJPY", market: "FX" },
+    { text: "Australia reports record trade surplus on commodity exports. AUD gains.", impact: 0.008, target: "AUDUSD", market: "FX" },
+    { text: "Bank of Canada pauses rate hikes. Canadian Dollar drops.", impact: 0.005, target: "USDCAD", market: "FX" },
 
     // ---- NASDAQ — AMD ----
     { text: "AMD MI300X AI accelerator ships to 12 new hyperscaler clients. Data center revenue doubles.", impact: 0.040, target: "AMD", market: "NASDAQ" },
@@ -737,6 +781,13 @@ var newsEvents = [
     { text: "US Treasury yield drops to 4.1%. Growth stocks re-rate higher.", impact: 0.020, target: "ALL_NASDAQ", market: "NASDAQ" },
     { text: "Tech layoffs resume: 25,000 jobs cut across 10 companies. Margin expansion.", impact: 0.015, target: "ALL_NASDAQ", market: "NASDAQ" },
 
+    { text: "SAIC Motor EV sales jump 30% in Europe.", impact: 0.022, target: "SAIC", market: "SSE" },
+    { text: "CITIC Securities reports record trading volumes in Q2.", impact: 0.025, target: "CITICS", market: "SSE" },
+    { text: "Sinopec discovers major new oil field in Tarim Basin.", impact: 0.035, target: "SINOPEC", market: "SSE" },
+    { text: "Agricultural Bank of China expands rural lending by 15%.", impact: 0.018, target: "AGBANK", market: "SSE" },
+    { text: "China Life Insurance premium income hits all-time high.", impact: 0.020, target: "CHINALIFE", market: "SSE" },
+    { text: "ZTE wins massive 5G infrastructure contract in Middle East.", impact: 0.040, target: "ZTE", market: "SSE" },
+    { text: "Baosteel announces aggressive carbon-neutral transition plan.", impact: 0.015, target: "BAOSTEEL", market: "SSE" },
     // ---- SSE — BYD ----
     { text: "BYD monthly EV sales hit 500,000 units for first time. Global No.1 title defended.", impact: 0.040, target: "BYD", market: "SSE" },
     { text: "BYD launches next-gen Blade Battery 2.0: 800km range. Orders flood in.", impact: 0.035, target: "BYD", market: "SSE" },
@@ -798,6 +849,12 @@ var newsEvents = [
     { text: "Canon semiconductor lithography equipment orders surge 40% on AI chip demand.", impact: 0.030, target: "CANON7751", market: "TSE" },
     { text: "Canon mirrorless camera R6 III sells out globally. Camera segment revenue up 22%.", impact: 0.018, target: "CANON7751", market: "TSE" },
 
+    { text: "Nissan announces aggressive solid-state battery timeline for 2028.", impact: 0.035, target: "NISSAN", market: "TSE" },
+    { text: "Panasonic ramps up 4680 battery cell production for Tesla.", impact: 0.032, target: "PANASONIC", market: "TSE" },
+    { text: "Hitachi energy grid solutions see record demand from US and Europe.", impact: 0.028, target: "HITACHI", market: "TSE" },
+    { text: "Mitsui & Co. reports stellar earnings on strong commodities trading.", impact: 0.025, target: "MITSUI", market: "TSE" },
+    { text: "Nidec precision motor sales soar on data center cooling demand.", impact: 0.038, target: "NIDEC", market: "TSE" },
+
     // ---- MORE ALL_TSE ----
     { text: "Yen weakens to 155 vs USD. Japan exporters hit 12-month earnings high.", impact: 0.022, target: "ALL_TSE", market: "TSE" },
     { text: "Yen strengthens sharply to 135. Japan export stocks face earnings downgrade.", impact: -0.022, target: "ALL_TSE", market: "TSE" },
@@ -835,6 +892,8 @@ function getNewsTargets(target) {
         case "ALL_SSE":    return { stocks: marketStocks.filter(function(s) { return s.market === 'SSE'; }) };
         case "ALL_TSE":    return { stocks: marketStocks.filter(function(s) { return s.market === 'TSE'; }) };
         case "ALL_COMM":   return { stocks: marketStocks.filter(function(s) { return s.market === 'COMM'; }) };
+        case "ALL_CRYPTO": return { stocks: marketStocks.filter(function(s) { return s.market === 'CRYPTO'; }) };
+        case "ALL_FX":     return { stocks: marketStocks.filter(function(s) { return s.market === 'FX'; }) };
         default:           return { stocks: marketStocks.filter(function(s) { return s.ticker === target; }) };
     }
 }
@@ -1910,21 +1969,101 @@ function getDayFraction() {
 }
 
 function generateStrikes(ltp) {
-    var step = ltp > 5000 ? 100 : ltp > 1000 ? 50 : ltp > 200 ? 10 : 5;
+    var step;
+    if (ltp > 5000) step = 100;
+    else if (ltp > 1000) step = 50;
+    else if (ltp > 200) step = 10;
+    else if (ltp > 50) step = 5;
+    else if (ltp > 10) step = 1;
+    else if (ltp > 2) step = 0.5;
+    else if (ltp > 0.5) step = 0.1;
+    else step = 0.05;
+
     var base = Math.round(ltp / step) * step;
     var strikes = [];
-    for (var i = -5; i <= 5; i++) strikes.push(base + i * step);
+    for (var i = -5; i <= 5; i++) {
+        var s = base + i * step;
+        if (s > 0) strikes.push(parseFloat(s.toFixed(4)));
+    }
+    if (strikes.length === 0) strikes.push(parseFloat(step.toFixed(4)));
     return strikes;
 }
 
-function calcPremium(type, strike, ltp, days) {
+// Black-Scholes Math
+function stdNormPDF(x) {
+    return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+}
+
+function stdNormCDF(x) {
+    var sign = x < 0 ? -1 : 1;
+    var xAbs = Math.abs(x) / Math.sqrt(2.0);
+    var t = 1.0 / (1.0 + 0.3275911 * xAbs);
+    var erf = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-xAbs * xAbs);
+    return 0.5 * (1.0 + sign * erf);
+}
+
+function calcGreeks(type, strike, ltp, days) {
     if (days === undefined) days = getExpiryDays() - getDayFraction();
+    var T = Math.max(0.001, days) / 252.0; // Time in years
+    var r = 0.05; // 5% Risk-free rate
+    var sigma = 0.25; // 25% Volatility
+
+    var d1 = (Math.log(ltp / strike) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+    var d2 = d1 - sigma * Math.sqrt(T);
+
+    var callPrice = ltp * stdNormCDF(d1) - strike * Math.exp(-r * T) * stdNormCDF(d2);
+    var putPrice = strike * Math.exp(-r * T) * stdNormCDF(-d2) - ltp * stdNormCDF(-d1);
+
+    var delta = type === 'CALL' ? stdNormCDF(d1) : stdNormCDF(d1) - 1;
+    var gamma = stdNormPDF(d1) / (ltp * sigma * Math.sqrt(T));
+    var vega = ltp * stdNormPDF(d1) * Math.sqrt(T) / 100.0; // per 1% change
+
+    var thetaCall = -(ltp * sigma * stdNormPDF(d1)) / (2 * Math.sqrt(T)) - r * strike * Math.exp(-r * T) * stdNormCDF(d2);
+    var thetaPut = -(ltp * sigma * stdNormPDF(d1)) / (2 * Math.sqrt(T)) + r * strike * Math.exp(-r * T) * stdNormCDF(-d2);
+    var theta = type === 'CALL' ? thetaCall / 252.0 : thetaPut / 252.0; // daily theta
+
+    var price = type === 'CALL' ? callPrice : putPrice;
+    
+    // Ensure it never drops below intrinsic value due to numerical instability
     var intrinsic = type === 'CALL' ? Math.max(0, ltp - strike) : Math.max(0, strike - ltp);
-    // Gaussian moneyness-based extrinsic value decay
-    var distance = Math.abs(ltp - strike) / ltp;
-    var timeValScale = Math.exp(- (distance * distance) / (2 * 0.08 * 0.08));
-    var timeVal = Math.sqrt(Math.max(0.001, days) / 252) * ltp * 0.20 * timeValScale;
-    return Math.max(0.5, intrinsic + timeVal);
+    price = Math.max(price, intrinsic);
+
+    return { price: price, delta: delta, gamma: gamma, theta: theta, vega: vega };
+}
+
+function calcPremium(type, strike, ltp, days) {
+    return calcGreeks(type, strike, ltp, days).price;
+}
+
+function updateGreeksUI(greeks) {
+    var dEl = document.getElementById('g-delta');
+    var gEl = document.getElementById('g-gamma');
+    var tEl = document.getElementById('g-theta');
+    var vEl = document.getElementById('g-vega');
+    if (!dEl) return;
+    
+    var flash = function(el, val, oldVal) {
+        if (Math.abs(val - oldVal) < 0.0001) return;
+        el.classList.remove('flash-up', 'flash-dn');
+        void el.offsetWidth;
+        el.classList.add(val > oldVal ? 'flash-up' : 'flash-dn');
+        setTimeout(function() { el.classList.remove('flash-up', 'flash-dn'); }, 200);
+    };
+
+    var oldD = parseFloat(dEl.textContent) || 0;
+    var oldG = parseFloat(gEl.textContent) || 0;
+    var oldT = parseFloat(tEl.textContent) || 0;
+    var oldV = parseFloat(vEl.textContent) || 0;
+
+    dEl.textContent = greeks.delta.toFixed(3);
+    gEl.textContent = greeks.gamma.toFixed(4);
+    tEl.textContent = greeks.theta.toFixed(3);
+    vEl.textContent = greeks.vega.toFixed(3);
+
+    flash(dEl, greeks.delta, oldD);
+    flash(gEl, greeks.gamma, oldG);
+    flash(tEl, greeks.theta, oldT);
+    flash(vEl, greeks.vega, oldV);
 }
 
 function updateStrikesAndPremium() {
@@ -1935,16 +2074,28 @@ function updateStrikesAndPremium() {
     var optType = document.getElementById('option-type').value;
     var days = getExpiryDays() - getDayFraction();
 
+    var currentVal = sel.value;
     sel.innerHTML = '';
+    var selectedGreeks = null;
+
     strikes.forEach(function(s) {
-        var prem = calcPremium(optType, s, stock.ltp, days);
+        var greeks = calcGreeks(optType, s, stock.ltp, days);
         var opt = document.createElement('option');
         opt.value = s;
-        opt.textContent = s + ' (' + fmtPrice(stock, prem) + ')';
+        opt.textContent = s + ' (' + fmtPrice(stock, greeks.price) + ')';
         sel.appendChild(opt);
+        if (currentVal && parseFloat(currentVal) === s) selectedGreeks = greeks;
     });
+
     var atm = strikes.find(function(s) { return s >= stock.ltp; }) || strikes[5];
-    sel.value = atm;
+    if (!currentVal || strikes.indexOf(parseFloat(currentVal)) === -1) {
+        sel.value = atm;
+        selectedGreeks = calcGreeks(optType, atm, stock.ltp, days);
+    } else {
+        sel.value = currentVal;
+    }
+    
+    if (selectedGreeks) updateGreeksUI(selectedGreeks);
     updateOptionMargin();
 }
 
@@ -2050,6 +2201,7 @@ function renderAll() {
         renderWatchlist();
         renderActiveStock();
         renderPositionsTable();
+        if (state.activeTab === 'options') updateStrikesAndPremium();
         if (state.activeBottomTab === 'options') renderOptionsTable();
         if (state.activeBottomTab === 'pending') renderPendingTable();
         if (state.activeBottomTab === 'history') renderHistoryTable();
@@ -3309,15 +3461,17 @@ function renderFxRates() {
 }
 
 function fmtPrice(stock, value) {
+    if (value === undefined || value === null || isNaN(value)) return value;
+    var fraction = (stock && stock.ltp < 10) ? 4 : 2;
     if (!stock || stock.currency === 'INR')
-        return '\u20b9' + value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return '\u20b9' + value.toLocaleString('en-IN', { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
     if (stock.currency === 'USD')
-        return '$' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return '$' + value.toLocaleString('en-US', { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
     if (stock.currency === 'CNY')
-        return '\u00a5' + value.toFixed(2);
+        return '\u00a5' + value.toFixed(fraction);
     if (stock.currency === 'JPY')
-        return '\u00a5' + value.toFixed(0);
-    return value.toFixed(2);
+        return '\u00a5' + (stock.ltp < 10 ? value.toFixed(2) : value.toFixed(0));
+    return value.toFixed(fraction);
 }
 
 function formatTime(mins) {

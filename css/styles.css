@@ -1008,6 +1008,43 @@ body {
     border-color: var(--border-light);
 }
 
+.of-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 15px; }
+.o-tab { flex: 1; padding: 10px; background: none; border: none; color: var(--text-dim); font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.15s; }
+.o-tab:hover { color: var(--text-bright); }
+.o-tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+
+/* ========== GREEKS BOX ========== */
+.greeks-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 10px;
+    background: var(--bg-1);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+}
+.greek-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.g-lbl {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+.g-val {
+    font-size: 11px;
+    color: var(--text-bright);
+    transition: color 0.15s;
+}
+.g-val.flash-up { color: var(--green); }
+.g-val.flash-dn { color: var(--red); }
+
+/* ========== PRESETS & BUTTONS ========== */
+
 /* ========== SENTIMENT INDICATOR ========== */
 #market-sentiment {
     display: flex;
@@ -1185,6 +1222,8 @@ body {
 .wlm-sse    { background: rgba(255,82,82,0.2);  color: #ff8080; border: 1px solid rgba(255,82,82,0.4); }
 .wlm-tse    { background: rgba(255,145,0,0.2);  color: #ffc46e; border: 1px solid rgba(255,145,0,0.4); }
 .wlm-comm   { background: rgba(255,214,0,0.2);  color: #ffd600; border: 1px solid rgba(255,214,0,0.4); }
+.wlm-crypto { background: rgba(247,147,26,0.2); color: #f7931a; border: 1px solid rgba(247,147,26,0.4); }
+.wlm-fx     { background: rgba(0,229,255,0.2);  color: #00e5ff; border: 1px solid rgba(0,229,255,0.4); }
 
 /* ========== NEWS MARKET FILTER ========== */
 .news-market-filters {
@@ -1213,7 +1252,7 @@ body {
 }
 .news-mf-btn:hover { border-color: var(--accent); color: var(--accent); }
 .news-mf-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.nmf-nasdaq, .nmf-sse, .nmf-tse, .nmf-comm { cursor: pointer; }
+.nmf-nasdaq, .nmf-sse, .nmf-tse, .nmf-comm, .nmf-crypto, .nmf-fx { cursor: pointer; }
 .nmf-war.active {
     background: var(--orange);
     border-color: var(--orange);
@@ -1240,6 +1279,8 @@ body {
 .nmb-sse    { background: rgba(255,82,82,0.15);   color: #ff8080; border: 1px solid rgba(255,82,82,0.35); }
 .nmb-tse    { background: rgba(255,145,0,0.15);   color: #ffc46e; border: 1px solid rgba(255,145,0,0.35); }
 .nmb-comm   { background: rgba(255,214,0,0.15);   color: #ffd600; border: 1px solid rgba(255,214,0,0.35); }
+.nmb-crypto { background: rgba(247,147,26,0.15);  color: #f7931a; border: 1px solid rgba(247,147,26,0.35); }
+.nmb-fx     { background: rgba(0,229,255,0.15);   color: #00e5ff; border: 1px solid rgba(0,229,255,0.35); }
 .nmb-war    { background: rgba(255,62,0,0.20);    color: #ff6e40; border: 1px solid rgba(255,62,0,0.45); }
 .news-item .news-mkt-badge { margin-right: 2px; }
 
@@ -1248,11 +1289,15 @@ body.light .wlm-nasdaq { background: rgba(41,98,255,0.1); color: #2962ff; }
 body.light .wlm-sse    { background: rgba(213,0,50,0.1);  color: #c62828; }
 body.light .wlm-tse    { background: rgba(245,124,0,0.1); color: #e65100; }
 body.light .wlm-comm   { background: rgba(245,177,0,0.1); color: #f57f17; }
+body.light .wlm-crypto { background: rgba(247,147,26,0.1); color: #d67a00; }
+body.light .wlm-fx     { background: rgba(0,184,212,0.1); color: #0097a7; }
 body.light .nmb-nse    { color: #00a846; }
 body.light .nmb-nasdaq { color: #2962ff; }
 body.light .nmb-sse    { color: #c62828; }
 body.light .nmb-tse    { color: #e65100; }
 body.light .nmb-comm   { color: #f57f17; }
+body.light .nmb-crypto { color: #d67a00; }
+body.light .nmb-fx     { color: #0097a7; }
 /* ========== MARKET DEPTH (L2) ========== */
 .l2-depth {
     background: var(--bg-2);

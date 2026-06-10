@@ -89,6 +89,8 @@
                     <button class="wl-mf-btn" data-market="SSE">SSE</button>
                     <button class="wl-mf-btn" data-market="TSE">TSE</button>
                     <button class="wl-mf-btn" data-market="COMM">Comm</button>
+                    <button class="wl-mf-btn" data-market="CRYPTO">Crypto</button>
+                    <button class="wl-mf-btn" data-market="FX">FX</button>
                 </div>
                 <div class="wl-head">
                     <span class="wl-h-sym">Symbol</span>
@@ -150,6 +152,8 @@
                         <button class="news-mf-btn nmf-sse" data-market="SSE">SSE</button>
                         <button class="news-mf-btn nmf-tse" data-market="TSE">TSE</button>
                         <button class="news-mf-btn nmf-comm" data-market="COMM">Comm</button>
+                        <button class="news-mf-btn nmf-crypto" data-market="CRYPTO"><i class="fa-brands fa-bitcoin"></i> Crypto</button>
+                        <button class="news-mf-btn nmf-fx" data-market="FX">FX</button>
                         <button class="news-mf-btn nmf-war" data-market="WAR"><i class="fa-solid fa-triangle-exclamation"></i> War</button>
                     </div>
                     <div class="news-body" id="news-container">
@@ -285,6 +289,24 @@
                     </div>
                     <div class="order-meta">
                         <span>Total Qty</span><span class="mono" id="total-qty">0</span>
+                    </div>
+                    <div class="greeks-box" id="opt-greeks">
+                        <div class="greek-item">
+                            <span class="g-lbl">&Delta; Delta</span>
+                            <span class="g-val mono" id="g-delta">0.000</span>
+                        </div>
+                        <div class="greek-item">
+                            <span class="g-lbl">&Gamma; Gamma</span>
+                            <span class="g-val mono" id="g-gamma">0.000</span>
+                        </div>
+                        <div class="greek-item">
+                            <span class="g-lbl">&Theta; Theta</span>
+                            <span class="g-val mono" id="g-theta">0.000</span>
+                        </div>
+                        <div class="greek-item">
+                            <span class="g-lbl">&nu; Vega</span>
+                            <span class="g-val mono" id="g-vega">0.000</span>
+                        </div>
                     </div>
                     <div class="order-meta border-top">
                         <span>Req Margin</span><span class="mono" id="req-margin-opt">₹ 0.00</span>
