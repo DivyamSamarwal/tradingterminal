@@ -13,7 +13,7 @@ var VOL_MULTIPLIER = 1;         // volatility multiplier
 var CIRCUIT_LIMIT = 0.10;       // 10% upper/lower circuit
 
 // Currency exchange rates: 1 unit of foreign currency = X INR  (Feb 28, 2026)
-var EXCHANGE_RATES = { INR: 1, USD: 91.03, CNY: 13.28, JPY: 0.583 };
+var EXCHANGE_RATES = { INR: 1, USD: 91.03, CNY: 13.28, JPY: 0.583, HKD: 11.67 };
 
 var TIMEFRAMES = [
     { label: '5M',   viewLen: 5,    candlePeriod: 1   },
@@ -154,6 +154,17 @@ function mkStock(ticker, name, ltp, vol, sector, market, currency) {
 }
 
 var marketStocks = [
+    // ── Indices ──
+    mkStock("NIFTY 50",   "Nifty 50 Index",            22500, 0.0008, "Index", "INDEX", "INR"),
+    mkStock("SENSEX",     "BSE Sensex",                74500, 0.0008, "Index", "INDEX", "INR"),
+    mkStock("BANKNIFTY",  "Nifty Bank Index",          47800, 0.0012, "Index", "INDEX", "INR"),
+    mkStock("FINNIFTY",   "Nifty Financial Services",  21200, 0.0012, "Index", "INDEX", "INR"),
+    mkStock("SPX500",     "S&P 500 Index",             5100,  0.0009, "Index", "INDEX", "USD"),
+    mkStock("NDX100",     "NASDAQ 100 Index",          18000, 0.0013, "Index", "INDEX", "USD"),
+    mkStock("DJIA",       "Dow Jones Industrial",      39000, 0.0007, "Index", "INDEX", "USD"),
+    mkStock("NIKKEI225",  "Nikkei 225",                39200, 0.0011, "Index", "INDEX", "JPY"),
+    mkStock("SHCOMP",     "Shanghai Composite",        3050,  0.0010, "Index", "INDEX", "CNY"),
+    mkStock("HSI",        "Hang Seng Index",           16500, 0.0014, "Index", "INDEX", "HKD"),
     // ── Banking & Finance ──  (prices: Feb 28, 2026)
     mkStock("HDFCBANK",   "HDFC Bank Ltd",            1755, 0.0020, "Banking"),
     mkStock("SBIN",       "State Bank of India",       715,  0.0030, "Banking"),
@@ -279,7 +290,10 @@ var marketStocks = [
     mkStock("GBPUSD",  "GBP/USD",                   1.25, 0.0020, "Currency",   "FX",     "USD"),
     mkStock("USDJPY",  "USD/JPY",                 155.50, 0.0025, "Currency",   "FX",     "JPY"),
     mkStock("AUDUSD",  "AUD/USD",                   0.65, 0.0020, "Currency",   "FX",     "USD"),
-    mkStock("USDCAD",  "USD/CAD",                   1.37, 0.0018, "Currency",   "FX",     "USD")
+    mkStock("USDCAD",  "USD/CAD",                   1.37, 0.0018, "Currency",   "FX",     "USD"),
+    mkStock("USDINR",  "USD/INR",                  91.03, 0.0015, "Currency",   "FX",     "INR"),
+    mkStock("CNYINR",  "CNY/INR",                  13.28, 0.0020, "Currency",   "FX",     "INR"),
+    mkStock("JPYINR",  "JPY/INR",                  0.583, 0.0025, "Currency",   "FX",     "INR")
 ];
 
 // O(1) ticker → stock reference map (references, so in-place stock mutations are always reflected)
@@ -1540,11 +1554,10 @@ function tickMinute() {
         }
     });
 
-    // Forex Fluctuation (±0.05% every tick)
-    EXCHANGE_RATES.USD *= (1 + (Math.random() - 0.5) * 0.001);
-    EXCHANGE_RATES.CNY *= (1 + (Math.random() - 0.5) * 0.001);
-    EXCHANGE_RATES.JPY *= (1 + (Math.random() - 0.5) * 0.001);
-    renderFxRates();
+    // Forex Sync
+    if (stockMap["USDINR"]) EXCHANGE_RATES.USD = stockMap["USDINR"].ltp;
+    if (stockMap["CNYINR"]) EXCHANGE_RATES.CNY = stockMap["CNYINR"].ltp;
+    if (stockMap["JPYINR"]) EXCHANGE_RATES.JPY = stockMap["JPYINR"].ltp;
 
     // Margin Check Loop
     if (state.margin < 0) {
@@ -2253,17 +2266,21 @@ function renderTopBar() {
     document.getElementById('day-counter').textContent = 'Day ' + state.day;
 
     // NIFTY
-    var niftyChg = state.niftyValue - state.niftyBase;
-    var niftyEl = document.getElementById('nifty-value');
-    niftyEl.textContent = state.niftyValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    niftyEl.className = 'stat-val mono ' + (niftyChg >= 0 ? 'up' : 'dn');
+    var niftyStock = marketStocks.find(s => s.ticker === 'NIFTY 50');
+    if (niftyStock) {
+        var niftyChg = niftyStock.ltp - niftyStock.base;
+        var niftyEl = document.getElementById('nifty-value');
+        niftyEl.textContent = niftyStock.ltp.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        niftyEl.className = 'stat-val ' + (niftyChg >= 0 ? 'up' : 'dn');
+    }
 
     // SENSEX
+    var sensexStock = marketStocks.find(s => s.ticker === 'SENSEX');
     var sensexEl = document.getElementById('sensex-value');
-    if (sensexEl) {
-        var sensexChg = state.sensexValue - state.sensexBase;
-        sensexEl.textContent = state.sensexValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        sensexEl.className = 'stat-val mono ' + (sensexChg >= 0 ? 'up' : 'dn');
+    if (sensexStock && sensexEl) {
+        var sensexChg = sensexStock.ltp - sensexStock.base;
+        sensexEl.textContent = sensexStock.ltp.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        sensexEl.className = 'stat-val ' + (sensexChg >= 0 ? 'up' : 'dn');
     }
 
     // Sentiment
@@ -2291,15 +2308,22 @@ function renderTopBar() {
         sentClass = '';
     }
     sentEl.innerHTML = '<i class="' + sentIcon + '"></i>' + sentText;
-    sentEl.className = 'stat-val mono ' + sentClass;
+    sentEl.className = 'stat-val ' + sentClass;
 
     // PnL
     var pnl = calcTotalPNL();
     var elPnl = document.getElementById('total-pnl');
-    elPnl.textContent = fmtCur(pnl);
-    elPnl.className = 'stat-val mono ' + (pnl > 0 ? 'up' : pnl < 0 ? 'dn' : '');
+    if (elPnl) {
+        elPnl.textContent = fmtCur(pnl);
+        elPnl.className = 'stat-val ' + (pnl > 0 ? 'up' : pnl < 0 ? 'dn' : '');
+    }
 
-    document.getElementById('portfolio-value').textContent = fmtCur(calcPortfolioValue());
+    var portValEl = document.getElementById('portfolio-value');
+    if (portValEl) portValEl.textContent = fmtCur(calcPortfolioValue());
+
+    var cashBalEl = document.getElementById('cash-balance');
+    if (cashBalEl) cashBalEl.textContent = fmtCur(state.margin);
+
     var pendingCountEl = document.getElementById('pending-count');
     if (pendingCountEl) pendingCountEl.textContent = state.pendingOrders.length;
     
@@ -2377,14 +2401,25 @@ function renderWatchlist() {
             var chgEl = document.createElement('span');
             chgEl.className = 'wl-chg';
 
+            var sparkEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            sparkEl.setAttribute("class", "wl-spark");
+            sparkEl.setAttribute("viewBox", "0 0 100 30");
+            sparkEl.setAttribute("preserveAspectRatio", "none");
+            var polyEl = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+            polyEl.setAttribute("fill", "none");
+            polyEl.setAttribute("stroke-width", "2.5");
+            polyEl.setAttribute("stroke-linejoin", "round");
+            sparkEl.appendChild(polyEl);
+
             row.appendChild(left);
+            row.appendChild(sparkEl);
             row.appendChild(ltpEl);
             row.appendChild(chgEl);
             row.addEventListener('click', (function(stock) {
                 return function() { selectStock(stock); };
             })(s));
 
-            _wlCache[s.ticker] = { row: row, ltpEl: ltpEl, chgEl: chgEl, barFill: barFill, circuitEl: circuitEl };
+            _wlCache[s.ticker] = { row: row, ltpEl: ltpEl, chgEl: chgEl, barFill: barFill, circuitEl: circuitEl, polyEl: polyEl };
             frag.appendChild(row);
         });
         list.innerHTML = '';
@@ -2417,6 +2452,26 @@ function renderWatchlist() {
 
         var volPct = Math.min(100, (s.volume / maxVol) * 100).toFixed(1) + '%';
         if (c.barFill.style.width !== volPct) c.barFill.style.width = volPct;
+
+        if (s.history && s.history.length > 1) {
+            var slice = s.history.slice(-30);
+            var minP = Math.min.apply(null, slice);
+            var maxP = Math.max.apply(null, slice);
+            var range = maxP - minP || 1;
+            var pts = '';
+            for (var i = 0; i < slice.length; i++) {
+                var x = (i / (slice.length - 1)) * 100;
+                var y = 28 - ((slice[i] - minP) / range) * 26;
+                pts += x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+            }
+            if (c.polyEl.getAttribute('points') !== pts) {
+                c.polyEl.setAttribute('points', pts);
+                var strokeColor = dayChange >= 0 ? 'var(--green)' : 'var(--red)';
+                if (c.polyEl.getAttribute('stroke') !== strokeColor) {
+                    c.polyEl.setAttribute('stroke', strokeColor);
+                }
+            }
+        }
 
         if (s.circuitHit) {
             var cbCls = 'circuit-badge ' + (s.circuitHit === 'UC' ? 'uc' : 'lc');
@@ -2456,24 +2511,26 @@ function renderActiveStock() {
 
     var elPrice = document.getElementById('active-price');
     elPrice.textContent = fmtPrice(stock, stock.ltp);
-    elPrice.className = 'ct-price mono ' + (isUp ? 'up' : 'dn');
+    elPrice.className = 'ct-price ' + (isUp ? 'up' : 'dn');
 
     var elChg = document.getElementById('active-change');
     var volStr = ' | Vol: ' + formatVolume(stock.volume);
     var circuitStr = stock.circuitHit ? ' | ' + stock.circuitHit : '';
     elChg.textContent = (isUp ? '+' : '') + dayChg.toFixed(2) + ' (' + dayPct.toFixed(2) + '%)' + volStr + circuitStr;
-    elChg.className = 'ct-change mono ' + (isUp ? 'up' : 'dn');
+    elChg.className = 'ct-change ' + (isUp ? 'up' : 'dn');
 
     var elPrev = document.getElementById('active-prev-close');
     if (elPrev) {
         if (stock.prevClose) {
             var chgFromPrev = stock.ltp - stock.prevClose;
             var pctFromPrev = (chgFromPrev / stock.prevClose * 100);
-            elPrev.textContent = 'Prev Close: ' + fmtPrice(stock, stock.prevClose) +
-                '  (' + (chgFromPrev >= 0 ? '+' : '') + pctFromPrev.toFixed(2) + '% from prev)';
-            elPrev.className = 'ct-prev-close mono ' + (chgFromPrev >= 0 ? 'up' : 'dn');
+            var colorClass = chgFromPrev >= 0 ? 'up' : 'dn';
+            var sign = chgFromPrev >= 0 ? '+' : '';
+            elPrev.innerHTML = 'Prev Close: ' + fmtPrice(stock, stock.prevClose) +
+                ' &nbsp;<span class="' + colorClass + '">' + sign + pctFromPrev.toFixed(2) + '%</span>';
+            elPrev.className = 'ct-prev-close';
         } else {
-            elPrev.textContent = '';
+            elPrev.innerHTML = '';
         }
     }
 
@@ -2509,17 +2566,30 @@ function renderMarketDepth(stock) {
     var askHTML = '';
     var totalBidQty = 0;
     var totalAskQty = 0;
+    var bids = [];
+    var asks = [];
+    var maxQty = 0;
 
     for (var i = 0; i < 5; i++) {
-        var bidPrice = stock.ltp - (i + 1) * step;
         var bidQty = getQty(i, true);
-        totalBidQty += bidQty;
-        bidHTML += '<div class="l2-row"><span class="up mono">' + bidPrice.toFixed(decimals) + '</span><span class="mono">' + bidQty + '</span></div>';
-
-        var askPrice = stock.ltp + (i + 1) * step;
         var askQty = getQty(i, false);
+        bids.push({ p: stock.ltp - (i + 1) * step, q: bidQty });
+        asks.push({ p: stock.ltp + (i + 1) * step, q: askQty });
+        totalBidQty += bidQty;
         totalAskQty += askQty;
-        askHTML += '<div class="l2-row"><span class="dn mono">' + askPrice.toFixed(decimals) + '</span><span class="mono">' + askQty + '</span></div>';
+        if (bidQty > maxQty) maxQty = bidQty;
+        if (askQty > maxQty) maxQty = askQty;
+    }
+
+    for (var i = 0; i < 5; i++) {
+        var bid = bids[i];
+        var ask = asks[i];
+        var bidW = (bid.q / maxQty) * 100;
+        var askW = (ask.q / maxQty) * 100;
+
+        bidHTML += '<div class="l2-row" onclick="setLimitPrice(' + bid.p + ')" style="position:relative; padding:2px 4px;"><div style="position:absolute; right:0; top:1px; bottom:1px; width:' + bidW + '%; background:var(--green-dim); z-index:0; border-radius:2px;"></div><span class="up mono" style="z-index:1">' + bid.p.toFixed(decimals) + '</span><span class="mono" style="z-index:1">' + bid.q + '</span></div>';
+        
+        askHTML += '<div class="l2-row" onclick="setLimitPrice(' + ask.p + ')" style="position:relative; padding:2px 4px;"><div style="position:absolute; left:0; top:1px; bottom:1px; width:' + askW + '%; background:var(--red-dim); z-index:0; border-radius:2px;"></div><span class="dn mono" style="z-index:1">' + ask.p.toFixed(decimals) + '</span><span class="mono" style="z-index:1">' + ask.q + '</span></div>';
     }
 
     bidsContainer.innerHTML = bidHTML;
@@ -2539,6 +2609,26 @@ function renderMarketDepth(stock) {
     if (bidPctEl) bidPctEl.textContent = Math.round(bidPct) + '%';
     if (askPctEl) askPctEl.textContent = Math.round(askPct) + '%';
 }
+
+window.setLimitPrice = function(price) {
+    var orderTypeEl = document.getElementById('order-type');
+    var limitPriceGroup = document.getElementById('limit-price-group');
+    var limitPriceInput = document.getElementById('order-limit-price');
+    if (orderTypeEl && limitPriceGroup && limitPriceInput) {
+        orderTypeEl.value = 'LIMIT';
+        limitPriceGroup.classList.remove('hidden');
+        var decimals = (state.activeStock && state.activeStock.currency === 'JPY') ? 0 : 2;
+        limitPriceInput.value = price.toFixed(decimals);
+        
+        limitPriceInput.style.transition = 'background 0.3s';
+        limitPriceInput.style.backgroundColor = 'var(--accent)';
+        limitPriceInput.style.color = '#fff';
+        setTimeout(function() {
+            limitPriceInput.style.backgroundColor = '';
+            limitPriceInput.style.color = '';
+        }, 200);
+    }
+};
 
 function formatVolume(v) {
     if (v >= 10000000) return (v / 10000000).toFixed(2) + 'Cr';
@@ -2719,7 +2809,7 @@ function _applyChartData(stock, isLight) {
         ds.borderColor            = lineColor;
         ds.pointHoverBackgroundColor = lineColor;
         ds.fill                   = true;
-        ds.tension                = lineSlice.length > 60 ? 0 : 0.3;
+        ds.tension                = 0.15;
         ds.pointHoverRadius       = 4;
         chartInstance._ohlc       = null;
         chartInstance._volumes    = null; // no volume overlay on line chart (volumeHistory is live-only and misaligns with pre-history)
@@ -2954,12 +3044,16 @@ function renderChart(stock) {
                     enabled: true,
                     mode: 'index',
                     intersect: false,
+                    backgroundColor: 'rgba(10, 10, 20, 0.75)',
+                    titleColor: '#FFFFFF',
+                    bodyColor: '#D0D2D9',
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
                     borderWidth: 1,
                     padding: 12,
                     displayColors: false,
                     filter: function(item) { return item.datasetIndex === 0; },
-                    titleFont: { family: 'JetBrains Mono', size: 11, weight: '700' },
-                    bodyFont: { family: 'JetBrains Mono', size: 11 },
+                    titleFont: { family: 'Outfit', size: 11, weight: '700' },
+                    bodyFont: { family: 'Outfit', size: 11 },
                     callbacks: {}
                 }
             },
@@ -2979,11 +3073,11 @@ function renderChart(stock) {
                     position: 'right',
                     grid: {
                         drawBorder: false,
-                        color: 'rgba(255,255,255,0.04)',
+                        color: 'rgba(255,255,255,0.015)',
                         lineWidth: 1
                     },
                     ticks: {
-                        font: { family: 'JetBrains Mono', size: 10 },
+                        font: { family: 'Outfit', size: 10 },
                         padding: 10,
                         maxTicksLimit: 12,
                         callback: function(v) {
@@ -3496,14 +3590,6 @@ function calcPortfolioValue() {
     return state.margin + calcEquityValue() + calcOptionsValue();
 }
 
-function renderFxRates() {
-    var usdEl = document.getElementById('fx-usd');
-    var cnyEl = document.getElementById('fx-cny');
-    var jpyEl = document.getElementById('fx-jpy');
-    if (usdEl) usdEl.textContent = EXCHANGE_RATES.USD.toFixed(2);
-    if (cnyEl) cnyEl.textContent = EXCHANGE_RATES.CNY.toFixed(2);
-    if (jpyEl) jpyEl.textContent = EXCHANGE_RATES.JPY.toFixed(3);
-}
 
 function fmtPrice(stock, value) {
     if (value === undefined || value === null || isNaN(value)) return value;
@@ -3516,6 +3602,8 @@ function fmtPrice(stock, value) {
         return '\u00a5' + value.toFixed(fraction);
     if (stock.currency === 'JPY')
         return '\u00a5' + (stock.ltp < 10 ? value.toFixed(2) : value.toFixed(0));
+    if (stock.currency === 'HKD')
+        return 'HK$' + value.toLocaleString('en-HK', { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
     return value.toFixed(fraction);
 }
 

@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dalal Street Terminal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <div class="aurora-bg"></div>
     <div class="app">
         <!-- Top Bar -->
         <header class="topbar">
@@ -18,26 +19,26 @@
                 <span>Dalal Street <span class="accent">Terminal</span></span>
             </div>
             <div class="topbar-stats">
-                <div class="stat"><span class="stat-label">Day</span><span class="stat-val mono" id="day-counter">Day 1</span></div>
+                <div class="stat"><span class="stat-label">Day</span><span class="stat-val" id="day-counter">Day 1</span></div>
                 <div class="stat-sep"></div>
-                <div class="stat"><span class="stat-label">NIFTY 50</span><span class="stat-val mono" id="nifty-value">22,500.00</span></div>
+                <div class="stat"><span class="stat-label">NIFTY 50</span><span class="stat-val" id="nifty-value">22,500.00</span></div>
                 <div class="stat-sep"></div>
-                <div class="stat"><span class="stat-label">SENSEX</span><span class="stat-val mono" id="sensex-value">74,500.00</span></div>
+                <div class="stat"><span class="stat-label">SENSEX</span><span class="stat-val" id="sensex-value">74,500.00</span></div>
                 <div class="stat-sep"></div>
-                <div class="stat"><span class="stat-label">Market Time</span><span class="stat-val mono" id="market-time">09:15 AM</span></div>
+                <div class="stat"><span class="stat-label">Market Time</span><span class="stat-val" id="market-time">09:15 AM</span></div>
                 <div class="stat-sep"></div>
-                <div class="stat"><span class="stat-label">Sentiment</span><span class="stat-val mono" id="market-sentiment"><i class="fa-solid fa-minus"></i> Neutral</span></div>
+                <div class="stat"><span class="stat-label">Sentiment</span><span class="stat-val" id="market-sentiment"><i class="fa-solid fa-minus"></i> Neutral</span></div>
                 <div class="stat-sep"></div>
-                <div class="stat"><span class="stat-label">Portfolio</span><span class="stat-val mono" id="portfolio-value">₹ 1,00,000.00</span></div>
+                <div class="stat"><span class="stat-label">Portfolio</span><span class="stat-val" id="portfolio-value">₹ 1,00,000.00</span></div>
                 <div class="stat-sep"></div>
                 <div class="stat clickable" id="cash-stat" title="Click to modify cash" role="button" tabindex="0" aria-label="Open cash and simulation settings">
                     <span class="stat-label">Cash <i class="fa-solid fa-pen-to-square" style="font-size:8px;opacity:0.5"></i></span>
-                    <span class="stat-val mono" id="cash-balance">₹ 1,00,000.00</span>
+                    <span class="stat-val" id="cash-balance">₹ 1,00,000.00</span>
                 </div>
                 <div class="stat-sep"></div>
-                <div class="stat"><span class="stat-label">Day P&L</span><span class="stat-val mono" id="total-pnl">₹ 0.00</span></div>
+                <div class="stat"><span class="stat-label">Day P&L</span><span class="stat-val" id="total-pnl">₹ 0.00</span></div>
                 <div class="stat-sep"></div>
-                <div class="stat"><span class="stat-label">Brokerage</span><span class="stat-val mono" id="brokerage-paid">₹ 0.00</span></div>
+                <div class="stat"><span class="stat-label">Brokerage</span><span class="stat-val" id="brokerage-paid">₹ 0.00</span></div>
             </div>
             <div class="topbar-controls">
                 <button class="ctrl-btn" id="btn-pause" title="Pause" aria-label="Pause simulation"><i class="fa-solid fa-pause"></i></button>
@@ -48,32 +49,6 @@
                 <button class="ctrl-btn" id="btn-theme" title="Toggle Light/Dark" aria-label="Toggle light or dark theme"><i class="fa-solid fa-sun"></i></button>
             </div>
         </header>
-
-        <!-- FX Rates Bar -->
-        <div class="fx-bar">
-            <span class="fx-label"><i class="fa-solid fa-arrow-right-arrow-left"></i> FX Rates (vs &#8377; INR):</span>
-            <span class="fx-item">
-                <span class="fx-cur">&#36; USD</span>
-                <span class="fx-eq">=</span>
-                <span class="fx-val mono" id="fx-usd">91.03</span>
-                <span class="fx-unit">&#8377;</span>
-            </span>
-            <span class="fx-sep"></span>
-            <span class="fx-item">
-                <span class="fx-cur">&#165; CNY</span>
-                <span class="fx-eq">=</span>
-                <span class="fx-val mono" id="fx-cny">13.28</span>
-                <span class="fx-unit">&#8377;</span>
-            </span>
-            <span class="fx-sep"></span>
-            <span class="fx-item">
-                <span class="fx-cur">&#165; JPY</span>
-                <span class="fx-eq">=</span>
-                <span class="fx-val mono" id="fx-jpy">0.58</span>
-                <span class="fx-unit">&#8377;</span>
-            </span>
-            <span class="fx-hint"><i class="fa-solid fa-circle-info"></i> Foreign market trades are auto-converted to &#8377; INR at these rates</span>
-        </div>
 
         <!-- Main Grid -->
         <div class="main-grid">
@@ -86,6 +61,7 @@
                 </div>
                 <div class="wl-market-filters">
                     <button class="wl-mf-btn active" data-market="ALL">All</button>
+                    <button class="wl-mf-btn" data-market="INDEX">Index</button>
                     <button class="wl-mf-btn" data-market="NSE">NSE</button>
                     <button class="wl-mf-btn" data-market="NASDAQ">NASDAQ</button>
                     <button class="wl-mf-btn" data-market="SSE">SSE</button>
@@ -111,6 +87,31 @@
                         <span class="ct-name" id="active-name">Reliance Industries</span>
                     </div>
                     <div class="ct-chart-type">
+                        <div class="segmented-control">
+                            <button class="chart-type-btn active" id="btn-chart-line" title="Line Chart"><i class="fa-solid fa-chart-line"></i> Line</button>
+                            <button class="chart-type-btn" id="btn-chart-candle" title="Candlestick Chart">&#8718; Candles</button>
+                        </div>
+                        <div class="segmented-control">
+                            <button class="chart-type-btn scale-btn active" id="btn-scale-linear" title="Linear price scale">Linear</button>
+                            <button class="chart-type-btn scale-btn" id="btn-scale-log" title="Logarithmic price scale">Log</button>
+                            <button class="chart-type-btn scale-btn" id="btn-scale-pct" title="% Change from view start">%Chg</button>
+                        </div>
+                        <div class="segmented-control">
+                            <button class="chart-type-btn indicator-btn" id="btn-toggle-sma" title="Toggle SMA (20)">SMA</button>
+                            <button class="chart-type-btn indicator-btn" id="btn-toggle-ema" title="Toggle EMA (20)">EMA</button>
+                        </div>
+                    </div>
+                    <div class="ct-right">
+                        <span class="ct-price" id="active-price">2500.00</span>
+                        <span class="ct-change up" id="active-change">+12.50 (0.50%)</span>
+                        <span class="ct-prev-close" id="active-prev-close">Prev Close: 2487.50 (+0.50%)</span>
+                    </div>
+                </div>
+
+                <!-- Chart -->
+                <div class="chart-container">
+                    <canvas id="main-chart" role="img" aria-label="Price chart for the selected instrument"></canvas>
+                    <div class="chart-time-selector">
                         <button class="tf-btn" id="tf-5M">5M</button>
                         <button class="tf-btn" id="tf-15M">15M</button>
                         <button class="tf-btn active" id="tf-30M">30M</button>
@@ -118,27 +119,7 @@
                         <button class="tf-btn" id="tf-Day">Day</button>
                         <button class="tf-btn" id="tf-Week">Week</button>
                         <button class="tf-btn" id="tf-1M">1M</button>
-                        <span class="ct-type-sep"></span>
-                        <button class="chart-type-btn active" id="btn-chart-line" title="Line Chart"><i class="fa-solid fa-chart-line"></i> Line</button>
-                        <button class="chart-type-btn" id="btn-chart-candle" title="Candlestick Chart">&#8718; Candles</button>
-                        <span class="ct-type-sep"></span>
-                        <button class="chart-type-btn scale-btn active" id="btn-scale-linear" title="Linear price scale">Linear</button>
-                        <button class="chart-type-btn scale-btn" id="btn-scale-log" title="Logarithmic price scale">Log</button>
-                        <button class="chart-type-btn scale-btn" id="btn-scale-pct" title="% Change from view start">%Chg</button>
-                        <span class="ct-type-sep"></span>
-                        <button class="chart-type-btn indicator-btn" id="btn-toggle-sma" title="Toggle SMA (20)">SMA</button>
-                        <button class="chart-type-btn indicator-btn" id="btn-toggle-ema" title="Toggle EMA (20)">EMA</button>
                     </div>
-                    <div class="ct-right">
-                        <span class="ct-price mono" id="active-price">2500.00</span>
-                        <span class="ct-change mono" id="active-change">0.00 (0.00%)</span>
-                        <span class="ct-prev-close mono" id="active-prev-close"></span>
-                    </div>
-                </div>
-
-                <!-- Chart -->
-                <div class="chart-container">
-                    <canvas id="main-chart" role="img" aria-label="Price chart for the selected instrument"></canvas>
                 </div>
 
                 <!-- News Feed -->
