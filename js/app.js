@@ -2934,11 +2934,20 @@ function _applyChartData(stock, isLight) {
         ? function(v) { return (v >= 0 ? '+' : '') + v.toFixed(1) + '%'; }
         : function(v) {
             var cur = state.activeStock ? state.activeStock.currency : 'INR';
-            var sym = cur === 'USD' ? '$' : cur === 'CNY' ? '\u00a5' : cur === 'JPY' ? '\u00a5' : '\u20b9';
+            var sym = '\u20b9';
+            if (cur === 'USD') sym = '$';
+            else if (cur === 'CNY' || cur === 'JPY') sym = '\u00a5';
+            else if (cur === 'HKD') sym = 'HK$';
+            else if (cur === 'GBP') sym = '\u00a3';
+            else if (cur === 'EUR') sym = '\u20ac';
+            else if (cur === 'AUD') sym = 'A$';
+            else if (cur === 'CAD') sym = 'C$';
+            else if (cur === 'CHF') sym = 'CHF ';
+            
             if (cur === 'JPY') return sym + v.toFixed(0);
             if (v >= 10000) return sym + (v / 1000).toFixed(1) + 'k';
             if (v >= 1000)  return sym + v.toFixed(0);
-            return sym + v.toFixed(2);
+            return sym + v.toFixed((state.activeStock && state.activeStock.ltp < 10) ? 4 : 2);
         };
 
     // Theme colours
