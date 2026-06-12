@@ -2571,10 +2571,18 @@ function renderMarketDepth(stock) {
     var maxQty = 0;
 
     for (var i = 0; i < 5; i++) {
-        var bidQty = getQty(i, true);
-        var askQty = getQty(i, false);
-        bids.push({ p: stock.ltp - (i + 1) * step, q: bidQty });
-        asks.push({ p: stock.ltp + (i + 1) * step, q: askQty });
+        var isLC = stock.circuitHit === 'LC';
+        var isUC = stock.circuitHit === 'UC';
+        
+        var bidQty = isLC ? 0 : getQty(i, true);
+        var askQty = isUC ? 0 : getQty(i, false);
+        
+        var bidP = stock.ltp - (isUC ? i * step : (i + 1) * step);
+        var askP = stock.ltp + (isLC ? i * step : (i + 1) * step);
+
+        bids.push({ p: bidP, q: bidQty });
+        asks.push({ p: askP, q: askQty });
+        
         totalBidQty += bidQty;
         totalAskQty += askQty;
         if (bidQty > maxQty) maxQty = bidQty;
@@ -2584,12 +2592,20 @@ function renderMarketDepth(stock) {
     for (var i = 0; i < 5; i++) {
         var bid = bids[i];
         var ask = asks[i];
-        var bidW = (bid.q / maxQty) * 100;
-        var askW = (ask.q / maxQty) * 100;
+        var bidW = maxQty > 0 ? (bid.q / maxQty) * 100 : 0;
+        var askW = maxQty > 0 ? (ask.q / maxQty) * 100 : 0;
 
-        bidHTML += '<div class="l2-row" onclick="setLimitPrice(' + bid.p + ')" style="position:relative; padding:2px 4px;"><div style="position:absolute; right:0; top:1px; bottom:1px; width:' + bidW + '%; background:var(--green-dim); z-index:0; border-radius:2px;"></div><span class="up mono" style="z-index:1">' + bid.p.toFixed(decimals) + '</span><span class="mono" style="z-index:1">' + bid.q + '</span></div>';
+        var dispBidP = bid.q === 0 ? '-' : bid.p.toFixed(decimals);
+        var dispBidQ = bid.q === 0 ? '-' : bid.q;
+        var dispAskP = ask.q === 0 ? '-' : ask.p.toFixed(decimals);
+        var dispAskQ = ask.q === 0 ? '-' : ask.q;
+
+        var bidClick = bid.q > 0 ? ' onclick="setLimitPrice(' + bid.p + ')" ' : ' ';
+        var askClick = ask.q > 0 ? ' onclick="setLimitPrice(' + ask.p + ')" ' : ' ';
+
+        bidHTML += '<div class="l2-row"' + bidClick + 'style="position:relative; padding:2px 4px;"><div style="position:absolute; right:0; top:1px; bottom:1px; width:' + bidW + '%; background:var(--green-dim); z-index:0; border-radius:2px;"></div><span class="up mono" style="z-index:1">' + dispBidP + '</span><span class="mono" style="z-index:1">' + dispBidQ + '</span></div>';
         
-        askHTML += '<div class="l2-row" onclick="setLimitPrice(' + ask.p + ')" style="position:relative; padding:2px 4px;"><div style="position:absolute; left:0; top:1px; bottom:1px; width:' + askW + '%; background:var(--red-dim); z-index:0; border-radius:2px;"></div><span class="dn mono" style="z-index:1">' + ask.p.toFixed(decimals) + '</span><span class="mono" style="z-index:1">' + ask.q + '</span></div>';
+        askHTML += '<div class="l2-row"' + askClick + 'style="position:relative; padding:2px 4px;"><div style="position:absolute; left:0; top:1px; bottom:1px; width:' + askW + '%; background:var(--red-dim); z-index:0; border-radius:2px;"></div><span class="dn mono" style="z-index:1">' + dispAskP + '</span><span class="mono" style="z-index:1">' + dispAskQ + '</span></div>';
     }
 
     bidsContainer.innerHTML = bidHTML;
