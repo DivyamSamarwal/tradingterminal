@@ -1460,7 +1460,7 @@ function tickMinute() {
         if (stock.circuitHit) return;
 
         var v = stock.vol * VOL_MULTIPLIER;
-        var isNoCircuit = stock.market === 'CRYPTO' || stock.market === 'FX';
+        var isNoCircuit = stock.market === 'CRYPTO' || stock.market === 'FX' || stock.market === 'BOND';
         var limitMult = isNoCircuit ? 100.0 : CIRCUIT_LIMIT;
         var upperCircuit = stock.open * (1 + limitMult);
         var lowerCircuit = stock.open * (1 - limitMult);
