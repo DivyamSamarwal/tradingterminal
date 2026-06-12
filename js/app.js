@@ -13,7 +13,7 @@ var VOL_MULTIPLIER = 1;         // volatility multiplier
 var CIRCUIT_LIMIT = 0.10;       // 10% upper/lower circuit
 
 // Currency exchange rates: 1 unit of foreign currency = X INR  (Feb 28, 2026)
-var EXCHANGE_RATES = { INR: 1, USD: 91.03, CNY: 13.28, JPY: 0.583, HKD: 11.67 };
+var EXCHANGE_RATES = { INR: 1, USD: 91.03, CNY: 13.28, JPY: 0.583, HKD: 11.67, GBP: 115.50, EUR: 98.50, AUD: 54.20, CAD: 61.30, CHF: 102.40 };
 
 var TIMEFRAMES = [
     { label: '5M',   viewLen: 5,    candlePeriod: 1   },
@@ -154,6 +154,17 @@ function mkStock(ticker, name, ltp, vol, sector, market, currency) {
 }
 
 var marketStocks = [
+    // ── Bonds / Fixed Income (Yields) ──
+    mkStock("US10Y",      "US 10-Year Yield",          4.25,  0.0005, "Bond",  "BOND", "USD"),
+    mkStock("US02Y",      "US 2-Year Yield",           4.60,  0.0006, "Bond",  "BOND", "USD"),
+    mkStock("IN10Y",      "India 10-Year Yield",       7.10,  0.0004, "Bond",  "BOND", "INR"),
+    mkStock("CN10Y",      "China 10-Year Yield",       2.40,  0.0005, "Bond",  "BOND", "CNY"),
+    mkStock("DE10Y",      "German 10-Year Bund",       2.35,  0.0007, "Bond",  "BOND", "EUR"),
+    mkStock("UK10Y",      "UK 10-Year Gilt",           4.10,  0.0005, "Bond",  "BOND", "GBP"),
+    mkStock("JP10Y",      "Japan 10-Year JGB",         0.85,  0.0010, "Bond",  "BOND", "JPY"),
+    mkStock("AU10Y",      "Australia 10-Year Yield",   4.15,  0.0006, "Bond",  "BOND", "AUD"),
+    mkStock("CA10Y",      "Canada 10-Year Yield",      3.55,  0.0005, "Bond",  "BOND", "CAD"),
+    mkStock("CH10Y",      "Swiss 10-Year Yield",       0.70,  0.0008, "Bond",  "BOND", "CHF"),
     // ── Indices ──
     mkStock("NIFTY 50",   "Nifty 50 Index",            22500, 0.0008, "Index", "INDEX", "INR"),
     mkStock("SENSEX",     "BSE Sensex",                74500, 0.0008, "Index", "INDEX", "INR"),
@@ -3623,6 +3634,16 @@ function fmtPrice(stock, value) {
         return '\u00a5' + (stock.ltp < 10 ? value.toFixed(2) : value.toFixed(0));
     if (stock.currency === 'HKD')
         return 'HK$' + value.toLocaleString('en-HK', { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
+    if (stock.currency === 'GBP')
+        return '\u00a3' + value.toLocaleString('en-GB', { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
+    if (stock.currency === 'EUR')
+        return '\u20ac' + value.toLocaleString('en-IE', { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
+    if (stock.currency === 'AUD')
+        return 'A$' + value.toLocaleString('en-AU', { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
+    if (stock.currency === 'CAD')
+        return 'C$' + value.toLocaleString('en-CA', { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
+    if (stock.currency === 'CHF')
+        return 'CHF ' + value.toLocaleString('de-CH', { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
     return value.toFixed(fraction);
 }
 
