@@ -1468,7 +1468,7 @@ function tickMinute() {
             // Combine: stock drift + sector bias + broad market
             var totalMove = drift + meanRevert + sectorBias * 0.4 + marketFactor * 0.3;
             price = price * (1 + totalMove);
-            price = Math.max(1, price);
+            price = Math.max(0.0001, price);
 
             if (price >= upperCircuit) {
                 price = upperCircuit;
