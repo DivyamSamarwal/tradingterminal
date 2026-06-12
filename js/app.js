@@ -1612,11 +1612,12 @@ function tickMinute() {
                 } else if (stock.circuitHit === 'LC' && (order.side === 'SELL' || order.side === 'SHORT')) {
                     remainingPending.push(order);
                 } else {
-                    var success = processEquityTrade(stock, order.side, order.qty, order.limitPrice);
+                    var fillPrice = stock.ltp;
+                    var success = processEquityTrade(stock, order.side, order.qty, fillPrice);
                     if (success) {
-                        toast("Order Executed", "Limit order filled: " + order.side + " " + order.qty + " " + order.ticker + " @ " + order.limitPrice.toFixed(2), "success");
+                        toast("Order Executed", "Limit order filled: " + order.side + " " + order.qty + " " + order.ticker + " @ " + fillPrice.toFixed(2), "success");
                     } else {
-                        toast("Order Cancelled", "Limit order cancelled (Insufficient Margin): " + order.side + " " + order.qty + " " + order.ticker + " @ " + order.limitPrice.toFixed(2), "error");
+                        toast("Order Cancelled", "Limit order cancelled (Insufficient Margin): " + order.side + " " + order.qty + " " + order.ticker + " @ " + fillPrice.toFixed(2), "error");
                     }
                 }
             } else {
