@@ -1487,7 +1487,8 @@ function tickMinute() {
             }
         }
 
-        stock.ltp = parseFloat(price.toFixed(2));
+        var pDecimals = stock.ltp < 10 ? 4 : 2;
+        stock.ltp = parseFloat(price.toFixed(pDecimals));
         stock.history.push(stock.ltp);
         if (stock.history.length > state.historyLen) stock.history.shift();
 
