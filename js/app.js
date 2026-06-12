@@ -2024,8 +2024,22 @@ function generateStrikes(stock) {
         else if (ltp > 10) step = 1;
         else if (ltp > 0.5) step = 0.05;
         else step = 0.01;
+    } else if (stock.market === 'INDEX') {
+        if (ltp > 50000) step = 500;
+        else if (ltp > 10000) step = 200;
+        else if (ltp > 5000) step = 100;
+        else if (ltp > 1000) step = 50;
+        else step = 10;
+    } else if (stock.market === 'COMM' || stock.market === 'BOND') {
+        if (ltp > 1000) step = 10; // Gold
+        else if (ltp > 100) step = 1;
+        else if (ltp > 20) step = 0.5; // Silver, Crude
+        else if (ltp > 5) step = 0.1;
+        else step = 0.05; // Nat Gas, Copper, Bond Yields
     } else {
-        if (ltp > 5000) step = 100;
+        // Equities
+        if (ltp > 10000) step = 200;
+        else if (ltp > 5000) step = 100;
         else if (ltp > 1000) step = 50;
         else if (ltp > 200) step = 10;
         else if (ltp > 50) step = 5;
