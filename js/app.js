@@ -2552,8 +2552,8 @@ function renderMarketDepth(stock) {
     var asksContainer = document.getElementById('l2-asks');
     if (!bidsContainer || !asksContainer) return;
 
-    var step = stock.ltp > 5000 ? 5 : stock.ltp > 1000 ? 1 : stock.ltp > 200 ? 0.5 : 0.05;
-    var decimals = stock.currency === 'JPY' ? 0 : 2;
+    var step = stock.ltp > 5000 ? 5 : stock.ltp > 1000 ? 1 : stock.ltp > 200 ? 0.5 : stock.ltp > 10 ? 0.05 : stock.ltp > 1 ? 0.01 : 0.001;
+    var decimals = stock.currency === 'JPY' ? 0 : stock.ltp < 10 ? 4 : 2;
 
     // Seeded-ish quantities that fluctuate with time
     var baseSeed = stock.ticker.charCodeAt(0) + state.time;
@@ -2579,6 +2579,8 @@ function renderMarketDepth(stock) {
         
         var bidP = stock.ltp - (isUC ? i * step : (i + 1) * step);
         var askP = stock.ltp + (isLC ? i * step : (i + 1) * step);
+        
+        bidP = Math.max(0.0001, bidP);
 
         bids.push({ p: bidP, q: bidQty });
         asks.push({ p: askP, q: askQty });
