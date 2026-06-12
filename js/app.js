@@ -1583,10 +1583,10 @@ function tickMinute() {
         state.marginCallThrottle = 0;
     }
 
-    // Forced Liquidation Check
+    // Forced Liquidation Check (1% of starting capital OR portfolio completely wiped out)
     var portVal = calcPortfolioValue();
     var hasOpenPositions = Object.keys(state.positions).length > 0 || Object.keys(state.optionsPositions).length > 0;
-    if (portVal < INITIAL_MARGIN * 0.1 && hasOpenPositions) {
+    if (portVal <= INITIAL_MARGIN * 0.01 && hasOpenPositions) {
         liquidateAllForced();
     }
 
@@ -3345,7 +3345,7 @@ function liquidateAllForced() {
     });
 
     state.pendingOrders = [];
-    toast("PORTFOLIO LIQUIDATED", "All positions force closed: Portfolio value fell below 10% of starting capital!", "error");
+    toast("PORTFOLIO LIQUIDATED", "All positions force closed: Portfolio value fell below 1% of starting capital!", "error");
     renderAll();
 }
 
