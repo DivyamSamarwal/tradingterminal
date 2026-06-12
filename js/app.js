@@ -2575,11 +2575,11 @@ function renderMarketDepth(stock) {
         var isLC = stock.circuitHit === 'LC';
         var isUC = stock.circuitHit === 'UC';
         
-        var bidQty = isLC ? 0 : getQty(i, true);
-        var askQty = isUC ? 0 : getQty(i, false);
+        var bidQty = isLC ? 0 : (isUC ? (i === 0 ? getQty(i, true) * 20 : (i === 1 ? getQty(i, true) * 5 : 0)) : getQty(i, true));
+        var askQty = isUC ? 0 : (isLC ? (i === 0 ? getQty(i, false) * 20 : (i === 1 ? getQty(i, false) * 5 : 0)) : getQty(i, false));
         
-        var bidP = stock.ltp - (isUC ? i * step : (i + 1) * step);
-        var askP = stock.ltp + (isLC ? i * step : (i + 1) * step);
+        var bidP = isUC ? (i === 0 ? stock.ltp : stock.ltp - step) : stock.ltp - (i + 1) * step;
+        var askP = isLC ? (i === 0 ? stock.ltp : stock.ltp + step) : stock.ltp + (i + 1) * step;
         
         bidP = Math.max(0.0001, bidP);
 
