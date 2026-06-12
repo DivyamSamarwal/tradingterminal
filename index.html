@@ -389,201 +389,6 @@
             <div class="ov-expiry-info hidden" id="ov-expiry-info">
                 <i class="fa-solid fa-clock"></i> <span id="ov-expiry-text"></span>
             </div>
-                    <div class="sl-target-row">
-                        <div class="sl-field">
-                            <label for="sl-price">Stop Loss</label>
-                            <input type="number" id="sl-price" class="fc mono" placeholder="0.00" step="0.05" min="0">
-                        </div>
-                        <div class="sl-field">
-                            <label for="target-price">Target</label>
-                            <input type="number" id="target-price" class="fc mono" placeholder="0.00" step="0.05" min="0">
-                        </div>
-                    </div>
-                    <div class="sl-hint"><i class="fa-solid fa-bell"></i> Auto square-off when SL/Target hit</div>
-                    
-                    <!-- Market Depth (L2) -->
-                    <div class="l2-depth">
-                        <div class="l2-header">Market Depth</div>
-                        <div class="l2-table">
-                            <div class="l2-col">
-                                <div class="l2-row-head"><span>Bid Price</span><span>Qty</span></div>
-                                <div id="l2-bids"></div>
-                            </div>
-                            <div class="l2-col">
-                                <div class="l2-row-head"><span>Ask Price</span><span>Qty</span></div>
-                                <div id="l2-asks"></div>
-                            </div>
-                        </div>
-                        <div class="l2-ratio-bar">
-                            <div class="l2-ratio-bid" id="l2-ratio-bid" style="width: 50%"></div>
-                            <div class="l2-ratio-ask" id="l2-ratio-ask" style="width: 50%"></div>
-                        </div>
-                        <div class="l2-ratio-labels">
-                            <span id="l2-bid-pct">50%</span>
-                            <span id="l2-ask-pct">50%</span>
-                        </div>
-                    </div>
-
-                    <div class="order-actions">
-                        <button class="btn-buy" id="btn-buy"><i class="fa-solid fa-arrow-up"></i> BUY</button>
-                        <button class="btn-sell" id="btn-sell"><i class="fa-solid fa-arrow-down"></i> SELL / SHORT</button>
-                    </div>
-                    <div class="short-info">
-                        <i class="fa-solid fa-info-circle"></i> Sell without holdings = Short position. Cover later by buying back.
-                    </div>
-                </div>
-
-                <!-- Options Form -->
-                <div class="order-form hidden" id="options-form">
-                    <div class="fg">
-                        <label>Type</label>
-                        <div class="toggle-row">
-                            <button class="toggle active" id="opt-call">CALL (CE)</button>
-                            <button class="toggle" id="opt-put">PUT (PE)</button>
-                        </div>
-                        <input type="hidden" id="option-type" value="CALL">
-                    </div>
-                    <div class="fg">
-                        <label for="strike-price">Strike Price</label>
-                        <select class="fc mono" id="strike-price"><option>Select Stock</option></select>
-                    </div>
-                    <div class="fg">
-                        <label for="expiry-date">Expiry</label>
-                        <select class="fc" id="expiry-date"><option>Weekly</option><option>Monthly</option></select>
-                    </div>
-                    <div class="fg">
-                        <label for="option-lots">Lots</label>
-                        <input type="number" id="option-lots" class="fc mono qty-big" value="1" min="1">
-                        <div class="presets">
-                            <button class="preset-opt" data-v="1">+1</button>
-                            <button class="preset-opt" data-v="5">+5</button>
-                            <button class="preset-opt" data-v="10">+10</button>
-                        </div>
-                    </div>
-                    <div class="order-meta">
-                        <span>Premium</span><span class="mono" id="option-premium">₹ 0.00</span>
-                    </div>
-                    <div class="order-meta">
-                        <span>Lot Size</span><span class="mono" id="lot-size">0</span>
-                    </div>
-                    <div class="order-meta">
-                        <span>Total Qty</span><span class="mono" id="total-qty">0</span>
-                    </div>
-                    <div class="greeks-box" id="opt-greeks">
-                        <div class="greek-item">
-                            <span class="g-lbl">&Delta; Delta</span>
-                            <span class="g-val mono" id="g-delta">0.000</span>
-                        </div>
-                        <div class="greek-item">
-                            <span class="g-lbl">&Gamma; Gamma</span>
-                            <span class="g-val mono" id="g-gamma">0.000</span>
-                        </div>
-                        <div class="greek-item">
-                            <span class="g-lbl">&Theta; Theta</span>
-                            <span class="g-val mono" id="g-theta">0.000</span>
-                        </div>
-                        <div class="greek-item">
-                            <span class="g-lbl">&nu; Vega</span>
-                            <span class="g-val mono" id="g-vega">0.000</span>
-                        </div>
-                    </div>
-                    <div class="order-meta border-top">
-                        <span>Req Margin</span><span class="mono" id="req-margin-opt">₹ 0.00</span>
-                    </div>
-                    <div class="order-actions">
-                        <button class="btn-buy" id="btn-buy-option"><i class="fa-solid fa-arrow-up"></i> BUY</button>
-                        <button class="btn-sell" id="btn-sell-option"><i class="fa-solid fa-arrow-down"></i> SELL</button>
-                    </div>
-                </div>
-
-                <!-- Position Card -->
-                <div class="pos-card">
-                    <div class="pos-card-head">Current Position</div>
-                    <div class="pos-card-grid">
-                        <div class="pc-item"><span class="pc-label">Qty</span><span class="pc-val mono" id="pos-qty">0</span></div>
-                        <div class="pc-item"><span class="pc-label">Avg</span><span class="pc-val mono" id="pos-avg">0.00</span></div>
-                        <div class="pc-item"><span class="pc-label">LTP</span><span class="pc-val mono" id="pos-ltp">0.00</span></div>
-                        <div class="pc-item pc-pnl"><span class="pc-label">P&L</span><span class="pc-val mono" id="pos-pnl">₹ 0.00</span></div>
-                    </div>
-                </div>
-            </aside>
-        </div>
-
-        <!-- Bottom Table -->
-        <footer class="bottom-bar">
-            <div class="bottom-tabs">
-                <button class="b-tab active" id="positions-tab"><i class="fa-solid fa-chart-pie"></i> Positions</button>
-                <button class="b-tab" id="options-pos-tab"><i class="fa-solid fa-layer-group"></i> Options</button>
-                <button class="b-tab" id="pending-orders-tab"><i class="fa-solid fa-hourglass-half"></i> Pending <span class="badge mono" id="pending-count" style="padding:1px 5px;font-size:9px;background:var(--orange)">0</span></button>
-                <button class="b-tab" id="history-tab"><i class="fa-solid fa-clock-rotate-left"></i> Trade History</button>
-                <button class="b-tab export-csv-btn" id="btn-export-csv" title="Export trade history to CSV"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
-                <button class="b-tab close-all-btn" id="btn-close-all" title="Close all open positions"><i class="fa-solid fa-xmark"></i> Close All</button>
-            </div>
-            <div class="table-area" id="equity-table">
-                <table class="dtable">
-                    <thead><tr>
-                        <th>Symbol</th><th>Side</th><th>Product</th>
-                        <th class="r">Qty</th><th class="r">Avg Price</th><th class="r">LTP</th>
-                        <th class="r">Value</th><th class="r">P&amp;L</th><th class="r">P&amp;L%</th><th class="r">Action</th>
-                    </tr></thead>
-                    <tbody id="positions-tbody">
-                        <tr><td colspan="10" class="empty">No open positions</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="table-area hidden" id="options-table">
-                <table class="dtable">
-                    <thead><tr>
-                        <th>Symbol</th><th>Type</th><th>Strike</th><th>Expiry</th>
-                        <th class="r">Lots</th><th class="r">Qty</th><th class="r">Avg Prem</th>
-                        <th class="r">LTP</th><th class="r">P&amp;L</th><th class="r">Action</th>
-                    </tr></thead>
-                    <tbody id="options-tbody">
-                        <tr><td colspan="10" class="empty">No option positions</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="table-area hidden" id="pending-table">
-                <table class="dtable">
-                    <thead><tr>
-                        <th>Time</th><th>Day</th><th>Symbol</th><th>Side</th><th>Type</th>
-                        <th class="r">Qty</th><th class="r">Limit Price</th><th class="r">LTP</th><th class="r">Action</th>
-                    </tr></thead>
-                    <tbody id="pending-tbody">
-                        <tr><td colspan="9" class="empty">No pending orders</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="table-area hidden" id="history-table">
-                <table class="dtable">
-                    <thead><tr>
-                        <th>Time</th><th>Day</th><th>Symbol</th><th>Side</th><th>Type</th>
-                        <th class="r">Qty</th><th class="r">Price</th><th class="r">Value</th>
-                    </tr></thead>
-                    <tbody id="history-tbody">
-                        <tr><td colspan="8" class="empty">No trades yet</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </footer>
-    </div>
-
-    <!-- New Day Overlay -->
-    <div class="overlay hidden" id="day-overlay">
-        <div class="overlay-card">
-            <div class="ov-icon"><i class="fa-solid fa-bell"></i></div>
-            <h2 class="ov-title">Market Closed</h2>
-            <p class="ov-sub">Trading session for <span id="ov-day-label">Day 1</span> has ended at 3:30 PM</p>
-            <div class="ov-stats">
-                <div class="ov-stat"><span class="ov-stat-label">Day P&L</span><span class="ov-stat-val mono" id="ov-day-pnl">₹ 0.00</span></div>
-                <div class="ov-stat"><span class="ov-stat-label">Portfolio Value</span><span class="ov-stat-val mono" id="ov-portfolio">₹ 1,00,000.00</span></div>
-                <div class="ov-stat"><span class="ov-stat-label">Cash Balance</span><span class="ov-stat-val mono" id="ov-cash">₹ 1,00,000.00</span></div>
-                <div class="ov-stat"><span class="ov-stat-label">Brokerage Paid</span><span class="ov-stat-val mono" id="ov-brokerage" style="color: #ff4b4b;">₹ 0.00</span></div>
-                <div class="ov-stat"><span class="ov-stat-label">Open Positions</span><span class="ov-stat-val mono" id="ov-positions">0</span></div>
-            </div>
-            <div class="ov-expiry-info hidden" id="ov-expiry-info">
-                <i class="fa-solid fa-clock"></i> <span id="ov-expiry-text"></span>
-            </div>
             <button class="ov-btn" id="btn-new-day"><i class="fa-solid fa-sun"></i> Start New Trading Day</button>
             <p class="ov-hint">Positions carry forward. Expired options will be auto-settled.</p>
         </div>
@@ -596,6 +401,21 @@
             <h2 class="ov-title">Settings</h2>
             <p class="ov-sub">Configure your trading simulation</p>
             <div class="settings-form">
+                <div class="settings-group">
+                    <label class="settings-label" for="settings-cash"><i class="fa-solid fa-wallet"></i> Starting Capital</label>
+                    <div class="cash-input-row">
+                        <span class="cash-prefix">₹</span>
+                        <input type="number" id="settings-cash" class="fc mono" value="100000" min="10000" step="10000">
+                    </div>
+                    <div class="cash-presets">
+                        <button class="cash-preset" data-v="50000">₹50K</button>
+                        <button class="cash-preset" data-v="100000">₹1L</button>
+                        <button class="cash-preset" data-v="500000">₹5L</button>
+                        <button class="cash-preset" data-v="1000000">₹10L</button>
+                        <button class="cash-preset" data-v="5000000">₹50L</button>
+                        <button class="cash-preset" data-v="10000000">₹1Cr</button>
+                    </div>
+                </div>
                 <div class="settings-group">
                     <label class="settings-label" for="settings-news-freq"><i class="fa-solid fa-gauge-high"></i> News Frequency</label>
                     <select class="fc" id="settings-news-freq">
@@ -614,9 +434,9 @@
                         <option value="3">Extreme</option>
                     </select>
                 </div>
-                <button class="btn" style="background:var(--red); color:#fff; width:100%; padding:14px; border-radius:12px; margin-top:10px; font-weight:600;" onclick="resetSimulation()">
-                    <i class="fa-solid fa-power-off"></i> Reset Account Data (₹100,000)
-                </button>
+                <div class="settings-warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Changing capital will reset all positions and start fresh.
+                </div>
             </div>
             <div class="settings-actions">
                 <button class="ov-btn" id="btn-apply-settings"><i class="fa-solid fa-check"></i> Apply Settings</button>
@@ -624,6 +444,8 @@
             </div>
         </div>
     </div>
+
+    <div id="toast-container" class="toast-box"></div>
     <script src="js/app.js?v=2"></script>
 </body>
 </html>

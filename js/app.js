@@ -1060,41 +1060,13 @@ var candlestickPlugin = {
     }
 };
 
-// ==================== DATA PERSISTENCE ====================
-function saveData() {
-    var data = { state: state, marketStocks: marketStocks };
-    try { localStorage.setItem('tradingTerminalData', JSON.stringify(data)); } catch(e) { console.error('Save failed', e); }
-}
-
-function loadData() {
-    var stored = localStorage.getItem('tradingTerminalData');
-    if (stored) {
-        try {
-            var data = JSON.parse(stored);
-            if (data.state) state = Object.assign(state, data.state);
-            if (data.marketStocks) marketStocks = data.marketStocks;
-            return true;
-        } catch(e) { console.error("Load failed", e); }
-    }
-    return false;
-}
-
-function resetSimulation() {
-    if (confirm("Are you sure you want to completely reset your account data? This cannot be undone.")) {
-        localStorage.removeItem('tradingTerminalData');
-        location.reload();
-    }
-}
-
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", function() {
-    var loaded = loadData();
-    if (!loaded) initMarket();
+    initMarket();
     setupListeners();
     renderAll();
     renderFxRates();
     startClock();
-    setInterval(saveData, 2000);
 });
 
 function initMarket() {
@@ -1275,8 +1247,9 @@ function setupListeners() {
     });
 }
 
-// ==================== SETTINGS ====================
+// ==================== SETTINGS / MODIFIABLE CASH ====================
 function openSettings() {
+    document.getElementById('settings-cash').value = INITIAL_MARGIN;
     document.getElementById('settings-news-freq').value = NEWS_FREQ.toString();
     document.getElementById('settings-volatility').value = VOL_MULTIPLIER.toString();
     document.getElementById('settings-overlay').classList.remove('hidden');
@@ -1287,15 +1260,76 @@ function closeSettings() {
 }
 
 function applySettings() {
+    var newCash = parseFloat(document.getElementById('settings-cash').value);
     var newFreq = parseFloat(document.getElementById('settings-news-freq').value);
     var newVol = parseFloat(document.getElementById('settings-volatility').value);
+
+    if (isNaN(newCash) || newCash < 10000) {
+        toast("Error", "Minimum capital is \u20b910,000", "error");
+        return;
+    }
+
+    var cashChanged = Math.abs(newCash - state.margin) > 0.01;
 
     NEWS_FREQ = newFreq;
     VOL_MULTIPLIER = newVol;
 
+    if (cashChanged) {
+        // Reset everything
+        INITIAL_MARGIN = newCash;
+        state.margin = newCash;
+        state.positions = {};
+        state.optionsPositions = {};
+        state.slTargets = {};
+        state.pendingOrders = [];
+        state.tradeHistory = [];
+        state.day = 1;
+        state.time = START_TIME;
+        state.newsCount = 0;
+        state.marketOpen = true;
+        state.isRunning = true;
+        state.sentiment = 0;
+        state.niftyValue = 22500;
+        state.niftyBase = 22500;
+        state.sensexValue = 74500;
+        state.sensexBase = 74500;
+
+        marketStocks.forEach(function(s) {
+            s.ltp = s.base;
+            s.open = s.base;
+            s.prevClose = s.base;
+            s._prevTick = s.base;
+            s.preHistory = generatePreHistory(s, 22);
+            s.history = [s.ltp];
+            s.volumeHistory = [0];
+            s.volume = 0;
+            s.circuitHit = null;
+            s.ohlcHistory = [];
+            s.currentCandle = null;
+        });
+        state.niftyHistory = Array(state.historyLen).fill(state.niftyValue);
+
+        document.getElementById('news-container').innerHTML =
+            '<div class="news-item"><span class="news-time mono">09:15</span>' +
+            '<span class="news-text">Simulation reset. Starting capital: ' + fmtCur(newCash) + '</span></div>';
+        document.getElementById('news-count').textContent = '0';
+
+        if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+        _wlCache = {}; _wlLastOrder = ''; // force watchlist DOM rebuild
+
+        document.querySelectorAll('.ctrl-btn').forEach(function(b) {
+            if (b.id !== 'btn-theme' && b.id !== 'btn-settings') b.classList.remove('on');
+        });
+        document.getElementById('btn-play').classList.add('on');
+
+        startClock();
+        toast("Reset", "Simulation reset with " + fmtCur(newCash) + " capital", "success");
+    } else {
+        toast("Settings", "Settings updated", "info");
+    }
+
     closeSettings();
-    saveData();
-    toast("Settings Applied", "Simulation parameters updated.", "success");
+    renderAll();
 }
 
 // ==================== CHART TYPE TOGGLE ====================
