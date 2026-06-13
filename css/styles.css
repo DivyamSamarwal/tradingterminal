@@ -1479,6 +1479,9 @@ body.light .bottom-tabs {
 }
 .news-mf-btn:hover { border-color: var(--accent); color: var(--accent); }
 .news-mf-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.news-mf-btn.active.nmf-nasdaq { background: #5c6bc0; color: #fff; border-color: #5c6bc0; }
+.news-mf-btn.active.nmf-eu { background: #8e24aa; color: #fff; border-color: #8e24aa; }
+.news-mf-btn.active.nmf-sse { background: #e53935; color: #fff; border-color: #e53935; }
 .nmf-nasdaq, .nmf-sse, .nmf-tse, .nmf-comm, .nmf-crypto, .nmf-fx { cursor: pointer; }
 .nmf-war.active {
     background: var(--orange);
@@ -1502,13 +1505,15 @@ body.light .bottom-tabs {
     text-transform: uppercase;
 }
 .nmb-nse    { background: rgba(0,200,83,0.15);   color: #00c853; border: 1px solid rgba(0,200,83,0.35); }
-.nmb-nasdaq { background: rgba(41,98,255,0.15);  color: #6ea5ff; border: 1px solid rgba(41,98,255,0.35); }
-.nmb-sse    { background: rgba(255,82,82,0.15);   color: #ff8080; border: 1px solid rgba(255,82,82,0.35); }
+.nmb-nasdaq { background: rgba(92,107,192,0.15); color: #7986cb; border: 1px solid rgba(92,107,192,0.35); }
+.nmb-eu { background: rgba(142,36,170,0.15); color: #ba68c8; border: 1px solid rgba(142,36,170,0.35); }
+.nmb-sse    { background: rgba(229,57,53,0.15);   color: #ef5350; border: 1px solid rgba(229,57,53,0.35); }
 .nmb-tse    { background: rgba(255,145,0,0.15);   color: #ffc46e; border: 1px solid rgba(255,145,0,0.35); }
 .nmb-comm   { background: rgba(255,214,0,0.15);   color: #ffd600; border: 1px solid rgba(255,214,0,0.35); }
 .nmb-crypto { background: rgba(247,147,26,0.15);  color: #f7931a; border: 1px solid rgba(247,147,26,0.35); }
 .nmb-fx     { background: rgba(0,229,255,0.15);   color: #00e5ff; border: 1px solid rgba(0,229,255,0.35); }
 .nmb-war    { background: rgba(255,62,0,0.20);    color: #ff6e40; border: 1px solid rgba(255,62,0,0.45); }
+.nmb-global { background: rgba(100,100,100,0.20); color: #b0bec5; border: 1px solid rgba(100,100,100,0.45); }
 .news-item .news-mkt-badge { margin-right: 2px; }
 
 /* ========== LIGHT MODE ADJUSTMENTS ========== */
@@ -1520,6 +1525,7 @@ body.light .wlm-crypto { background: rgba(247,147,26,0.1); color: #d67a00; }
 body.light .wlm-fx     { background: rgba(0,184,212,0.1); color: #0097a7; }
 body.light .nmb-nse    { color: #00a846; }
 body.light .nmb-nasdaq { color: #2962ff; }
+body.light .nmb-eu     { color: #7b1fa2; }
 body.light .nmb-sse    { color: #c62828; }
 body.light .nmb-tse    { color: #e65100; }
 body.light .nmb-comm   { color: #f57f17; }
