@@ -1867,8 +1867,6 @@ function tickMinute() {
                     if (processEquityTrade(stock, order.side, fillQty, executionPrice)) {
                         stock.available_liquidity -= fillQty;
                         order.qty -= fillQty;
-                        var impact = (fillQty / (stock.vol * 100)) * (order.side === 'BUY' ? 1 : -1);
-                        stock.ltp = Math.max(0.0001, parseFloat((stock.ltp * (1 + impact)).toFixed(pDecimals)));
                         
                         if (order.qty > 0) {
                             remainingPending.push(order);
@@ -2229,9 +2227,6 @@ function executeTrade(side) {
         if (fillQty > 0) {
             if (processEquityTrade(stock, side, fillQty, executionPrice)) {
                 stock.available_liquidity -= fillQty;
-                // Market Impact: Massive orders drag the price
-                var impact = (fillQty / (stock.vol * 100)) * (side === 'BUY' ? 1 : -1);
-                stock.ltp = Math.max(0.0001, parseFloat((stock.ltp * (1 + impact)).toFixed(pDecimals)));
                 
                 if (remainingQty === 0) {
                     document.getElementById('order-qty').value = 1;
