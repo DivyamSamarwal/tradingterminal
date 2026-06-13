@@ -1405,6 +1405,37 @@ function setupListeners() {
     document.getElementById('sl-price').addEventListener('change', saveSlTarget);
     document.getElementById('target-price').addEventListener('change', saveSlTarget);
 
+    // SL / Target Quick Percentage Buttons
+    document.querySelectorAll('.sl-pct-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            var pct = parseFloat(e.currentTarget.getAttribute('data-pct'));
+            var stock = state.activeStock;
+            if (!stock) return;
+            var pos = state.positions[stock.ticker];
+            var basePrice = (pos && pos.qty !== 0) ? pos.avg : stock.ltp;
+            var isShort = pos && pos.qty < 0;
+            // SL is below for long, above for short
+            var newSl = basePrice * (isShort ? (1 + (pct / 100)) : (1 - (pct / 100)));
+            document.getElementById('sl-price').value = newSl.toFixed(2);
+            saveSlTarget();
+        });
+    });
+
+    document.querySelectorAll('.tp-pct-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            var pct = parseFloat(e.currentTarget.getAttribute('data-pct'));
+            var stock = state.activeStock;
+            if (!stock) return;
+            var pos = state.positions[stock.ticker];
+            var basePrice = (pos && pos.qty !== 0) ? pos.avg : stock.ltp;
+            var isShort = pos && pos.qty < 0;
+            // Target is above for long, below for short
+            var newTp = basePrice * (isShort ? (1 - (pct / 100)) : (1 + (pct / 100)));
+            document.getElementById('target-price').value = newTp.toFixed(2);
+            saveSlTarget();
+        });
+    });
+
     // Watchlist search
     var searchInp = document.getElementById('wl-search-input');
     if (searchInp) {
@@ -3659,7 +3690,8 @@ function liquidateAllForced() {
 
 function saveSlTarget() {
     if (!state.activeStock) return;
-    var ticker = state.activeStock.ticker;
+    var stock = state.activeStock;
+    var ticker = stock.ticker;
     var sl = parseFloat(document.getElementById('sl-price').value);
     var tgt = parseFloat(document.getElementById('target-price').value);
     state.slTargets[ticker] = {
@@ -3667,8 +3699,8 @@ function saveSlTarget() {
         target: isNaN(tgt) || tgt <= 0 ? null : tgt
     };
     var msg = [];
-    if (state.slTargets[ticker].sl)     msg.push('SL \u20b9' + sl.toFixed(2));
-    if (state.slTargets[ticker].target) msg.push('Target \u20b9' + tgt.toFixed(2));
+    if (state.slTargets[ticker].sl)     msg.push('SL ' + fmtPrice(stock, sl));
+    if (state.slTargets[ticker].target) msg.push('Target ' + fmtPrice(stock, tgt));
     if (msg.length) toast('Alert Set', ticker + ': ' + msg.join(', '), 'info');
 }
 
