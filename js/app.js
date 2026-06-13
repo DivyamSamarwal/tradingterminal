@@ -1779,6 +1779,8 @@ function tickMinute() {
 
         // Volume simulation (realistic ranges based on stock liquidity)
         stock.volume += tickVol;
+        stock.available_liquidity = tickVol * 10; // 10x the minute volume for deep liquidity
+        stock.bidAskSpread = stock.ltp * (Math.random() * 0.001 + 0.0001); // 0.01% to 0.1% spread
 
         // Track for NIFTY
         totalChange += (stock.ltp - stock.open) / stock.open;
@@ -1845,15 +1847,44 @@ function tickMinute() {
         liquidateAllForced();
     }
 
-    // Limit Order Matching
+    // Pending Order Matching
     if (state.pendingOrders && state.pendingOrders.length > 0) {
         var remainingPending = [];
         state.pendingOrders.forEach(function(order) {
             var stock = stockMap[order.ticker];
             if (!stock) return;
             var ltp = stock.ltp;
-            var triggered = false;
 
+            if (order.orderType === 'MARKET') {
+                var avail = stock.available_liquidity || 0;
+                if (avail > 0) {
+                    var fillQty = Math.min(order.qty, avail);
+                    var spread = stock.bidAskSpread || 0;
+                    var executionPrice = order.side === 'BUY' ? stock.ltp + spread : Math.max(0.0001, stock.ltp - spread);
+                    var pDecimals = stock.ltp < 10 ? 4 : 2;
+                    executionPrice = parseFloat(executionPrice.toFixed(pDecimals));
+                    
+                    if (processEquityTrade(stock, order.side, fillQty, executionPrice)) {
+                        stock.available_liquidity -= fillQty;
+                        order.qty -= fillQty;
+                        var impact = (fillQty / (stock.vol * 100)) * (order.side === 'BUY' ? 1 : -1);
+                        stock.ltp = Math.max(0.0001, parseFloat((stock.ltp * (1 + impact)).toFixed(pDecimals)));
+                        
+                        if (order.qty > 0) {
+                            remainingPending.push(order);
+                        } else {
+                            toast("Order Completed", "Market order fully filled: " + order.side + " " + order.ticker, "success");
+                        }
+                    } else {
+                        toast("Order Cancelled", "Market order cancelled (Insufficient Margin): " + order.side + " " + order.qty + " " + order.ticker, "error");
+                    }
+                } else {
+                    remainingPending.push(order);
+                }
+                return;
+            }
+
+            var triggered = false;
             if (order.side === 'BUY' || order.side === 'COVER') {
                 if (ltp <= order.limitPrice) triggered = true;
             } else if (order.side === 'SELL' || order.side === 'SHORT') {
@@ -2154,6 +2185,12 @@ function executeTrade(side) {
     }
 
     var orderType = document.getElementById('order-type').value;
+    var tif = document.getElementById('order-tif') ? document.getElementById('order-tif').value : 'DAY';
+    var spread = stock.bidAskSpread || 0;
+    var executionPrice = side === 'BUY' ? stock.ltp + spread : Math.max(0.0001, stock.ltp - spread);
+    var pDecimals = stock.ltp < 10 ? 4 : 2;
+    executionPrice = parseFloat(executionPrice.toFixed(pDecimals));
+
     if (orderType === 'LIMIT') {
         var limitPrice = parseFloat(document.getElementById('order-limit-price').value);
         if (isNaN(limitPrice) || limitPrice <= 0) {
@@ -2167,6 +2204,7 @@ function executeTrade(side) {
             side: side,
             qty: qty,
             limitPrice: limitPrice,
+            orderType: 'LIMIT',
             currency: stock.currency
         });
         toast("Pending Order", "Limit order placed: " + side + " " + qty + " " + stock.ticker + " @ " + limitPrice.toFixed(2), "info");
@@ -2177,9 +2215,66 @@ function executeTrade(side) {
         return;
     }
 
-    if (processEquityTrade(stock, side, qty, stock.ltp)) {
-        document.getElementById('order-qty').value = 1;
-        renderAll();
+    if (orderType === 'MARKET') {
+        var avail = stock.available_liquidity || 0;
+        
+        if (tif === 'FOK' && qty > avail) {
+            toast("Order Rejected", "FOK: Insufficient liquidity to fill entire order instantly.", "error");
+            return;
+        }
+
+        var fillQty = Math.min(qty, avail);
+        var remainingQty = qty - fillQty;
+
+        if (fillQty > 0) {
+            if (processEquityTrade(stock, side, fillQty, executionPrice)) {
+                stock.available_liquidity -= fillQty;
+                // Market Impact: Massive orders drag the price
+                var impact = (fillQty / (stock.vol * 100)) * (side === 'BUY' ? 1 : -1);
+                stock.ltp = Math.max(0.0001, parseFloat((stock.ltp * (1 + impact)).toFixed(pDecimals)));
+                
+                if (remainingQty === 0) {
+                    document.getElementById('order-qty').value = 1;
+                } else {
+                    if (tif === 'IOC') {
+                        toast("Partial Fill (IOC)", "Filled " + fillQty + ", cancelled remaining " + remainingQty, "info");
+                        document.getElementById('order-qty').value = 1;
+                    } else if (tif === 'DAY') {
+                        toast("Partial Fill", "Filled " + fillQty + ", pending " + remainingQty, "info");
+                        state.pendingOrders.push({
+                            time: formatTime(state.time),
+                            day: state.day,
+                            ticker: stock.ticker,
+                            side: side,
+                            qty: remainingQty,
+                            orderType: 'MARKET',
+                            tif: 'DAY',
+                            currency: stock.currency
+                        });
+                        document.getElementById('order-qty').value = 1;
+                    }
+                }
+                renderAll();
+            }
+        } else {
+            if (tif === 'IOC') {
+                toast("Order Cancelled", "IOC: No liquidity available right now.", "error");
+            } else if (tif === 'DAY') {
+                state.pendingOrders.push({
+                    time: formatTime(state.time),
+                    day: state.day,
+                    ticker: stock.ticker,
+                    side: side,
+                    qty: qty,
+                    orderType: 'MARKET',
+                    tif: 'DAY',
+                    currency: stock.currency
+                });
+                toast("Pending Order", "Market order queued (Awaiting Liquidity)", "info");
+                document.getElementById('order-qty').value = 1;
+                renderAll();
+            }
+        }
     }
 }
 
@@ -3820,14 +3915,18 @@ function renderPendingTable() {
         tr.style.cursor = 'pointer';
         tr.title = 'Click to select ' + order.ticker;
         var sideClass = (order.side === 'BUY' || order.side === 'COVER') ? 'side-long' : 'side-short';
+        var typeText = order.orderType || 'LIMIT';
+        if (order.tif) typeText += ' (' + order.tif + ')';
+        var priceText = order.orderType === 'MARKET' ? 'MKT' : (stock ? fmtPrice(stock, order.limitPrice) : order.limitPrice.toFixed(2));
+        var qtyText = order.orderType === 'MARKET' ? 'Pending: ' + order.qty : order.qty;
 
         tr.innerHTML = '<td class="mono">' + order.time + '</td>' +
             '<td>Day ' + order.day + '</td>' +
             '<td class="sym-cell">' + order.ticker + '</td>' +
             '<td class="' + sideClass + '">' + order.side + '</td>' +
-            '<td>LIMIT</td>' +
-            '<td class="r">' + order.qty + '</td>' +
-            '<td class="r">' + (stock ? fmtPrice(stock, order.limitPrice) : order.limitPrice.toFixed(2)) + '</td>' +
+            '<td>' + typeText + '</td>' +
+            '<td class="r">' + qtyText + '</td>' +
+            '<td class="r">' + priceText + '</td>' +
             '<td class="r">' + (stock ? fmtPrice(stock, curLTP) : '0.00') + '</td>' +
             '<td class="r"><button class="btn-cancel-order" onclick="event.stopPropagation();cancelPendingOrder(' + index + ')" title="Cancel order">&#x2715; Cancel</button></td>';
 

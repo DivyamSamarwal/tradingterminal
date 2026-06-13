@@ -180,6 +180,14 @@
                         </select>
                         <div class="field-note" id="order-type-note">MARKET executes at LTP; LIMIT executes at target price.</div>
                     </div>
+                    <div class="fg">
+                        <label for="order-tif">Time In Force</label>
+                        <select class="fc" id="order-tif">
+                            <option value="DAY">DAY (Pending till EOD)</option>
+                            <option value="IOC">IOC (Immediate or Cancel)</option>
+                            <option value="FOK">FOK (Fill or Kill)</option>
+                        </select>
+                    </div>
                     <div class="fg hidden" id="limit-price-group">
                         <label for="order-limit-price">Limit Price</label>
                         <input type="number" id="order-limit-price" class="fc mono" placeholder="0.00" step="0.05" min="0">
@@ -458,6 +466,6 @@
         </div>
     </div>
     <div id="toast-container" class="toast-box"></div>
-    <script src="js/app.js?v=19"></script>
+    <script src="js/app.js?v=20"></script>
 </body>
 </html>
