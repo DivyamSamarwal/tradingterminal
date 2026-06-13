@@ -2145,6 +2145,14 @@ function executeTrade(side) {
     var qty = parseInt(document.getElementById('order-qty').value);
     if (isNaN(qty) || qty <= 0) { toast("Error", "Invalid quantity", "error"); return; }
 
+    var MAX_EQUITY_QTY = 1000000;
+    var currentPos = state.positions[stock.ticker];
+    var newQty = currentPos ? (currentPos.qty + (side === 'BUY' ? qty : -qty)) : (side === 'BUY' ? qty : -qty);
+    if (Math.abs(newQty) > MAX_EQUITY_QTY) {
+        toast("Error", "Position Limit Exceeded (Max 1M shares)", "error");
+        return;
+    }
+
     var orderType = document.getElementById('order-type').value;
     if (orderType === 'LIMIT') {
         var limitPrice = parseFloat(document.getElementById('order-limit-price').value);
@@ -2392,7 +2400,9 @@ function calcGreeks(type, strike, ltp, days) {
 }
 
 function calcPremium(type, strike, ltp, days) {
-    return calcGreeks(type, strike, ltp, days).price;
+    var rawPrice = calcGreeks(type, strike, ltp, days).price;
+    var minTick = ltp < 10 ? 0.0005 : 0.05;
+    return Math.max(rawPrice, minTick);
 }
 
 function updateGreeksUI(greeks) {
@@ -2493,11 +2503,19 @@ function executeOptionTrade(side) {
 
     if (lots <= 0) { toast("Error", "Invalid lot count", "error"); return; }
 
+    var MAX_OPTION_LOTS = 10000;
+    var optionId = stock.ticker + '_' + optType + '_' + strike + '_' + expiryType;
+    var currentPosOpt = state.optionsPositions[optionId];
+    var newLots = currentPosOpt ? (currentPosOpt.lots + (side === 'BUY' ? lots : -lots)) : (side === 'BUY' ? lots : -lots);
+    if (newLots > MAX_OPTION_LOTS) {
+        toast("Error", "Position Limit Exceeded (Max 10K lots)", "error");
+        return;
+    }
+
     var fxRate = EXCHANGE_RATES[stock.currency] || 1;
     var premium = 0;
     var cost = 0;
     var costINR = 0;
-    var optionId = stock.ticker + '_' + optType + '_' + strike + '_' + expiryType;
 
     if (side === 'BUY') {
         var pos = state.optionsPositions[optionId];
