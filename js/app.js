@@ -1713,15 +1713,40 @@ function tickMinute() {
     state.time++;
     
     var t = state.time;
-    if (t === 555) pushMarketAnnouncement("Indian Market (NSE) is now OPEN", "NSE", true);
+    if (t === 555) {
+        pushMarketAnnouncement("Indian Market (NSE) is now OPEN", "NSE", true);
+        marketStocks.forEach(function(s) { if (s.currency === 'INR') resetMarketStock(s); });
+    }
     if (t === 930) pushMarketAnnouncement("Indian Market (NSE) has CLOSED", "NSE", false);
-    if (t === 1140) pushMarketAnnouncement("US Markets (NASDAQ) are now OPEN", "NASDAQ", true);
+    
+    if (t === 1140) {
+        pushMarketAnnouncement("US Markets (NASDAQ) are now OPEN", "NASDAQ", true);
+        marketStocks.forEach(function(s) { if (s.currency === 'USD') resetMarketStock(s); });
+    }
     if (t === 90) pushMarketAnnouncement("US Markets (NASDAQ) have CLOSED", "NASDAQ", false);
-    if (t === 420) pushMarketAnnouncement("Chinese Market (SSE) is now OPEN", "SSE", true);
+    
+    if (t === 420) {
+        pushMarketAnnouncement("Chinese Market (SSE) is now OPEN", "SSE", true);
+        marketStocks.forEach(function(s) { if (s.currency === 'CNY') resetMarketStock(s); });
+    }
     if (t === 750) pushMarketAnnouncement("Chinese Market (SSE) has CLOSED", "SSE", false);
-    if (t === 330) pushMarketAnnouncement("Japanese Market (TSE) is now OPEN", "TSE", true);
+    
+    if (t === 330) {
+        pushMarketAnnouncement("Japanese Market (TSE) is now OPEN", "TSE", true);
+        marketStocks.forEach(function(s) { if (s.currency === 'JPY') resetMarketStock(s); });
+    }
     if (t === 690) pushMarketAnnouncement("Japanese Market (TSE) has CLOSED", "TSE", false);
-    if (t === 810) pushMarketAnnouncement("European Markets are now OPEN", "GLOBAL", true);
+    
+    if (t === 405) {
+        pushMarketAnnouncement("Hong Kong Market (HKEX) is now OPEN", "HKEX", true);
+        marketStocks.forEach(function(s) { if (s.currency === 'HKD') resetMarketStock(s); });
+    }
+    if (t === 810) pushMarketAnnouncement("Hong Kong Market (HKEX) has CLOSED", "HKEX", false);
+    
+    if (t === 810) {
+        pushMarketAnnouncement("European Markets are now OPEN", "GLOBAL", true);
+        marketStocks.forEach(function(s) { if (!['INR','USD','CNY','JPY','HKD'].includes(s.currency) && !['CRYPTO','COMM','FX','BOND'].includes(s.market)) resetMarketStock(s); });
+    }
     if (t === 1320) pushMarketAnnouncement("European Markets have CLOSED", "GLOBAL", false);
 
     if (state.time > END_TIME) {
@@ -1984,6 +2009,28 @@ function showDayEndOverlay() {
     document.getElementById('day-overlay').classList.remove('hidden');
 }
 
+function resetMarketStock(stock) {
+    stock.prevClose = stock.ltp;  // save previous day's close
+    var overnightChange = (Math.random() - 0.5) * 0.02;
+    stock.ltp = parseFloat((stock.ltp * (1 + overnightChange)).toFixed(2));
+    stock.open = stock.ltp;
+    stock.base = stock.ltp;
+    stock._prevTick = stock.ltp;
+    stock.volume = 0;
+    stock.circuitHit = null;
+
+    // Roll preHistory: append this day's live ticks and trim to last 22 days (31680 ticks)
+    if (stock.preHistory && stock.history.length > 1) {
+        var todayTicks = stock.history.slice(1);  // skip the opening placeholder
+        stock.preHistory = stock.preHistory.concat(todayTicks).slice(-22 * 1440);
+    }
+    // Reset live history for new day
+    stock.history = [stock.ltp];
+    stock.volumeHistory = [0];
+    stock.ohlcHistory = [];
+    stock.currentCandle = null;
+}
+
 function startNewDay() {
     document.getElementById('day-overlay').classList.add('hidden');
 
@@ -1998,27 +2045,13 @@ function startNewDay() {
         p.daysToExpiry = Math.max(0, p.daysToExpiry - 1);
     });
 
-    // Overnight gap + roll pre-history forward
+    // 24/7 markets and overnight gap logic
     marketStocks.forEach(function(stock) {
-        stock.prevClose = stock.ltp;  // save previous day's close
-        var overnightChange = (Math.random() - 0.5) * 0.02;
-        stock.ltp = parseFloat((stock.ltp * (1 + overnightChange)).toFixed(2));
-        stock.open = stock.ltp;
-        stock.base = stock.ltp;
-        stock._prevTick = stock.ltp;
-        stock.volume = 0;
-        stock.circuitHit = null;
-
-        // Roll preHistory: append this day's live ticks and trim to last 22 days (31680 ticks)
-        if (stock.preHistory && stock.history.length > 1) {
-            var todayTicks = stock.history.slice(1);  // skip the opening placeholder
-            stock.preHistory = stock.preHistory.concat(todayTicks).slice(-22 * 1440);
+        // Only reset 24/7 continuous markets at global midnight.
+        // Equities are reset at their exact opening minute in tickMinute()
+        if (stock.market === 'CRYPTO' || stock.market === 'COMM' || stock.market === 'FX' || stock.market === 'BOND') {
+            resetMarketStock(stock);
         }
-        // Reset live history for new day
-        stock.history = [stock.ltp];
-        stock.volumeHistory = [0];
-        stock.ohlcHistory = [];
-        stock.currentCandle = null;
     });
 
     // Reset NIFTY for new day
