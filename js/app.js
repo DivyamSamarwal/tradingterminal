@@ -1294,6 +1294,13 @@ document.addEventListener("DOMContentLoaded", function() {
     renderAll();
     renderFxRates();
     startClock();
+    
+    // High-frequency HFT order book flicker (visual realism)
+    setInterval(function() {
+        if (state.activeStock && !state.isPaused) {
+            renderMarketDepth(state.activeStock);
+        }
+    }, 400);
 });
 
 function initMarket() {
@@ -3007,7 +3014,7 @@ function renderActiveStock() {
     elPrice.className = 'ct-price ' + (isUp ? 'up' : 'dn');
 
     var elChg = document.getElementById('active-change');
-    var volStr = ' | Vol: ' + formatVolume(stock.volume);
+    var volStr = ' | Vol: ' + formatVolume(stock.volume, stock.currency);
     var circuitStr = stock.circuitHit ? ' | ' + stock.circuitHit : '';
     elChg.textContent = (isUp ? '+' : '') + dayChg.toFixed(2) + ' (' + dayPct.toFixed(2) + '%)' + volStr + circuitStr;
     elChg.className = 'ct-change ' + (isUp ? 'up' : 'dn');
@@ -3048,15 +3055,26 @@ function renderMarketDepth(stock) {
     var step = stock.ltp > 5000 ? 5 : stock.ltp > 1000 ? 1 : stock.ltp > 200 ? 0.5 : stock.ltp > 10 ? 0.05 : stock.ltp > 1 ? 0.01 : 0.001;
     var decimals = stock.currency === 'JPY' ? 0 : stock.ltp < 10 ? 4 : 2;
 
-    // Seeded quantities that fluctuate with time, anchored to true asset liquidity
-    var baseSeed = stock.ticker.charCodeAt(0) + state.time;
+    // Calculate price momentum imbalance
+    var momentum = stock.open ? (stock.ltp - stock.open) / stock.open : 0;
+    var bidSkew = 1.0;
+    var askSkew = 1.0;
+    if (momentum < -0.01) { askSkew = 1.6; bidSkew = 0.5; } // Heavy sell pressure
+    else if (momentum > 0.01) { bidSkew = 1.6; askSkew = 0.5; } // Heavy buy pressure
+
+    // Base depth anchored to true asset liquidity
     var avgTickVol = Math.floor(stock.baseVolume / 390);
     var baseDepth = avgTickVol * 0.2; // 20% of minute volume per depth level
     if (baseDepth < 10) baseDepth = 10;
     
     function getQty(level, isBid) {
-        var rand = Math.sin(baseSeed + level + (isBid ? 10 : 20));
-        return Math.floor(baseDepth + Math.abs(rand) * baseDepth * 1.5);
+        // True randomness for high-frequency HFT flicker
+        var flicker = 0.6 + Math.random() * 0.8; // 0.6x to 1.4x jitter
+        var skew = isBid ? bidSkew : askSkew;
+        var qty = Math.floor(baseDepth * flicker * skew);
+        // Add random level falloff variance
+        qty = Math.floor(qty * (1 + Math.random() * (level * 0.3))); 
+        return qty;
     }
 
     var bidHTML = '';
@@ -3145,10 +3163,16 @@ window.setLimitPrice = function(price) {
     }
 };
 
-function formatVolume(v) {
-    if (v >= 10000000) return (v / 10000000).toFixed(2) + 'Cr';
-    if (v >= 100000) return (v / 100000).toFixed(2) + 'L';
-    if (v >= 1000) return (v / 1000).toFixed(1) + 'K';
+function formatVolume(v, currency) {
+    if (!currency || currency === 'INR') {
+        if (v >= 10000000) return (v / 10000000).toFixed(2) + 'Cr';
+        if (v >= 100000) return (v / 100000).toFixed(2) + 'L';
+        if (v >= 1000) return (v / 1000).toFixed(1) + 'K';
+    } else {
+        if (v >= 1000000000) return (v / 1000000000).toFixed(2) + 'B';
+        if (v >= 1000000) return (v / 1000000).toFixed(2) + 'M';
+        if (v >= 1000) return (v / 1000).toFixed(1) + 'K';
+    }
     return v.toString();
 }
 
@@ -3279,7 +3303,7 @@ function _applyChartData(stock, isLight) {
                 var fmt = isPct
                     ? function(n) { return (n >= 0 ? '+' : '') + n.toFixed(2) + '%'; }
                     : function(n) { return fmtPrice(state.activeStock, n); };
-                var volStr = d.v ? '  Vol: ' + formatVolume(d.v) : '';
+                var volStr = d.v ? '  Vol: ' + formatVolume(d.v, state.activeStock ? state.activeStock.currency : 'INR') : '';
                 return [
                     'O: ' + fmt(d.o),
                     'H: ' + fmt(d.h) + '  \u2197',
