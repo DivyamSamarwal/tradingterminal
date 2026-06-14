@@ -1297,7 +1297,7 @@ document.addEventListener("DOMContentLoaded", function() {
     
     // High-frequency HFT order book flicker (visual realism)
     setInterval(function() {
-        if (state.activeStock && !state.isPaused) {
+        if (state.activeStock && !state.isPaused && isMarketOpen(state.activeStock, state.time)) {
             renderMarketDepth(state.activeStock);
         }
     }, 400);
