@@ -14,13 +14,18 @@ This project simulates a highly realistic, tick-by-tick financial market environ
   * **Crypto**: Trade high-volatility assets like BTC, ETH, and DOGE.
   * **Forex**: Trade major currency pairs like EUR/USD, GBP/USD, and USD/JPY.
   * **Bonds (Fixed Income)**: Track global sovereign debt yields including US10Y, IN10Y, DE10Y, and more.
+* **Multi-Market Timezone Synchronization**: The engine natively tracks the exact operating hours for each global exchange. US stocks trade during US hours, Japanese stocks during Asian hours, while Crypto and Forex run continuously 24/7.
+* **True Asset Liquidity Modeling**: Order book depth and execution algorithms are mathematically scaled to the real-world daily volume of each specific asset class. A 1,000-share order on a blue-chip tech stock fills differently than a 1,000-coin order on a cryptocurrency.
 * **Native Currency Conversion**: A built-in FX engine automatically converts P&L from international assets (USD, EUR, GBP, JPY, CNY, AUD, CAD, CHF, HKD) back into your base portfolio currency (INR).
-* **Realistic Market Depth (Level 2)**: Dynamic order book simulation that reacts to market conditions, including accurate order queueing during frozen markets (Upper/Lower Circuits).
+* **Realistic Market Depth (Level 2)**: Dynamic order book simulation that reacts to market conditions:
+  * High-Frequency Trading (HFT) jitter adds sub-second realism during open hours.
+  * Complete "Ironclad Freeze" caching halts all order book movement the second a market closes.
+  * Accurate order queueing and asymmetric skewing during market crashes (Upper/Lower Circuits).
+* **Strict After-Hours Rules**: Market orders are instantly blocked when an exchange is closed, while Limit orders are correctly queued in the Pending Order book for the opening bell.
 * **Circuit Limits**: Accurately simulates exchange freezes. If a stock crashes or skyrockets by 10%, trading halts and liquidity dries up realistically on the order book.
 * **Portfolio & Risk Management**: 
   * Track your live Portfolio Value, Cash Balance, and Required Margin.
   * Monitor unrealized Day P&L.
-  * Place Market or Limit orders.
   * Auto square-off functionality using Stop Loss and Target brackets.
 * **Advanced Charting**: Integrated candlestick charts with customizable timeframes and technical indicators (SMA, EMA).
 * **Breaking News Impact**: A simulated news feed that dynamically injects volatility and sentiment shifts into specific stocks or sectors in real-time.
@@ -45,7 +50,7 @@ Because this application runs entirely in the browser, installation is incredibl
 
 1. **Watchlist**: Use the tabs (All, Index, Bond, NSE, NASDAQ, Crypto, etc.) to filter the universe of assets.
 2. **Chart**: Click any asset in the watchlist to load its live chart and Market Depth.
-3. **Trade**: Use the right-hand panel to enter a Quantity. Select "Market" to buy at the current price, or "Limit" to queue your order.
+3. **Trade**: Use the right-hand panel to enter a Quantity. Select "Market" to buy at the current price, or "Limit" to queue your order. Note: Market orders will be blocked if the asset's specific global exchange is closed!
 4. **Monitor**: Watch your open positions in the bottom dock. Use the "Close" button to exit a trade and realize your profit or loss!
 
 ## ⚠️ Disclaimer
