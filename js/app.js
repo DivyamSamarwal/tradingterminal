@@ -3014,7 +3014,8 @@ function renderActiveStock() {
     elPrice.className = 'ct-price ' + (isUp ? 'up' : 'dn');
 
     var elChg = document.getElementById('active-change');
-    var volStr = ' | Vol: ' + formatVolume(stock.volume, stock.currency);
+    var tickVolStr = stock.volumeHistory.length ? ' | Tick Vol: ' + formatVolume(stock.volumeHistory[stock.volumeHistory.length - 1], stock.currency) : '';
+    var volStr = ' | Vol: ' + formatVolume(stock.volume, stock.currency) + tickVolStr;
     var circuitStr = stock.circuitHit ? ' | ' + stock.circuitHit : '';
     elChg.textContent = (isUp ? '+' : '') + dayChg.toFixed(2) + ' (' + dayPct.toFixed(2) + '%)' + volStr + circuitStr;
     elChg.className = 'ct-change ' + (isUp ? 'up' : 'dn');
