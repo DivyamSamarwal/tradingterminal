@@ -150,7 +150,36 @@ var LOT_SIZES = {
 // Helper to make a stock entry cleanly
 function mkStock(ticker, name, ltp, vol, sector, market, currency) {
     market = market || 'NSE'; currency = currency || 'INR';
-    return { ticker: ticker, name: name, ltp: ltp, vol: vol, base: ltp, history: [], open: ltp, sector: sector, volume: 0, circuitHit: null, _prevTick: ltp, market: market, currency: currency, volumeHistory: [] };
+    
+    // Assign realistic base daily volume
+    var baseVolume = 1000000; // Default 1M
+    if (market === 'NASDAQ') {
+        if (ltp < 200) baseVolume = 80000000;
+        else baseVolume = 30000000;
+    } else if (market === 'CRYPTO') {
+        if (ltp > 10000) baseVolume = 60000; // BTC
+        else if (ltp < 1) baseVolume = 500000000; // DOGE, XRP
+        else baseVolume = 1000000;
+    } else if (market === 'BOND') {
+        baseVolume = 5000000;
+    } else if (market === 'INDEX') {
+        baseVolume = 15000000;
+    } else if (market === 'COMM') {
+        baseVolume = 200000;
+    } else if (market === 'FX') {
+        baseVolume = 1000000;
+    } else if (market === 'NSE') {
+        if (ltp < 500) baseVolume = 40000000; // High volume
+        else if (ltp < 2000) baseVolume = 15000000;
+        else baseVolume = 5000000;
+    } else if (market === 'SSE' || market === 'TSE') {
+        if (ltp < 50) baseVolume = 30000000;
+        else baseVolume = 8000000;
+    } else if (market === 'EU') {
+        baseVolume = 4000000;
+    }
+
+    return { ticker: ticker, name: name, ltp: ltp, vol: vol, base: ltp, history: [], open: ltp, sector: sector, volume: 0, circuitHit: null, _prevTick: ltp, market: market, currency: currency, volumeHistory: [], baseVolume: baseVolume };
 }
 
 var marketStocks = [
@@ -1759,7 +1788,11 @@ function tickMinute() {
         if (stock.history.length > state.historyLen) stock.history.shift();
 
         // OHLCV candle aggregation
-        var tickVol = Math.floor(Math.random() * 8000 + 800);
+        var avgTickVol = Math.floor(stock.baseVolume / 390); // 390 minutes in a standard trading day
+        var volFluctuation = 0.5 + Math.random(); // 0.5x to 1.5x variance
+        var tickVol = Math.floor(avgTickVol * volFluctuation);
+        if (tickVol < 1) tickVol = 1;
+
         stock.volumeHistory.push(tickVol);
         if (stock.volumeHistory.length > state.historyLen) stock.volumeHistory.shift();
         if (!stock.currentCandle) {
@@ -1777,9 +1810,9 @@ function tickMinute() {
             }
         }
 
-        // Volume simulation (realistic ranges based on stock liquidity)
+        // Volume simulation (realistic ranges based on true asset liquidity)
         stock.volume += tickVol;
-        stock.available_liquidity = tickVol * 10; // 10x the minute volume for deep liquidity
+        stock.available_liquidity = tickVol * 1.5; // Minute volume + a bit of ambient depth
         stock.bidAskSpread = stock.ltp * (Math.random() * 0.001 + 0.0001); // 0.01% to 0.1% spread
 
         // Track for NIFTY
@@ -2369,7 +2402,7 @@ function processEquityTrade(stock, side, qty, price) {
     });
 
     // Add to volume
-    stock.volume += qty * 100;
+    stock.volume += qty;
     
     // Check if margin is sufficient to cover brokerage too
     if (nextMargin - brokerage < 0 && side === 'BUY') {
@@ -3015,11 +3048,15 @@ function renderMarketDepth(stock) {
     var step = stock.ltp > 5000 ? 5 : stock.ltp > 1000 ? 1 : stock.ltp > 200 ? 0.5 : stock.ltp > 10 ? 0.05 : stock.ltp > 1 ? 0.01 : 0.001;
     var decimals = stock.currency === 'JPY' ? 0 : stock.ltp < 10 ? 4 : 2;
 
-    // Seeded-ish quantities that fluctuate with time
+    // Seeded quantities that fluctuate with time, anchored to true asset liquidity
     var baseSeed = stock.ticker.charCodeAt(0) + state.time;
+    var avgTickVol = Math.floor(stock.baseVolume / 390);
+    var baseDepth = avgTickVol * 0.2; // 20% of minute volume per depth level
+    if (baseDepth < 10) baseDepth = 10;
+    
     function getQty(level, isBid) {
         var rand = Math.sin(baseSeed + level + (isBid ? 10 : 20));
-        return Math.floor(500 + Math.abs(rand) * 3500);
+        return Math.floor(baseDepth + Math.abs(rand) * baseDepth * 1.5);
     }
 
     var bidHTML = '';
@@ -3663,7 +3700,7 @@ function closeEquityPosition(ticker, silent) {
 
     delete state.positions[ticker];
     delete state.slTargets[ticker];
-    stock.volume += absQty * 100;
+    stock.volume += absQty;
 
     if (state.activeStock && state.activeStock.ticker === ticker) {
         document.getElementById('sl-price').value = '';
@@ -3760,7 +3797,7 @@ function liquidateAllForced() {
 
         delete state.positions[ticker];
         delete state.slTargets[ticker];
-        stock.volume += absQty * 100;
+        stock.volume += absQty;
     });
 
     optionKeys.forEach(function(id) {
