@@ -3100,14 +3100,47 @@ function renderMarketDepth(stock) {
     var avgTickVol = Math.floor(stock.baseVolume / 390);
     var baseDepth = avgTickVol * 0.2; // 20% of minute volume per depth level
     if (baseDepth < 10) baseDepth = 10;
+    var isOpen = isMarketOpen(stock, state.time);
     
+    if (isOpen) {
+        stock._cachedDepthHTML = null;
+    }
+    
+    // Ironclad lock: If market is closed, cache the depth and never recalculate it
+    if (!isOpen && stock._cachedDepthHTML) {
+        bidsContainer.innerHTML = stock._cachedDepthHTML.bids;
+        asksContainer.innerHTML = stock._cachedDepthHTML.asks;
+        
+        var ratioBidEl = document.getElementById('l2-ratio-bid');
+        var ratioAskEl = document.getElementById('l2-ratio-ask');
+        if (ratioBidEl) ratioBidEl.style.width = stock._cachedDepthHTML.bidPct + '%';
+        if (ratioAskEl) ratioAskEl.style.width = stock._cachedDepthHTML.askPct + '%';
+        
+        var bidPctEl = document.getElementById('l2-bid-pct');
+        var askPctEl = document.getElementById('l2-ask-pct');
+        if (bidPctEl) bidPctEl.textContent = Math.round(stock._cachedDepthHTML.bidPct) + '%';
+        if (askPctEl) askPctEl.textContent = Math.round(stock._cachedDepthHTML.askPct) + '%';
+        return;
+    }
+
+    var staticSeed = stock.ticker.charCodeAt(0) + stock.ltp; // Frozen seed for closed markets
+
     function getQty(level, isBid) {
-        // True randomness for high-frequency HFT flicker
-        var flicker = 0.6 + Math.random() * 0.8; // 0.6x to 1.4x jitter
+        var flicker, variance;
+        if (isOpen) {
+            // True randomness for high-frequency HFT flicker
+            flicker = 0.6 + Math.random() * 0.8; 
+            variance = Math.random();
+        } else {
+            // Frozen deterministic math for closed markets
+            flicker = 0.8 + Math.abs(Math.sin(staticSeed + level + (isBid ? 1 : 2))) * 0.4;
+            variance = Math.abs(Math.cos(staticSeed + level));
+        }
+
         var skew = isBid ? bidSkew : askSkew;
         var qty = Math.floor(baseDepth * flicker * skew);
-        // Add random level falloff variance
-        qty = Math.floor(qty * (1 + Math.random() * (level * 0.3))); 
+        // Add level falloff variance
+        qty = Math.floor(qty * (1 + variance * (level * 0.3))); 
         return qty;
     }
 
@@ -3175,6 +3208,15 @@ function renderMarketDepth(stock) {
     var askPctEl = document.getElementById('l2-ask-pct');
     if (bidPctEl) bidPctEl.textContent = Math.round(bidPct) + '%';
     if (askPctEl) askPctEl.textContent = Math.round(askPct) + '%';
+
+    if (!isOpen) {
+        stock._cachedDepthHTML = {
+            bids: bidHTML,
+            asks: askHTML,
+            bidPct: bidPct,
+            askPct: askPct
+        };
+    }
 }
 
 window.setLimitPrice = function(price) {
