@@ -2287,6 +2287,10 @@ function executeTrade(side) {
     }
 
     if (orderType === 'MARKET') {
+        if (!isMarketOpen(stock, state.time)) {
+            toast("Closed", "Cannot place MARKET orders when " + stock.market + " is closed. Use LIMIT order to queue for open.", "error");
+            return;
+        }
         var avail = stock.available_liquidity || 0;
         
         if (tif === 'FOK' && qty > avail) {
@@ -2657,6 +2661,10 @@ function executeOptionTrade(side) {
         return;
     }
     var stock = state.activeStock;
+    if (!isMarketOpen(stock, state.time)) {
+        toast("Closed", "Cannot trade options when " + stock.market + " is closed.", "error");
+        return;
+    }
     var optType = document.getElementById('option-type').value;
     var strike = parseFloat(document.getElementById('strike-price').value);
     var expiryType = document.getElementById('expiry-date').value;
