@@ -1346,8 +1346,10 @@ function setupListeners() {
     // Order type change (Market vs Limit)
     document.getElementById('order-type').addEventListener('change', function(e) {
         var grp = document.getElementById('limit-price-group');
-        if (e.target.value === 'LIMIT') {
+        var lbl = grp.querySelector('label');
+        if (e.target.value === 'LIMIT' || e.target.value === 'STOP') {
             grp.classList.remove('hidden');
+            lbl.textContent = e.target.value === 'LIMIT' ? 'Limit Price' : 'Stop Price';
             var stock = state.activeStock;
             if (stock) {
                 document.getElementById('order-limit-price').value = stock.ltp;
@@ -1952,10 +1954,19 @@ function tickMinute() {
             }
 
             var triggered = false;
-            if (order.side === 'BUY' || order.side === 'COVER') {
-                if (ltp <= order.limitPrice) triggered = true;
-            } else if (order.side === 'SELL' || order.side === 'SHORT') {
-                if (ltp >= order.limitPrice) triggered = true;
+            if (order.orderType === 'STOP') {
+                if (order.side === 'BUY' || order.side === 'COVER') {
+                    if (ltp >= order.limitPrice) triggered = true;
+                } else if (order.side === 'SELL' || order.side === 'SHORT') {
+                    if (ltp <= order.limitPrice) triggered = true;
+                }
+            } else {
+                // LIMIT
+                if (order.side === 'BUY' || order.side === 'COVER') {
+                    if (ltp <= order.limitPrice) triggered = true;
+                } else if (order.side === 'SELL' || order.side === 'SHORT') {
+                    if (ltp >= order.limitPrice) triggered = true;
+                }
             }
 
             if (triggered) {
@@ -1965,12 +1976,27 @@ function tickMinute() {
                 } else if (stock.circuitHit === 'LC' && (order.side === 'SELL' || order.side === 'SHORT')) {
                     remainingPending.push(order);
                 } else {
-                    var fillPrice = stock.ltp;
-                    var success = processEquityTrade(stock, order.side, order.qty, fillPrice);
-                    if (success) {
-                        toast("Order Executed", "Limit order filled: " + order.side + " " + order.qty + " " + order.ticker + " @ " + fillPrice.toFixed(2), "success");
+                    var avail = stock.available_liquidity || 0;
+                    if (avail > 0) {
+                        var fillQty = Math.min(order.qty, avail);
+                        var fillPrice = stock.ltp;
+                        
+                        if (processEquityTrade(stock, order.side, fillQty, fillPrice)) {
+                            stock.available_liquidity -= fillQty;
+                            order.qty -= fillQty;
+                            
+                            var oName = order.orderType === 'STOP' ? 'STOP' : 'Limit';
+                            if (order.qty > 0) {
+                                remainingPending.push(order);
+                            } else {
+                                toast("Order Executed", oName + " order fully filled: " + order.side + " " + order.ticker + " @ " + fillPrice.toFixed(2), "success");
+                            }
+                        } else {
+                            var oName = order.orderType === 'STOP' ? 'STOP' : 'Limit';
+                            toast("Order Cancelled", oName + " order cancelled (Insufficient Margin): " + order.side + " " + order.qty + " " + order.ticker, "error");
+                        }
                     } else {
-                        toast("Order Cancelled", "Limit order cancelled (Insufficient Margin): " + order.side + " " + order.qty + " " + order.ticker + " @ " + fillPrice.toFixed(2), "error");
+                        remainingPending.push(order);
                     }
                 }
             } else {
@@ -2253,9 +2279,22 @@ function executeTrade(side) {
 
     var MAX_EQUITY_QTY = 1000000;
     var currentPos = state.positions[stock.ticker];
-    var newQty = currentPos ? (currentPos.qty + (side === 'BUY' ? qty : -qty)) : (side === 'BUY' ? qty : -qty);
-    if (Math.abs(newQty) > MAX_EQUITY_QTY) {
-        toast("Error", "Position Limit Exceeded (Max 1M shares)", "error");
+    var currentQty = currentPos ? currentPos.qty : 0;
+    
+    var pendingLong = 0;
+    var pendingShort = 0;
+    state.pendingOrders.forEach(function(o) {
+        if (o.ticker === stock.ticker) {
+            if (o.side === 'BUY' || o.side === 'COVER') pendingLong += o.qty;
+            if (o.side === 'SELL' || o.side === 'SHORT') pendingShort += o.qty;
+        }
+    });
+
+    var maxLong = (currentQty > 0 ? currentQty : 0) + pendingLong + (side === 'BUY' ? qty : 0);
+    var maxShort = (currentQty < 0 ? Math.abs(currentQty) : 0) + pendingShort + (side === 'SELL' ? qty : 0);
+
+    if (maxLong > MAX_EQUITY_QTY || maxShort > MAX_EQUITY_QTY) {
+        toast("Error", "Position Limit Exceeded (Max 1M shares limit includes pending orders)", "error");
         return;
     }
 
@@ -2283,6 +2322,38 @@ function executeTrade(side) {
             currency: stock.currency
         });
         toast("Pending Order", "Limit order placed: " + side + " " + qty + " " + stock.ticker + " @ " + limitPrice.toFixed(2), "info");
+        document.getElementById('order-qty').value = 1;
+        document.getElementById('order-type').value = 'MARKET';
+        document.getElementById('limit-price-group').classList.add('hidden');
+        renderAll();
+        return;
+    }
+
+    if (orderType === 'STOP') {
+        var stopPrice = parseFloat(document.getElementById('order-limit-price').value);
+        if (isNaN(stopPrice) || stopPrice <= 0) {
+            toast("Error", "Invalid stop price", "error");
+            return;
+        }
+        if (side === 'BUY' && stopPrice <= stock.ltp) {
+            toast("Error", "BUY STOP price must be placed ABOVE the current market price (" + stock.ltp + ").", "error");
+            return;
+        }
+        if (side === 'SELL' && stopPrice >= stock.ltp) {
+            toast("Error", "SELL STOP price must be placed BELOW the current market price (" + stock.ltp + ").", "error");
+            return;
+        }
+        state.pendingOrders.push({
+            time: formatTime(state.time),
+            day: state.day,
+            ticker: stock.ticker,
+            side: side,
+            qty: qty,
+            limitPrice: stopPrice, // Reuse limitPrice field for simplicity in execution
+            orderType: 'STOP',
+            currency: stock.currency
+        });
+        toast("Pending Order", "STOP order placed: " + side + " " + qty + " " + stock.ticker + " @ " + stopPrice.toFixed(2), "info");
         document.getElementById('order-qty').value = 1;
         document.getElementById('order-type').value = 'MARKET';
         document.getElementById('limit-price-group').classList.add('hidden');

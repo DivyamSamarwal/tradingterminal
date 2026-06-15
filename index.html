@@ -177,8 +177,9 @@
                         <select class="fc" id="order-type">
                             <option value="MARKET">MARKET</option>
                             <option value="LIMIT">LIMIT</option>
+                            <option value="STOP">STOP</option>
                         </select>
-                        <div class="field-note" id="order-type-note">MARKET executes at LTP; LIMIT executes at target price.</div>
+                        <div class="field-note" id="order-type-note">MARKET at LTP; LIMIT guarantees price; STOP triggers when price crosses target.</div>
                     </div>
                     <div class="fg">
                         <label for="order-tif">Time In Force</label>
@@ -466,6 +467,6 @@
         </div>
     </div>
     <div id="toast-container" class="toast-box"></div>
-    <script src="js/app.js?v=33"></script>
+    <script src="js/app.js?v=35"></script>
 </body>
 </html>
