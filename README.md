@@ -1,105 +1,86 @@
-# 📈 Trading Terminal Simulator (Pro Edition)
+# Trading Terminal Simulator
 
-A high-performance, real-time simulated trading terminal built entirely with frontend technologies (HTML, CSS, JavaScript). 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
+[![License](https://img.shields.io/badge/license-MIT-green.svg)]()
+[![Environment](https://img.shields.io/badge/environment-Client--Side-orange.svg)]()
 
-This project simulates a highly realistic, tick-by-tick financial market environment. It is designed for traders, developers, and financial enthusiasts who want to practice trading, test strategies, and experience authentic market mechanics—complete with liquidity constraints, timezone synchronization, and derivatives—without risking real capital.
+A high-performance, real-time trading terminal simulator built entirely with client-side web technologies. 
 
----
-
-## 🚀 Comprehensive Feature List
-
-### 🌍 Global Multi-Asset & Market Support
-The terminal features a diverse universe of tradable assets, each bound to their real-world exchange hours and base currencies.
-* **Equities**: Trade blue-chip and high-growth stocks from the **NSE** (India), **NASDAQ** (US), **SSE** (China), and **TSE** (Japan).
-* **Global Indices**: Track macroeconomic trends with major indices including the **NIFTY 50**, **S&P 500**, **Nikkei 225**, and **Hang Seng**.
-* **Commodities**: Trade physical goods like **Gold**, **Silver**, **Crude Oil**, and **Natural Gas** via futures-style contracts.
-* **Cryptocurrency**: Trade high-volatility digital assets like **BTC**, **ETH**, and **DOGE**, which trade continuously 24/7 without market closure.
-* **Forex (FX)**: Trade major currency pairs like **EUR/USD**, **GBP/USD**, and **USD/JPY**.
-* **Bonds (Fixed Income)**: Track global sovereign debt yields including **US10Y**, **IN10Y**, and **DE10Y** to monitor global interest rate sentiment.
-
-### ⏱️ Multi-Market Timezone Synchronization
-Unlike basic simulators, this engine natively tracks the exact operating hours of global exchanges:
-* **US Stocks** only trade during New York market hours.
-* **Japanese Stocks** trade during Asian market hours.
-* **Indian Stocks** trade during IST market hours.
-* **Ironclad Market Closure**: The exact second an exchange closes, its order book enters an "After-Hours Freeze". All price action halts, market orders are instantly blocked, and any pending Limit or Stop orders are securely queued for the next day's opening bell.
-
-### 🌊 Extreme Liquidity Realism & Order Execution
-The simulation does not grant you "infinite liquidity." It features a mathematical order book model that forces you to respect market volume.
-* **Tick Volume Liquidity**: Order book depth is mathematically scaled to the real-world daily volume of each specific asset class. A 1,000-share order on a massive tech stock fills instantly, while a 1,000-share order on an illiquid asset will take significant time to execute.
-* **Market Orders**: Instantly sweeps the currently available liquidity. If your massive order exceeds the available buyers/sellers, it will **partially fill** and sit in the queue until more volume arrives.
-* **Limit Orders**: Guarantees your execution price *or better*. Limit orders are not instantly granted fills when triggered; they must siphon available `Tick Vol` from the market, draining tick-by-tick just like a Market order.
-* **STOP Market Orders**: Use BUY STOPs to catch breakouts or SELL STOPs to short breakdowns. Triggered automatically when an asset crosses your target price, instantly converting to a Market order.
-* **Strict Position Caps**: An advanced validation logic firewall prevents you from exploiting maximum position limits (e.g., 1,000,000 shares). The engine algebraically calculates your net exposure by summing your **Current Positions + All Pending Orders** before allowing a trade.
-
-### 📈 Options Trading & Derivatives Engine
-A fully modeled synthetic options market built into the terminal.
-* **Call & Put Options**: Trade synthetic derivatives on underlying equities to leverage your capital or hedge your portfolio.
-* **Live Greeks Pricing Engine**: Calculates dynamic premium pricing in real-time using modeled variables:
-  * **Delta**: Premium sensitivity to the underlying asset's price movement.
-  * **Gamma**: The rate of change of Delta.
-  * **Theta (Time Decay)**: Options realistically and mathematically lose value as they approach their expiry date.
-  * **Vega**: Sensitivity to implied volatility.
-* **End-of-Day Settlement**: Options are automatically settled or exercised at expiry based on the underlying asset's closing price, simulating real clearinghouse mechanics.
-
-### 🛑 Circuit Breakers & Market Halts
-* Accurately simulates exchange freezes. 
-* If a highly volatile asset crashes or skyrockets by 10% (hitting its Lower or Upper Circuit Limit), trading is instantly halted. 
-* Liquidity dries up realistically on the order book, preventing you from panic-selling during a limit-down, or FOMO-buying during a limit-up.
-
-### 📊 Advanced Portfolio Management & Risk
-* **Live Risk Metrics**: A dynamic dashboard tracks your Live Portfolio Value, Cash Balance, Required Margin, and Unrealized Day P&L.
-* **Native Currency Conversion**: A built-in real-time FX engine automatically converts international P&L (USD, EUR, GBP, JPY, CNY) back into your base portfolio currency (INR).
-* **Stop-Loss & Take-Profit Brackets**: Auto square-off functionality built directly into position management to protect your capital while you step away.
-
-### 📰 Breaking News & Sentiment Engine
-* A simulated live news feed dynamically injects macroeconomic data, earnings reports, and geopolitical events into the terminal.
-* News events instantly trigger volatility spikes and sentiment shifts (bullish/bearish) into specific stocks or entire sectors, forcing you to react to changing market conditions in real-time.
-
-### 🕯️ Advanced Charting & Technicals
-* Integrated candlestick and line charts.
-* Customizable timeframes (5M, 15M, 1H, 1D, 1W).
-* Toggle between Logarithmic and Linear scaling.
-* Overlay technical indicators including Simple Moving Averages (SMA) and Exponential Moving Averages (EMA).
+This project provides a highly accurate, tick-by-tick financial market microstructure simulation. It is engineered for quantitative analysis, strategy backtesting, and educational purposes, allowing users to interact with synthetic markets featuring authentic liquidity constraints, timezone synchronization, and derivatives pricing models.
 
 ---
 
-## 🛠️ Technology Stack & Architecture
+## Core Architecture
 
-This application represents a masterclass in frontend performance optimization.
-* **Frontend**: Vanilla HTML5, CSS3, JavaScript (ES5/ES6)
-* **Zero Backend**: 100% Client-side architecture. No backend server, database, or API keys are required to run the core simulation.
-* **In-Memory State**: Data, order queues, portfolio state, and price histories are managed entirely in browser memory, providing zero-latency execution.
-* **Optimized DOM Rendering**: The terminal uses batched DOM updates and highly optimized rendering loops to handle thousands of tick updates per second without lagging the browser.
-
----
-
-## 📦 Installation & How to Run
-
-Because this application runs entirely in the browser, installation is instantaneous:
-
-1. **Clone** or download the repository to your local machine.
-2. **Extract** the folder.
-3. **Run**: Double-click the `index.html` file to open it in any modern web browser (Google Chrome, Microsoft Edge, Mozilla Firefox, Safari).
-4. **Trade**: The global multi-asset simulation will boot up and start ticking immediately!
-
-*(Note: If you plan on extending this into a multiplayer, session-based platform in the future, you can easily attach a Node.js + Socket.io backend to broadcast the tick stream.)*
+The application is built with a focus on zero-latency execution and high-frequency DOM updates.
+* **Frontend Framework**: Vanilla HTML5, CSS3, JavaScript (ES5/ES6).
+* **State Management**: 100% in-memory client-side architecture. Order queues, portfolio states, and tick histories are managed in browser memory without reliance on external databases or APIs.
+* **Rendering Engine**: Utilizes batched DOM updates and optimized rendering loops to sustain thousands of tick updates per second without UI degradation.
 
 ---
 
-## 🎮 Quick Start Guide
+## Features
 
-1. **The Watchlist**: Use the top-left tabs (All, Index, Bond, NSE, NASDAQ, Crypto, etc.) to filter the massive universe of assets.
-2. **Market Depth**: Click any asset in the watchlist to load its live chart and open its Level 2 Market Depth order book.
-3. **Execution**: Use the right-hand panel to enter a Quantity. 
-   - Select **MARKET** for instant liquidity.
-   - Select **LIMIT** to guarantee your price.
-   - Select **STOP** to trigger a trade on a breakout/breakdown. 
-   - *Note: Orders will be queued in the Pending list or blocked entirely if the specific global exchange is currently closed!*
-4. **Monitoring**: Watch your open positions, P&L, and pending orders in the bottom dock. Use the "Close" button to exit a trade and realize your profit or loss!
+### 1. Market Microstructure & Liquidity
+The simulation enforces strict market microstructure rules, rejecting the concept of infinite liquidity found in basic simulators.
+* **Tick Volume Modeling**: Order book depth is mathematically scaled to the real-world daily volume of specific asset classes. Order execution is constrained by available synthetic liquidity.
+* **Asynchronous Exchange Hours**: The engine tracks the operating hours of global exchanges (NYSE, NASDAQ, NSE, TSE, SSE). Assets are only tradable during their respective timezone sessions.
+* **After-Hours Processing**: When an exchange closes, its order book state is frozen. Market orders are rejected, while Limit and Stop orders are securely queued for the subsequent market open.
+* **Circuit Breakers**: Simulates exchange-mandated trading halts. Assets experiencing extreme volatility (±10%) hit Upper or Lower Circuit Limits, instantly drying up order book liquidity and preventing execution.
+
+### 2. Order Execution Engine
+A robust routing and execution engine supporting advanced order types and Time-in-Force (TIF) instructions.
+* **Market Orders**: Executes immediately against available liquidity. Excess quantity exceeding the current order book depth is queued as pending.
+* **Limit Orders**: Guarantees execution at the specified limit price or better. Fills tick-by-tick based on available market volume.
+* **Stop Orders**: Triggers upon price crossing a specified threshold, instantly converting to a Market order to capture momentum.
+* **Time In Force (TIF)**:
+  * **DAY**: Orders remain active in the pending queue until filled or canceled at the End-of-Day (EOD) settlement.
+  * **IOC (Immediate or Cancel)**: Fills the maximum possible quantity against current liquidity; any unfilled remainder is immediately canceled.
+  * **FOK (Fill or Kill)**: Requires the entire order quantity to be filled instantly. If insufficient liquidity exists, the entire order is canceled.
+* **Position Limits**: Implements algebraic exposure calculation (Current Position + Pending Orders) to enforce strict maximum position caps (e.g., 1,000,000 shares) and prevent exploitation.
+
+### 3. Derivatives & Pricing Models
+* **Synthetic Options**: Supports Call and Put options on underlying equities.
+* **Live Greeks Calculation**: Dynamically computes premium pricing using standard risk metrics (Delta, Gamma, Theta, Vega).
+* **Time Decay**: Options premiums realistically decay as the contract approaches expiry (Theta).
+* **Clearing & Settlement**: Automated End-of-Day (EOD) processing handles the exercise or expiration of derivatives based on the underlying asset's closing price.
+
+### 4. Global Multi-Asset Universe
+* **Equities**: Instruments from US, Indian, Japanese, and Chinese exchanges.
+* **Indices**: Tracking major benchmarks (S&P 500, NIFTY 50, Nikkei 225).
+* **Commodities**: Futures-style contracts for precious metals and energy.
+* **Cryptocurrency**: Continuous 24/7 trading for digital assets.
+* **Forex (FX) & Fixed Income**: Currency pairs and sovereign debt yields.
+* **Automated FX Conversion**: Real-time cross-currency conversion dynamically settles international P&L into the base portfolio currency.
+
+### 5. Risk Management & Analysis
+* **Live Portfolio Metrics**: Real-time calculation of Portfolio Value, Cash Balance, Required Margin, and Unrealized P&L.
+* **Bracket Orders**: Integrated Stop-Loss and Take-Profit functionality for automated risk management.
+* **Technical Charting**: Integrated candlestick charting with customizable intervals, logarithmic scaling, and technical overlays (SMA, EMA).
+* **News & Sentiment Engine**: Injects simulated macroeconomic data and geopolitical events, triggering localized volatility spikes and algorithmic sentiment shifts.
 
 ---
 
-## ⚠️ Disclaimer
+## Installation
 
-This is a **SIMULATOR**. The prices, volumes, Greeks, and market depth are generated by mathematical algorithms for educational, testing, and entertainment purposes. It does **NOT** reflect real-time live data from actual stock exchanges, and cannot be used for actual financial trading. 
+The application requires no backend configuration or package installation.
+
+1. Clone the repository to your local environment.
+2. Navigate to the project directory.
+3. Open `index.html` in any modern web browser (Google Chrome, Firefox, Safari, Edge).
+4. The simulation engine will initialize automatically.
+
+---
+
+## Usage Guide
+
+1. **Asset Selection**: Utilize the categorical tabs (Equities, Indices, Crypto, etc.) to navigate the asset universe.
+2. **Market Data**: Select an instrument to render its live chart and Level 2 Market Depth order book.
+3. **Order Entry**: Navigate to the order panel, input the desired quantity, and select the order type (MARKET, LIMIT, STOP) and TIF instruction.
+4. **Position Management**: Monitor active trades and pending orders in the lower dashboard. Close positions manually or rely on automated EOD settlement.
+
+---
+
+## Disclaimer
+
+This software is a **SIMULATOR**. All market data, pricing models, and liquidity metrics are generated by mathematical algorithms. It does not reflect live data from actual financial exchanges and is strictly intended for educational, testing, and entertainment purposes. Do not use this software for actual financial trading or decision-making.
