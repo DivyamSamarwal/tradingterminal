@@ -1918,6 +1918,10 @@ function tickMinute() {
         state.pendingOrders.forEach(function(order) {
             var stock = stockMap[order.ticker];
             if (!stock) return;
+            if (!isMarketOpen(stock, state.time)) {
+                remainingPending.push(order);
+                return;
+            }
             var ltp = stock.ltp;
 
             if (order.orderType === 'MARKET') {
@@ -3777,46 +3781,81 @@ function renderPositionCard(stock) {
 }
 
 // ==================== CLOSE POSITION HELPERS ====================
-function closeEquityPosition(ticker, silent) {
+function closeEquityPosition(ticker, forceInstant) {
     var pos = state.positions[ticker];
     var stock = stockMap[ticker];
     if (!pos || !stock) return;
 
     var absQty = Math.abs(pos.qty);
-    var price = stock.ltp;
-    var fxRate = EXCHANGE_RATES[stock.currency] || 1;
     var isShort = pos.qty < 0;
-    var pnl = isShort ? (pos.avgPrice - price) * absQty : (price - pos.avgPrice) * absQty;  // native
-    var pnlINR = pnl * fxRate;
+    var side = isShort ? 'BUY' : 'SELL';
 
-    if (isShort) {
-        state.margin += (pos.avgPrice * absQty * 0.2 + pnl) * fxRate;
+    if (forceInstant) {
+        var price = stock.ltp;
+        var fxRate = EXCHANGE_RATES[stock.currency] || 1;
+        var pnl = isShort ? (pos.avgPrice - price) * absQty : (price - pos.avgPrice) * absQty;  // native
+        var pnlINR = pnl * fxRate;
+
+        if (isShort) {
+            state.margin += (pos.avgPrice * absQty * 0.2 + pnl) * fxRate;
+        } else {
+            state.margin += price * absQty * fxRate;
+        }
+
+        state.tradeHistory.unshift({
+            time: formatTime(state.time),
+            day: state.day,
+            ticker: ticker,
+            side: isShort ? 'COVER' : 'SELL',
+            type: 'Equity',
+            qty: absQty,
+            price: price,
+            value: price * absQty * fxRate
+        });
+
+        delete state.positions[ticker];
+        delete state.slTargets[ticker];
+        stock.volume += absQty;
+
+        if (state.activeStock && state.activeStock.ticker === ticker) {
+            document.getElementById('sl-price').value = '';
+            document.getElementById('target-price').value = '';
+        }
+
+        renderAll();
     } else {
-        state.margin += price * absQty * fxRate;
-    }
+        // User initiated close -> submit a MARKET order via pendingOrders engine
+        if (!isMarketOpen(stock, state.time)) {
+            toast("Closed", "Cannot close position when " + stock.market + " is closed. Place a LIMIT order instead.", "error");
+            return;
+        }
 
-    state.tradeHistory.unshift({
-        time: formatTime(state.time),
-        day: state.day,
-        ticker: ticker,
-        side: isShort ? 'COVER' : 'SELL',
-        type: 'Equity',
-        qty: absQty,
-        price: price,
-        value: price * absQty * fxRate
-    });
+        var pendingOpposite = 0;
+        state.pendingOrders.forEach(function(o) {
+            if (o.ticker === ticker && o.side === side && o.orderType === 'MARKET') {
+                pendingOpposite += o.qty;
+            }
+        });
 
-    delete state.positions[ticker];
-    delete state.slTargets[ticker];
-    stock.volume += absQty;
+        var qtyToSubmit = absQty - pendingOpposite;
+        if (qtyToSubmit <= 0) {
+            toast("Pending", "A market order is already actively closing this position.", "info");
+            return;
+        }
 
-    if (state.activeStock && state.activeStock.ticker === ticker) {
-        document.getElementById('sl-price').value = '';
-        document.getElementById('target-price').value = '';
-    }
+        state.pendingOrders.push({
+            time: formatTime(state.time),
+            day: state.day,
+            ticker: ticker,
+            side: side,
+            qty: qtyToSubmit,
+            limitPrice: stock.ltp, // Needed for partial fill logic
+            orderType: 'MARKET',
+            currency: stock.currency
+        });
 
-    if (!silent) {
-        toast('Closed', ticker + ' position closed @ ' + fmtPrice(stock, price) + '  P&L: ' + (pnlINR >= 0 ? '+' : '') + fmtCur(pnlINR), pnlINR >= 0 ? 'success' : 'error');
+        toast("Order Placed", "Market order submitted to close " + qtyToSubmit + " " + ticker, "info");
+        delete state.slTargets[ticker];
         renderAll();
     }
 }
@@ -3825,6 +3864,11 @@ function closeOptionPosition(id, silent) {
     var pos = state.optionsPositions[id];
     var stock = stockMap[pos && pos.ticker];
     if (!pos || !stock) return;
+
+    if (!silent && !isMarketOpen(stock, state.time)) {
+        toast("Closed", "Cannot close options when " + stock.market + " is closed.", "error");
+        return;
+    }
 
     var fxRate = EXCHANGE_RATES[stock.currency] || 1;
     var remainingDays = pos.daysToExpiry - getDayFraction();
