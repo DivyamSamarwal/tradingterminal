@@ -1717,31 +1717,31 @@ function tickMinute() {
     var t = state.time;
     if (t === 555) {
         pushMarketAnnouncement("Indian Market (NSE) is now OPEN", "NSE", true);
-        marketStocks.forEach(function(s) { if (s.currency === 'INR') resetMarketStock(s); });
+        marketStocks.forEach(function(s) { if (s.currency === 'INR' && !['CRYPTO','COMM','FX','BOND'].includes(s.market)) resetMarketStock(s); });
     }
     if (t === 930) pushMarketAnnouncement("Indian Market (NSE) has CLOSED", "NSE", false);
     
     if (t === 1140) {
         pushMarketAnnouncement("US Markets (NASDAQ) are now OPEN", "NASDAQ", true);
-        marketStocks.forEach(function(s) { if (s.currency === 'USD') resetMarketStock(s); });
+        marketStocks.forEach(function(s) { if (s.currency === 'USD' && !['CRYPTO','COMM','FX','BOND'].includes(s.market)) resetMarketStock(s); });
     }
     if (t === 90) pushMarketAnnouncement("US Markets (NASDAQ) have CLOSED", "NASDAQ", false);
     
     if (t === 420) {
         pushMarketAnnouncement("Chinese Market (SSE) is now OPEN", "SSE", true);
-        marketStocks.forEach(function(s) { if (s.currency === 'CNY') resetMarketStock(s); });
+        marketStocks.forEach(function(s) { if (s.currency === 'CNY' && !['CRYPTO','COMM','FX','BOND'].includes(s.market)) resetMarketStock(s); });
     }
     if (t === 750) pushMarketAnnouncement("Chinese Market (SSE) has CLOSED", "SSE", false);
     
     if (t === 330) {
         pushMarketAnnouncement("Japanese Market (TSE) is now OPEN", "TSE", true);
-        marketStocks.forEach(function(s) { if (s.currency === 'JPY') resetMarketStock(s); });
+        marketStocks.forEach(function(s) { if (s.currency === 'JPY' && !['CRYPTO','COMM','FX','BOND'].includes(s.market)) resetMarketStock(s); });
     }
     if (t === 690) pushMarketAnnouncement("Japanese Market (TSE) has CLOSED", "TSE", false);
     
     if (t === 405) {
         pushMarketAnnouncement("Hong Kong Market (HKEX) is now OPEN", "HKEX", true);
-        marketStocks.forEach(function(s) { if (s.currency === 'HKD') resetMarketStock(s); });
+        marketStocks.forEach(function(s) { if (s.currency === 'HKD' && !['CRYPTO','COMM','FX','BOND'].includes(s.market)) resetMarketStock(s); });
     }
     if (t === 810) pushMarketAnnouncement("Hong Kong Market (HKEX) has CLOSED", "HKEX", false);
     
