@@ -1165,6 +1165,7 @@ var state = {
     cibilScore: 750,
     nextLoanId: 1,
     nextFdId: 1,
+    totalBrokerage: 0,
     isRunning: true,
     speedMs: 1000,
     activeStock: null,
@@ -1970,16 +1971,20 @@ function tickMinute() {
         var isLong = pos.qty > 0;
         if (st.sl && isLong && stock.ltp <= st.sl) {
             toast('\u26d4 SL Hit', ticker + ' stop loss triggered @ \u20b9' + stock.ltp.toFixed(2), 'error');
-            closeEquityPosition(ticker);
+            closeEquityPosition(ticker, true);
+            delete state.slTargets[ticker];
         } else if (st.sl && !isLong && stock.ltp >= st.sl) {
             toast('\u26d4 SL Hit', ticker + ' stop loss triggered @ \u20b9' + stock.ltp.toFixed(2), 'error');
-            closeEquityPosition(ticker);
+            closeEquityPosition(ticker, true);
+            delete state.slTargets[ticker];
         } else if (st.target && isLong && stock.ltp >= st.target) {
             toast('\u2705 Target Hit', ticker + ' target reached @ \u20b9' + stock.ltp.toFixed(2), 'success');
-            closeEquityPosition(ticker);
+            closeEquityPosition(ticker, true);
+            delete state.slTargets[ticker];
         } else if (st.target && !isLong && stock.ltp <= st.target) {
             toast('\u2705 Target Hit', ticker + ' target reached @ \u20b9' + stock.ltp.toFixed(2), 'success');
-            closeEquityPosition(ticker);
+            closeEquityPosition(ticker, true);
+            delete state.slTargets[ticker];
         }
     });
 
@@ -2229,6 +2234,7 @@ function startNewDay() {
     if (state.propertyMarket) {
         var newsEvent = generateRealEstateNews();
         
+        var rentCollected = 0;
         state.propertyMarket.forEach(function(prop) {
             var drift = (Math.random() - 0.45) * 0.005; // Slightly upward drift
             var impact = 0;
@@ -2237,22 +2243,15 @@ function startNewDay() {
             }
             prop.price = Math.max(prop.basePrice * 0.5, prop.price * (1 + drift + impact));
         });
-    }
-    
-    if (state.realEstate) {
-        var rentCollected = 0;
-        state.realEstate.forEach(function(prop) {
-            // Update market value of owned property to match market
-            var marketProp = state.propertyMarket.find(function(p) { return p.id === prop.marketId; });
-            if (marketProp) prop.marketPrice = marketProp.price;
-            
-            // Collect rent
-            var dailyRent = (prop.marketPrice * (prop.yieldApr / 100)) / 365;
-            rentCollected += dailyRent;
-        });
-        if (rentCollected > 0) {
-            state.margin += rentCollected;
-            toast('Rental Income', 'Collected ' + fmtCur(rentCollected) + ' in daily rent.', 'success');
+        
+        // Collect rent once per tick (distributed across 375 ticks/day = correct daily total)
+        if (state.realEstate) {
+            state.realEstate.forEach(function(prop) {
+                var mp = state.propertyMarket.find(function(p) { return p.id === prop.marketId; });
+                if (mp) prop.marketPrice = mp.price;
+                rentCollected += (prop.marketPrice * (prop.yieldApr / 100)) / 365; // correct daily rent
+            });
+            if (rentCollected > 0) state.margin += rentCollected;
         }
     }
     
@@ -2320,7 +2319,7 @@ function startNewDay() {
     state.sensexBase = state.sensexValue;
     state.niftyHistory = Array(state.historyLen).fill(state.niftyValue);
     state.sentiment = 0;
-    state.slTargets = {};
+    // Note: slTargets are intentionally NOT cleared — user SL/Targets persist across days
 
     document.getElementById('day-counter').textContent = 'Day ' + state.day;
     state.newsCount = 0;
@@ -2737,8 +2736,8 @@ function processEquityTrade(stock, side, qty, price) {
         }
     }
 
-    // Check if margin is sufficient to cover brokerage too
-    if (nextMargin - brokerage < 0 && side === 'BUY') {
+    // Check if margin is sufficient to cover brokerage too (all sides)
+    if (nextMargin - brokerage < 0) {
         toast("Error", "Insufficient margin to cover brokerage", "error");
         return false;
     }
@@ -3001,7 +3000,7 @@ function executeOptionTrade(side) {
 
     if (side === 'BUY') {
         var pos = state.optionsPositions[optionId];
-        var remainingDays = pos ? pos.daysToExpiry - getDayFraction() : getExpiryDays() - getDayFraction();
+        var remainingDays = (pos && pos.daysToExpiry != null) ? Math.max(0.01, pos.daysToExpiry - getDayFraction()) : Math.max(0.01, getExpiryDays() - getDayFraction());
         premium = calcPremium(optType, strike, stock.ltp, remainingDays);
         cost = premium * totalQty;          // in native currency
         costINR = cost * fxRate;            // converted to INR
@@ -4442,7 +4441,8 @@ function cancelPendingOrder(index) {
     if (index >= 0 && index < state.pendingOrders.length) {
         var order = state.pendingOrders[index];
         state.pendingOrders.splice(index, 1);
-        toast("Pending Order", "Limit order cancelled: " + order.side + " " + order.qty + " " + order.ticker + " @ " + order.limitPrice.toFixed(2), "info");
+        var priceStr = (order.limitPrice != null) ? order.limitPrice.toFixed(2) : 'MKT';
+        toast("Order Cancelled", order.side + ' ' + order.qty + ' ' + order.ticker + ' @ ' + priceStr + ' cancelled.', "info");
         renderAll();
     }
 }
@@ -4575,7 +4575,8 @@ function calcEquityValue() {
             var absQty = Math.abs(pos.qty);
             var reservedMargin = pos.avgPrice * absQty * 0.2;
             var unrealized = (pos.avgPrice - stock.ltp) * absQty;
-            total += toINR(reservedMargin + unrealized, stock.currency);
+            // Clamp to 0: short can't contribute negative value (unlimited loss risk is shown in PnL, not here)
+            total += toINR(Math.max(0, reservedMargin + unrealized), stock.currency);
         }
     });
     return total;
@@ -4596,7 +4597,7 @@ function calcOptionsValue() {
 function calcPortfolioValue() {
     var fdValue = 0;
     if (state.fixedDeposits) {
-        state.fixedDeposits.forEach(function(fd) { fdValue += fd.principal; });
+        state.fixedDeposits.forEach(function(fd) { fdValue += fd.principal + (fd.interest || 0); }); // include accrued interest
     }
     var loanDebt = 0;
     if (state.loans) {
@@ -4733,14 +4734,25 @@ function getInterestRate(cibil, days) {
 }
 
 function getMaxLoanAmount() {
-    var netWorth = calcPortfolioValue();
+    // Use cash + real equity only, NOT DALAL stock (to prevent pump exploit)
+    var equityVal = 0;
+    Object.keys(state.positions).forEach(function(ticker) {
+        if (ticker === 'DALAL') return; // Exclude DALAL from collateral
+        var pos = state.positions[ticker];
+        var stk = marketStocks.find(function(s) { return s.ticker === ticker; });
+        if (stk && pos.qty > 0) {
+            equityVal += pos.qty * stk.ltp * (EXCHANGE_RATES[stk.currency] || 1);
+        }
+    });
+    var netWorth = state.margin + equityVal;
     var factor = 0.5;
-    if (state.cibilScore >= 800) factor = 10;
-    else if (state.cibilScore >= 750) factor = 5;
-    else if (state.cibilScore >= 700) factor = 2;
-    else if (state.cibilScore >= 600) factor = 1;
+    if (state.cibilScore >= 800) factor = 3;
+    else if (state.cibilScore >= 750) factor = 2;
+    else if (state.cibilScore >= 700) factor = 1;
+    else if (state.cibilScore >= 600) factor = 0.7;
     
-    return Math.max(50000, netWorth * factor);
+    // Hard cap: max loan = 10 Crores
+    return Math.min(10000000, Math.max(50000, netWorth * factor));
 }
 
 function updateLoanQuote() {
@@ -5165,6 +5177,11 @@ function sellProperty(propId) {
     }
     
     var proceeds = prop.marketPrice - debtToClear;
+    
+    if (proceeds < 0) {
+        toast('Cannot Sell', 'Your outstanding mortgage (' + fmtCur(debtToClear) + ') exceeds the market value (' + fmtCur(prop.marketPrice) + '). Pay off some mortgage first.', 'error');
+        return;
+    }
     
     if (!confirm('Are you sure you want to sell ' + prop.name + ' at market value?\n\nMarket Value: ' + fmtCur(prop.marketPrice) + '\nMortgage Debt Cleared: ' + fmtCur(debtToClear) + '\n\nNet Cash to You: ' + fmtCur(proceeds))) {
         return;
