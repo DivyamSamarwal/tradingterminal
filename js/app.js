@@ -689,6 +689,16 @@ var newsEvents = [
     { text: "Dollar index surges to 108. EM currencies under pressure including rupee.", impact: -0.018, target: "ALL" },
     { text: "China manufacturing data beats expectations. Metal and energy stocks rally.", impact: 0.020, target: "METAL" },
 
+    // ---- DALAL STREET INC (NEW) ----
+    { text: "Dalal Street Inc posts record breaking quarter. Earnings smash expectations by 40%.", impact: 0.05, target: "DALAL" },
+    { text: "Institutional investors flock to Dalal Street Inc as fundamentals strengthen. Analyst upgrades stock.", impact: 0.04, target: "DALAL" },
+    { text: "Dalal Street Inc announces strategic acquisition. Synergies expected to boost margins.", impact: 0.035, target: "DALAL" },
+    { text: "Dalal Street Inc CEO buys shares in open market. Investor confidence skyrockets.", impact: 0.045, target: "DALAL" },
+    { text: "Major breakthrough for Dalal Street Inc new product line. Pre-orders exceed 1 Million.", impact: 0.04, target: "DALAL" },
+    { text: "Dalal Street Inc included in global indexes! Huge passive buying expected.", impact: 0.038, target: "DALAL" },
+    { text: "Dalal Street Inc debt free ahead of schedule. Balance sheet strongest in industry.", impact: 0.03, target: "DALAL" },
+    { text: "Dalal Street Inc announces 1:1 bonus share issue and special dividend.", impact: 0.042, target: "DALAL" },
+
     // ---- WAR / GEOPOLITICAL ----
     { text: "Russia-Ukraine conflict escalates. European gas prices spike 30%. Markets risk-off.", impact: -0.018, target: "ALL", market: "WAR" },
     { text: "NATO activates Article 5 for the first time. Global equity sell-off intensifies.", impact: -0.025, target: "ALL", market: "WAR" },
@@ -2307,9 +2317,9 @@ function startNewDay() {
 
     // 24/7 markets and overnight gap logic
     marketStocks.forEach(function(stock) {
-        // Only reset 24/7 continuous markets at global midnight.
+        // Only reset 24/7 continuous markets (and DALAL) at global midnight.
         // Equities are reset at their exact opening minute in tickMinute()
-        if (stock.market === 'CRYPTO' || stock.market === 'COMM' || stock.market === 'FX' || stock.market === 'BOND') {
+        if (stock.ticker === 'DALAL' || stock.market === 'CRYPTO' || stock.market === 'COMM' || stock.market === 'FX' || stock.market === 'BOND') {
             resetMarketStock(stock);
         }
     });
