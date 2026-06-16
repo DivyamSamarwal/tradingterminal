@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=3">
+    <link rel="stylesheet" href="css/styles.css?v=6">
 </head>
 <body>
     <div class="aurora-bg"></div>
@@ -45,13 +45,16 @@
                 <button class="ctrl-btn on" id="btn-play" title="1x Speed" aria-label="Run simulation at 1x speed"><i class="fa-solid fa-play"></i></button>
                 <button class="ctrl-btn" id="btn-fast" title="10x Speed" aria-label="Run simulation at 10x speed"><i class="fa-solid fa-forward-fast"></i></button>
                 <span class="ctrl-sep"></span>
+                <button class="ctrl-btn" id="btn-bank" title="Dalal Bank" aria-label="Open Bank"><i class="fa-solid fa-building-columns"></i></button>
+                <button class="ctrl-btn" id="btn-realestate" title="Property Market" aria-label="Open Real Estate"><i class="fa-solid fa-house"></i></button>
                 <button class="ctrl-btn" id="btn-settings" title="Settings" aria-label="Open settings"><i class="fa-solid fa-gear"></i></button>
                 <button class="ctrl-btn" id="btn-theme" title="Toggle Light/Dark" aria-label="Toggle light or dark theme"><i class="fa-solid fa-sun"></i></button>
             </div>
         </header>
 
         <!-- Main Grid -->
-        <div class="main-grid">
+        <div id="view-terminal">
+            <div class="main-grid">
             <!-- Watchlist -->
             <aside class="watchlist-panel">
                 <div class="sec-header"><i class="fa-solid fa-list-ul"></i> Watchlist <span class="wl-stock-count" id="wl-count"></span></div>
@@ -393,7 +396,245 @@
                 </table>
             </div>
         </footer>
-    </div>
+        </div> <!-- End view-terminal -->
+
+        <!-- Dalal Bank View -->
+        <div id="view-bank" class="hidden">
+            <div class="bank-container">
+                <div class="sec-header" style="border-bottom:none; margin-bottom:10px; font-size:16px;">
+                    <div>
+                        <button class="btn-sm" style="margin-right:10px; background:var(--bg-2); border:1px solid var(--border); color:var(--text); padding:4px 10px; border-radius:4px; cursor:pointer;" onclick="document.getElementById('btn-bank').click()"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                        <span><i class="fa-solid fa-building-columns accent"></i> Dalal Bank Dashboard</span>
+                        <span class="badge mono" style="font-size:10px;">CREDIT & LEVERAGE</span>
+                    </div>
+                </div>
+                
+                <div class="bank-grid">
+                    <!-- CIBIL Card -->
+                    <div class="bank-card">
+                        <div class="sec-header" style="margin: -20px -20px 20px -20px; padding: 0 20px; background: rgba(0,0,0,0.2);">
+                            <span><i class="fa-solid fa-gauge-high"></i> CIBIL Score</span>
+                        </div>
+                        <div class="cibil-display">
+                            <div class="cibil-circle">
+                                <svg viewBox="0 0 100 100" class="cibil-svg">
+                                    <circle cx="50" cy="50" r="45" class="cibil-bg"></circle>
+                                    <circle cx="50" cy="50" r="45" class="cibil-fg" id="cibil-progress"></circle>
+                                </svg>
+                                <div class="cibil-val" id="cibil-score">750</div>
+                            </div>
+                            <div class="cibil-status" id="cibil-status">Excellent</div>
+                        </div>
+                    </div>
+
+                    <!-- Loan Application -->
+                    <div class="bank-card">
+                        <div class="sec-header" style="margin: -20px -20px 20px -20px; padding: 0 20px; background: rgba(0,0,0,0.2);">
+                            <span><i class="fa-solid fa-hand-holding-dollar"></i> Apply for Capital</span>
+                        </div>
+                        <div class="fg">
+                            <label style="display:flex; justify-content:space-between;">Principal Amount <span id="loan-max-eligibility" style="color:var(--orange); font-size:11px; text-transform:none;">Max: ₹ 0.00</span></label>
+                            <input type="number" id="loan-amount" class="fc mono" placeholder="100,000" min="1000" step="1000">
+                        </div>
+                        <div class="fg">
+                            <label>Term (Days)</label>
+                            <select id="loan-term" class="fc">
+                                <option value="1">1 Day</option>
+                                <option value="3">3 Days</option>
+                                <option value="5">5 Days</option>
+                                <option value="7">7 Days</option>
+                                <option value="14">14 Days</option>
+                            </select>
+                        </div>
+                        <div class="loan-quote">
+                            <div class="stat" style="align-items:flex-start;"><span class="stat-label">Interest Rate</span><span class="stat-val mono" id="loan-rate" style="color:var(--orange)">8.5% APR</span></div>
+                            <div class="stat" style="align-items:flex-end;"><span class="stat-label">Daily EMI</span><span class="stat-val mono" id="loan-emi" style="color:var(--text-bright)">₹ 0.00</span></div>
+                        </div>
+                        <button class="btn-buy" id="btn-take-loan" style="margin-top:20px;width:100%;height:40px;"><i class="fa-solid fa-file-signature"></i> Accept & Disburse Funds</button>
+                    </div>
+
+                    <!-- Active Loans -->
+                    <div class="bank-card bank-card-full">
+                        <div class="sec-header" style="margin: -20px -20px 0 -20px; padding: 0 20px; background: rgba(0,0,0,0.2);">
+                            <span><i class="fa-solid fa-book-open"></i> Active Liabilities</span>
+                        </div>
+                        <div class="table-wrap" style="margin:0 -20px -20px -20px; max-height: 400px;">
+                            <table class="dtable" style="margin:0;">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th class="r">Principal</th>
+                                        <th class="r">Interest</th>
+                                        <th class="r">Daily EMI</th>
+                                        <th class="r">Days Left</th>
+                                        <th class="r">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bank-loans-tbody">
+                                    <tr><td colspan="6" class="empty">No active loans</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Credit History -->
+                    <div class="bank-card bank-card-full" style="margin-top: 20px;">
+                        <div class="sec-header" style="margin: -20px -20px 0 -20px; padding: 0 20px; background: rgba(0,0,0,0.2);">
+                            <span><i class="fa-solid fa-clock-rotate-left"></i> Credit History</span>
+                        </div>
+                        <div class="table-wrap" style="margin:0 -20px -20px -20px; max-height: 300px;">
+                            <table class="dtable" style="margin:0;">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th class="r">Principal</th>
+                                        <th class="r">Term</th>
+                                        <th class="r">Closing Day</th>
+                                        <th class="r">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bank-history-tbody">
+                                    <tr><td colspan="5" class="empty">No credit history</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Fixed Deposits -->
+                    <div class="bank-card">
+                        <div class="sec-header" style="margin: -20px -20px 20px -20px; padding: 0 20px; background: rgba(0,0,0,0.2);">
+                            <span><i class="fa-solid fa-piggy-bank"></i> Open Fixed Deposit</span>
+                        </div>
+                        <div class="fg">
+                            <label style="display:flex; justify-content:space-between;">Deposit Amount <span id="fd-max-balance" style="color:var(--green); font-size:11px; text-transform:none;">Avail: ₹ 0.00</span></label>
+                            <input type="number" id="fd-amount" class="fc mono" placeholder="100,000" min="1000" step="1000">
+                        </div>
+                        <div class="fg">
+                            <label>Term (Days)</label>
+                            <select id="fd-term" class="fc">
+                                <option value="7">7 Days</option>
+                                <option value="15">15 Days</option>
+                                <option value="30">30 Days</option>
+                            </select>
+                        </div>
+                        <div class="loan-quote">
+                            <div class="stat" style="align-items:flex-start;"><span class="stat-label">Interest Rate</span><span class="stat-val mono" id="fd-rate" style="color:var(--green)">5.0% APR</span></div>
+                            <div class="stat" style="align-items:flex-end;"><span class="stat-label">Maturity Amount</span><span class="stat-val mono" id="fd-maturity" style="color:var(--text-bright)">₹ 0.00</span></div>
+                        </div>
+                        <button class="btn-buy" id="btn-open-fd" style="margin-top:20px;width:100%;height:40px;background:var(--green);"><i class="fa-solid fa-lock"></i> Lock Funds</button>
+                    </div>
+
+                    <!-- Active FDs -->
+                    <div class="bank-card">
+                        <div class="sec-header" style="margin: -20px -20px 0 -20px; padding: 0 20px; background: rgba(0,0,0,0.2);">
+                            <span><i class="fa-solid fa-vault"></i> Active Deposits</span>
+                        </div>
+                        <div class="table-wrap" style="margin:0 -20px -20px -20px; max-height: 400px;">
+                            <table class="dtable" style="margin:0;">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th class="r">Principal</th>
+                                        <th class="r">Interest</th>
+                                        <th class="r">Days Left</th>
+                                        <th class="r">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bank-fds-tbody">
+                                    <tr><td colspan="5" class="empty">No active deposits</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div> <!-- End view-bank -->
+
+        <!-- Real Estate View -->
+        <div id="view-realestate" class="hidden">
+            <div class="bank-container">
+                <div class="sec-header" style="border-bottom:none; margin-bottom:10px; font-size:16px;">
+                    <div>
+                        <button class="btn-sm" style="margin-right:10px; background:var(--bg-2); border:1px solid var(--border); color:var(--text); padding:4px 10px; border-radius:4px; cursor:pointer;" onclick="document.getElementById('btn-realestate').click()"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                        <span><i class="fa-solid fa-city accent"></i> Property Market</span>
+                        <span class="badge mono" style="font-size:10px;">REAL ESTATE</span>
+                    </div>
+                </div>
+                
+                <div style="font-size: 13px; color: var(--text-dim); margin-bottom: 20px; padding: 12px 16px; background: rgba(59, 130, 246, 0.05); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2); display: flex; align-items: flex-start; gap: 10px;">
+                    <i class="fa-solid fa-circle-info" style="color: var(--accent); margin-top: 2px;"></i>
+                    <div>
+                        <strong style="color: var(--text-bright);">Mortgage Rules:</strong> A 20% down payment is required upfront. The remaining 80% is issued as a <strong>14-day loan</strong>. 
+                        Your Daily EMI is automatically deducted from your cash margin when you 'Start New Day'. 
+                        <span style="color: var(--red);">If you lack funds to pay the EMI, the bank will foreclose and seize the property!</span>
+                    </div>
+                </div>
+                
+                <div class="bank-grid" style="grid-template-columns: 2fr 1fr; align-items: start;">
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <!-- My Properties -->
+                        <div class="bank-card bank-card-full">
+                            <div class="sec-header" style="margin: -20px -20px 20px -20px; padding: 0 20px; background: rgba(0,0,0,0.2);">
+                                <span><i class="fa-solid fa-house-chimney-user"></i> My Portfolio</span>
+                            </div>
+                            <div class="table-wrap" style="margin:0 -20px -20px -20px; max-height: 400px;">
+                                <table class="dtable" style="margin:0;">
+                                    <thead>
+                                        <tr>
+                                            <th>Property</th>
+                                            <th class="r">Market Value</th>
+                                            <th class="r">Daily Rent</th>
+                                            <th class="r">Mortgage Debt</th>
+                                            <th class="r">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="re-owned-tbody">
+                                        <tr><td colspan="5" class="empty">You do not own any properties.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Market Listings -->
+                        <div class="bank-card bank-card-full">
+                            <div class="sec-header" style="margin: -20px -20px 20px -20px; padding: 0 20px; background: rgba(0,0,0,0.2);">
+                                <span><i class="fa-solid fa-sign-hanging"></i> Available Listings</span>
+                            </div>
+                            <div class="table-wrap" style="margin:0 -20px -20px -20px; max-height: 600px;">
+                                <table class="dtable" style="margin:0;">
+                                    <thead>
+                                        <tr>
+                                            <th>Property</th>
+                                            <th class="r">Asking Price</th>
+                                            <th class="r">Daily Rent</th>
+                                            <th class="r">Mortgage Terms</th>
+                                            <th class="r">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="re-market-tbody">
+                                        <tr><td colspan="5" class="empty">Loading market listings...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <!-- News Feed -->
+                        <div class="bank-card bank-card-full">
+                            <div class="sec-header" style="margin: -20px -20px 20px -20px; padding: 0 20px; background: rgba(0,0,0,0.2);">
+                                <span><i class="fa-solid fa-newspaper"></i> Property News</span>
+                            </div>
+                            <div id="re-news-container" style="display: flex; flex-direction: column; gap: 15px; max-height: 800px; overflow-y: auto;">
+                                <div style="color:var(--text-dim); font-size:12px; text-align:center; padding: 20px;">Waiting for market events...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> <!-- End view-realestate -->
+    </div> <!-- End app -->
 
     <!-- New Day Overlay -->
     <div class="overlay hidden" id="day-overlay">
@@ -467,6 +708,6 @@
         </div>
     </div>
     <div id="toast-container" class="toast-box"></div>
-    <script src="js/app.js?v=36"></script>
+    <script src="js/app.js?v=81"></script>
 </body>
 </html>

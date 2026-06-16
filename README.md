@@ -59,6 +59,18 @@ A robust routing and execution engine supporting advanced order types and Time-i
 * **Technical Charting**: Integrated candlestick charting with customizable intervals, logarithmic scaling, and technical overlays (SMA, EMA).
 * **News & Sentiment Engine**: Injects simulated macroeconomic data and geopolitical events, triggering localized volatility spikes and algorithmic sentiment shifts.
 
+### 6. Dalal Bank & Credit System
+* **Dynamic Credit Scoring**: Tracks a live CIBIL Score (300-900) based on financial behavior, affecting loan eligibility and interest rates.
+* **Margin Loans**: Take out short-term, high-interest loans to multiply buying power. Daily EMI is automatically deducted from the cash margin.
+* **Fixed Deposits**: Lock in excess cash for guaranteed risk-free returns over set maturity periods.
+* **Liquidations & Defaults**: Failing to cover daily loan EMIs triggers CIBIL score penalties and forces immediate liquidation of trading assets to cover debts.
+
+### 7. Real Estate & Property Market
+* **Property Portfolio**: Buy, hold, and sell 30 unique global properties spanning Residential, Commercial, and Luxury sectors.
+* **Dynamic Rent Collection**: Earn daily rental yields automatically based on the live fluctuating market value of owned properties.
+* **Mortgages & Foreclosure**: Purchase properties with 20% down payments via 14-day mortgages. Missing EMI payments results in bank foreclosure, asset seizure, and severe credit damage.
+* **Real Estate News**: A dedicated news engine generates macroeconomic events that directly pump or crash real estate market valuations.
+
 ---
 
 ## Installation

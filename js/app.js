@@ -217,6 +217,7 @@ var marketStocks = [
     mkStock("AXISBANK",   "Axis Bank Ltd",             1050, 0.0024, "Banking"),
     mkStock("BAJFINANCE", "Bajaj Finance Ltd",         7450, 0.0028, "Finance"),
     mkStock("BAJAJFINSV", "Bajaj Finserv Ltd",         2015, 0.0022, "Finance"),
+    mkStock("DALAL",      "Dalal Street Inc.",         1000, 0.0015, "Financials", "NSE", "INR"),
     // ── IT ──
     mkStock("TCS",        "Tata Consultancy Services", 3560, 0.0014, "IT"),
     mkStock("INFY",       "Infosys Ltd",               1870, 0.0025, "IT"),
@@ -1158,6 +1159,12 @@ var state = {
     positions: {},
     optionsPositions: {},
     tradeHistory: [],
+    loans: [],
+    loanHistory: [],
+    fixedDeposits: [],
+    cibilScore: 750,
+    nextLoanId: 1,
+    nextFdId: 1,
     isRunning: true,
     speedMs: 1000,
     activeStock: null,
@@ -1184,7 +1191,44 @@ var state = {
     showSMA: false,
     showEMA: false,
     pendingOrders: [],
-    marginCallThrottle: 0
+    marginCallThrottle: 0,
+    realEstate: [],
+    mortgages: [],
+    propertyMarket: [
+        { id: 'prop1', name: '1BHK Apartment, Mumbai', type: 'Residential', basePrice: 5000000, price: 5000000, yieldApr: 5.0 },
+        { id: 'prop2', name: '3BHK Villa, Bangalore', type: 'Residential', basePrice: 25000000, price: 25000000, yieldApr: 4.5 },
+        { id: 'prop3', name: 'Luxury Sea-facing Penthouse', type: 'Luxury', basePrice: 100000000, price: 100000000, yieldApr: 3.5 },
+        { id: 'prop4', name: 'Commercial Retail Shop', type: 'Commercial', basePrice: 15000000, price: 15000000, yieldApr: 7.0 },
+        { id: 'prop5', name: 'Downtown Tech Park', type: 'Commercial', basePrice: 500000000, price: 500000000, yieldApr: 8.5 },
+        { id: 'prop6', name: 'Private Island, Maldives', type: 'Luxury', basePrice: 2500000000, price: 2500000000, yieldApr: 2.0 },
+        // --- 24 New Global Properties ---
+        { id: 'prop7', name: 'Studio Condo, Tokyo', type: 'Residential', basePrice: 35000000, price: 35000000, yieldApr: 4.0 },
+        { id: 'prop8', name: 'Suburban Home, Texas', type: 'Residential', basePrice: 20000000, price: 20000000, yieldApr: 6.0 },
+        { id: 'prop9', name: 'High-Rise Condo, Toronto', type: 'Residential', basePrice: 45000000, price: 45000000, yieldApr: 4.5 },
+        { id: 'prop10', name: 'Townhouse, London', type: 'Residential', basePrice: 80000000, price: 80000000, yieldApr: 3.8 },
+        { id: 'prop11', name: 'Beachfront Mansion, Malibu', type: 'Luxury', basePrice: 400000000, price: 400000000, yieldApr: 2.5 },
+        { id: 'prop12', name: 'Chalet, Swiss Alps', type: 'Luxury', basePrice: 150000000, price: 150000000, yieldApr: 3.0 },
+        { id: 'prop13', name: 'Penthouse, New York City', type: 'Luxury', basePrice: 250000000, price: 250000000, yieldApr: 3.2 },
+        { id: 'prop14', name: 'Palm Jumeirah Villa, Dubai', type: 'Luxury', basePrice: 300000000, price: 300000000, yieldApr: 4.5 },
+        { id: 'prop15', name: 'Historic Chateau, France', type: 'Luxury', basePrice: 120000000, price: 120000000, yieldApr: 2.0 },
+        { id: 'prop16', name: 'Skyscraper, Hong Kong', type: 'Commercial', basePrice: 4000000000, price: 4000000000, yieldApr: 5.5 },
+        { id: 'prop17', name: 'Industrial Warehouse, Germany', type: 'Commercial', basePrice: 85000000, price: 85000000, yieldApr: 7.5 },
+        { id: 'prop18', name: 'Casino Resort, Macau', type: 'Commercial', basePrice: 5000000000, price: 5000000000, yieldApr: 9.0 },
+        { id: 'prop19', name: 'Shopping Mall, Singapore', type: 'Commercial', basePrice: 1500000000, price: 1500000000, yieldApr: 6.5 },
+        { id: 'prop20', name: 'Data Center, Nevada', type: 'Commercial', basePrice: 750000000, price: 750000000, yieldApr: 8.0 },
+        { id: 'prop21', name: 'Boutique Hotel, Paris', type: 'Commercial', basePrice: 200000000, price: 200000000, yieldApr: 5.0 },
+        { id: 'prop22', name: 'Student Housing, Melbourne', type: 'Commercial', basePrice: 40000000, price: 40000000, yieldApr: 6.8 },
+        { id: 'prop23', name: 'Logistics Hub, Rotterdam', type: 'Commercial', basePrice: 300000000, price: 300000000, yieldApr: 7.2 },
+        { id: 'prop24', name: 'Coworking Space, Berlin', type: 'Commercial', basePrice: 60000000, price: 60000000, yieldApr: 6.0 },
+        { id: 'prop25', name: 'Farmhouse, Tuscany', type: 'Residential', basePrice: 45000000, price: 45000000, yieldApr: 3.5 },
+        { id: 'prop26', name: 'Micro-Apartment, Hong Kong', type: 'Residential', basePrice: 15000000, price: 15000000, yieldApr: 5.5 },
+        { id: 'prop27', name: 'Luxury Yacht Berth, Monaco', type: 'Luxury', basePrice: 75000000, price: 75000000, yieldApr: 4.0 },
+        { id: 'prop28', name: 'Safari Lodge, Kenya', type: 'Commercial', basePrice: 90000000, price: 90000000, yieldApr: 8.5 },
+        { id: 'prop29', name: 'Vineyard Estate, California', type: 'Luxury', basePrice: 200000000, price: 200000000, yieldApr: 3.0 },
+        { id: 'prop30', name: 'Medical Complex, Boston', type: 'Commercial', basePrice: 600000000, price: 600000000, yieldApr: 7.8 }
+    ],
+    reNews: [],
+    nextPropId: 1
 };
 
 var marketInterval;
@@ -1329,7 +1373,10 @@ function setupListeners() {
     document.getElementById('btn-play').addEventListener('click', function(e) { setSpeed(1000, e.currentTarget); });
     document.getElementById('btn-fast').addEventListener('click', function(e) { setSpeed(100, e.currentTarget); });
     document.getElementById('btn-theme').addEventListener('click', toggleTheme);
+    document.getElementById('btn-bank').addEventListener('click', toggleBankView);
+    document.getElementById('btn-realestate').addEventListener('click', toggleRealEstateView);
     document.getElementById('btn-new-day').addEventListener('click', startNewDay);
+    initBankUI();
     document.getElementById('btn-settings').addEventListener('click', openSettings);
     document.getElementById('btn-apply-settings').addEventListener('click', applySettings);
     document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
@@ -1535,6 +1582,10 @@ function applySettings() {
         toast("Error", "Minimum capital is \u20b910,000", "error");
         return;
     }
+    if (newCash > 1000000000) {
+        toast("Error", "Maximum starting capital is \u20b91,000,000,000 (100 Crores).", "error");
+        return;
+    }
 
     var cashChanged = Math.abs(newCash - state.margin) > 0.01;
 
@@ -1644,6 +1695,47 @@ function toggleTheme() {
     toast('Theme', state.theme === 'light' ? 'Light Mode' : 'Dark Mode', 'info');
 }
 
+// ==================== VIEW SWITCHING ====================
+function toggleBankView() {
+    var bankView = document.getElementById('view-bank');
+    var termView = document.getElementById('view-terminal');
+    var btn = document.getElementById('btn-bank');
+    
+    if (bankView.classList.contains('hidden')) {
+        // Open Bank
+        bankView.classList.remove('hidden');
+        termView.classList.add('hidden');
+        document.getElementById('view-realestate').classList.add('hidden');
+        document.getElementById('btn-realestate').classList.remove('on');
+        btn.classList.add('on'); // Highlight the button
+        updateBankUI();
+    } else {
+        // Close Bank
+        bankView.classList.add('hidden');
+        termView.classList.remove('hidden');
+        btn.classList.remove('on');
+    }
+}
+
+function toggleRealEstateView() {
+    var reView = document.getElementById('view-realestate');
+    var termView = document.getElementById('view-terminal');
+    var btn = document.getElementById('btn-realestate');
+    
+    if (reView.classList.contains('hidden')) {
+        reView.classList.remove('hidden');
+        termView.classList.add('hidden');
+        document.getElementById('view-bank').classList.add('hidden');
+        document.getElementById('btn-bank').classList.remove('on');
+        btn.classList.add('on');
+        updateRealEstateUI();
+    } else {
+        reView.classList.add('hidden');
+        termView.classList.remove('hidden');
+        btn.classList.remove('on');
+    }
+}
+
 // ==================== TAB SWITCHING ====================
 function switchOrderTab(tab) {
     state.activeTab = tab;
@@ -1700,6 +1792,7 @@ function setSpeed(ms, btn) {
 }
 
 function isMarketOpen(stock, t) {
+    if (stock.ticker === 'DALAL') return true;
     if (stock.market === 'COMM' || stock.market === 'CRYPTO' || stock.market === 'FX' || stock.market === 'BOND') return true;
     
     var cur = stock.currency || 'INR';
@@ -1717,7 +1810,7 @@ function tickMinute() {
     var t = state.time;
     if (t === 555) {
         pushMarketAnnouncement("Indian Market (NSE) is now OPEN", "NSE", true);
-        marketStocks.forEach(function(s) { if (s.currency === 'INR' && !['CRYPTO','COMM','FX','BOND'].includes(s.market)) resetMarketStock(s); });
+        marketStocks.forEach(function(s) { if (s.ticker !== 'DALAL' && s.currency === 'INR' && !['CRYPTO','COMM','FX','BOND'].includes(s.market)) resetMarketStock(s); });
     }
     if (t === 930) pushMarketAnnouncement("Indian Market (NSE) has CLOSED", "NSE", false);
     
@@ -1793,20 +1886,20 @@ function tickMinute() {
         // 3 micro-ticks for realism
         for (var step = 0; step < microSteps; step++) {
             var drift = (Math.random() - 0.502) * v * 1.4;
-            var meanRevert = (stock.base - price) / stock.base * 0.0008;
+            var meanRevert = stock.ticker === 'DALAL' ? 0 : (stock.base - price) / stock.base * 0.0008;
             // Combine: stock drift + sector bias + broad market
             var totalMove = drift + meanRevert + sectorBias * 0.4 + marketFactor * 0.3;
             price = price * (1 + totalMove);
             price = Math.max(0.0001, price);
 
-            if (price >= upperCircuit) {
+            if (price >= upperCircuit && stock.ticker !== 'DALAL') {
                 price = upperCircuit;
                 if (step === microSteps - 1 && !stock.circuitHit) {
                     stock.circuitHit = 'UC';
                     toast("CIRCUIT", stock.ticker + " hit upper circuit +" + (CIRCUIT_LIMIT * 100) + "%!", "success");
                 }
                 break;
-            } else if (price <= lowerCircuit) {
+            } else if (price <= lowerCircuit && stock.ticker !== 'DALAL') {
                 price = lowerCircuit;
                 if (step === microSteps - 1 && !stock.circuitHit) {
                     stock.circuitHit = 'LC';
@@ -2042,7 +2135,9 @@ function showDayEndOverlay() {
 function resetMarketStock(stock) {
     stock.prevClose = stock.ltp;  // save previous day's close
     var overnightChange = (Math.random() - 0.5) * 0.02;
-    stock.ltp = parseFloat((stock.ltp * (1 + overnightChange)).toFixed(2));
+    var pDec = stock.ltp < 10 ? 4 : 2;
+    stock.ltp = parseFloat((stock.ltp * (1 + overnightChange)).toFixed(pDec));
+    stock.ltp = Math.max(0.0001, stock.ltp); // Prevent falling to 0 which causes NaN in meanRevert
     stock.open = stock.ltp;
     stock.base = stock.ltp;
     stock._prevTick = stock.ltp;
@@ -2068,6 +2163,142 @@ function startNewDay() {
     state.time = START_TIME;
     state.marketOpen = true;
     state.isRunning = true;
+
+    // Process Bank EMIs
+    var loansToKeep = [];
+    state.loans.forEach(function(l) {
+        if (state.margin >= l.emi) {
+            state.margin -= l.emi;
+            l.daysLeft--;
+            if (l.daysLeft > 0) {
+                loansToKeep.push(l);
+            } else {
+                state.cibilScore = Math.min(900, state.cibilScore + 40);
+                state.loanHistory.push(Object.assign({}, l, { status: 'Repaid', closingDay: state.day }));
+                toast('Loan Settled', 'Loan #' + l.id + ' fully repaid. CIBIL score boosted!', 'success');
+            }
+        } else {
+            // Default!
+            state.cibilScore = Math.max(300, state.cibilScore - 50);
+            toast('EMI DEFAULT', 'Missed EMI for Loan #' + l.id + '. CIBIL score slashed. Assets Liquidated!', 'error');
+            
+            // Force liquidate all positions to raise cash
+            var totalLiquidationValue = calcEquityValue() + calcOptionsValue();
+            if (totalLiquidationValue > 0) {
+                state.margin += totalLiquidationValue;
+                state.positions = {};
+                state.optionsPositions = {};
+            }
+            
+            // Try to recover EMI after liquidation
+            if (state.margin >= l.emi) {
+                state.margin -= l.emi;
+                l.daysLeft--;
+                toast('EMI Recovered', 'Assets liquidated to recover EMI for Loan #' + l.id, 'warning');
+                if (l.daysLeft > 0) {
+                    loansToKeep.push(l);
+                } else {
+                    state.loanHistory.push(Object.assign({}, l, { status: 'Repaid (Force)', closingDay: state.day }));
+                    toast('Loan Settled', 'Loan #' + l.id + ' fully repaid after liquidation.', 'success');
+                }
+            } else {
+                // Still can't pay even after selling everything!
+                loansToKeep.push(l); // Still owe the loan, day not counted
+            }
+        }
+    });
+    state.loans = loansToKeep;
+    
+    // Process Fixed Deposits
+    if (state.fixedDeposits) {
+        var fdsToKeep = [];
+        state.fixedDeposits.forEach(function(fd) {
+            fd.daysLeft--;
+            if (fd.daysLeft > 0) {
+                fdsToKeep.push(fd);
+            } else {
+                var returnAmt = fd.principal + fd.interest;
+                state.margin += returnAmt;
+                toast('FD Matured', 'Fixed Deposit #' + fd.id + ' matured. ' + fmtCur(returnAmt) + ' credited.', 'success');
+            }
+        });
+        state.fixedDeposits = fdsToKeep;
+    }
+    
+    // Process Real Estate & Mortgages
+    if (state.propertyMarket) {
+        var newsEvent = generateRealEstateNews();
+        
+        state.propertyMarket.forEach(function(prop) {
+            var drift = (Math.random() - 0.45) * 0.005; // Slightly upward drift
+            var impact = 0;
+            if (newsEvent.target === 'ALL' || newsEvent.target === prop.type || newsEvent.target === prop.id) {
+                impact = newsEvent.impact;
+            }
+            prop.price = Math.max(prop.basePrice * 0.5, prop.price * (1 + drift + impact));
+        });
+    }
+    
+    if (state.realEstate) {
+        var rentCollected = 0;
+        state.realEstate.forEach(function(prop) {
+            // Update market value of owned property to match market
+            var marketProp = state.propertyMarket.find(function(p) { return p.id === prop.marketId; });
+            if (marketProp) prop.marketPrice = marketProp.price;
+            
+            // Collect rent
+            var dailyRent = (prop.marketPrice * (prop.yieldApr / 100)) / 365;
+            rentCollected += dailyRent;
+        });
+        if (rentCollected > 0) {
+            state.margin += rentCollected;
+            toast('Rental Income', 'Collected ' + fmtCur(rentCollected) + ' in daily rent.', 'success');
+        }
+    }
+    
+    if (state.mortgages) {
+        var mortgagesToKeep = [];
+        state.mortgages.forEach(function(m) {
+            if (state.margin >= m.emi) {
+                state.margin -= m.emi;
+                m.daysLeft--;
+                if (m.daysLeft > 0) {
+                    mortgagesToKeep.push(m);
+                } else {
+                    state.cibilScore = Math.min(900, state.cibilScore + 50);
+                    toast('Mortgage Cleared', 'Property Mortgage fully paid off!', 'success');
+                }
+            } else {
+                // Foreclosure!
+                state.cibilScore = Math.max(300, state.cibilScore - 100);
+                toast('FORECLOSURE', 'Missed Mortgage EMI. Bank seized property!', 'error');
+                
+                state.loanHistory.push({
+                    id: 'MORTGAGE',
+                    principal: m.principal,
+                    term: m.daysTotal,
+                    closingDay: state.day,
+                    status: 'DEFAULT'
+                });
+                
+                // Sell the property at market value
+                var propIdx = state.realEstate.findIndex(function(p) { return p.id === m.propId; });
+                if (propIdx !== -1) {
+                    var prop = state.realEstate[propIdx];
+                    var debtToClear = (m.principal / m.daysTotal) * m.daysLeft;
+                    var proceeds = prop.marketPrice - debtToClear;
+                    if (proceeds > 0) state.margin += proceeds;
+                    state.realEstate.splice(propIdx, 1);
+                }
+            }
+        });
+        state.mortgages = mortgagesToKeep;
+    }
+
+    var bankView = document.getElementById('view-bank');
+    if (bankView && !bankView.classList.contains('hidden')) updateBankUI();
+    var reView = document.getElementById('view-realestate');
+    if (reView && !reView.classList.contains('hidden')) updateRealEstateUI();
 
     settleExpiredOptions();
 
@@ -2217,10 +2448,10 @@ function triggerNewsEvent() {
         var limitMult = isNoCircuit ? 100.0 : CIRCUIT_LIMIT;
         var upperCircuit = s.open * (1 + limitMult);
         var lowerCircuit = s.open * (1 - limitMult);
-        if (newPrice >= upperCircuit) {
+        if (newPrice >= upperCircuit && s.ticker !== 'DALAL') {
             newPrice = parseFloat(upperCircuit.toFixed(2));
             s.circuitHit = 'UC';
-        } else if (newPrice <= lowerCircuit) {
+        } else if (newPrice <= lowerCircuit && s.ticker !== 'DALAL') {
             newPrice = parseFloat(lowerCircuit.toFixed(2));
             s.circuitHit = 'LC';
         }
@@ -2506,7 +2737,20 @@ function processEquityTrade(stock, side, qty, price) {
         }
     }
 
-    state.margin = nextMargin;
+    // Check if margin is sufficient to cover brokerage too
+    if (nextMargin - brokerage < 0 && side === 'BUY') {
+        toast("Error", "Insufficient margin to cover brokerage", "error");
+        return false;
+    }
+
+    state.margin = nextMargin - brokerage;
+    state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
+
+    var dalalStock = marketStocks.find(function(s) { return s.ticker === 'DALAL'; });
+    if (dalalStock) {
+        var bump = (brokerage / 1000) * 0.00002;
+        dalalStock.ltp = parseFloat((dalalStock.ltp * (1 + bump)).toFixed(4));
+    }
 
     // Record trade history (value stored in INR)
     state.tradeHistory.unshift({
@@ -2522,15 +2766,6 @@ function processEquityTrade(stock, side, qty, price) {
 
     // Add to volume
     stock.volume += qty;
-    
-    // Check if margin is sufficient to cover brokerage too
-    if (nextMargin - brokerage < 0 && side === 'BUY') {
-        toast("Error", "Insufficient margin to cover brokerage", "error");
-        return false;
-    }
-
-    state.margin = nextMargin - brokerage;
-    state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
     
     if (pos.qty === 0) {
         delete state.positions[stock.ticker];
@@ -2692,9 +2927,10 @@ function updateStrikesAndPremium() {
 
     strikes.forEach(function(s) {
         var greeks = calcGreeks(optType, s, stock.ltp, days);
+        var displayPremium = calcPremium(optType, s, stock.ltp, days);
         var opt = document.createElement('option');
         opt.value = s;
-        opt.textContent = s + ' (' + fmtPrice(stock, greeks.price) + ')';
+        opt.textContent = s + ' (' + fmtPrice(stock, displayPremium) + ')';
         sel.appendChild(opt);
         if (currentVal && parseFloat(currentVal) === s) selectedGreeks = greeks;
     });
@@ -2800,6 +3036,12 @@ function executeOptionTrade(side) {
         pos2.lots -= lots;
         if (pos2.lots === 0) delete state.optionsPositions[optionId];
         toast("Option SELL", lots + 'L ' + stock.ticker + ' ' + optType + ' ' + strike + ' ' + expiryType + ' @ ' + fmtPrice(stock, premium), 'error');
+    }
+
+    var dalalStock = marketStocks.find(function(s) { return s.ticker === 'DALAL'; });
+    if (dalalStock) {
+        var bump = (brokerage / 1000) * 0.00002;
+        dalalStock.ltp = parseFloat((dalalStock.ltp * (1 + bump)).toFixed(4));
     }
 
     // Record trade
@@ -2924,20 +3166,24 @@ function renderTopBar() {
     var elPnl = document.getElementById('total-pnl');
     if (elPnl) {
         elPnl.textContent = fmtCur(pnl);
+        elPnl.title = elPnl.textContent;
         elPnl.className = 'stat-val ' + (pnl > 0 ? 'up' : pnl < 0 ? 'dn' : '');
     }
 
     var portValEl = document.getElementById('portfolio-value');
-    if (portValEl) portValEl.textContent = fmtCur(calcPortfolioValue());
+    if (portValEl) { portValEl.textContent = fmtCur(calcPortfolioValue()); portValEl.title = portValEl.textContent; }
 
     var cashBalEl = document.getElementById('cash-balance');
-    if (cashBalEl) cashBalEl.textContent = fmtCur(state.margin);
+    if (cashBalEl) { cashBalEl.textContent = fmtCur(state.margin); cashBalEl.title = cashBalEl.textContent; }
 
     var pendingCountEl = document.getElementById('pending-count');
     if (pendingCountEl) pendingCountEl.textContent = state.pendingOrders.length;
     
     var brokerageEl = document.getElementById('brokerage-paid');
-    if (brokerageEl) brokerageEl.textContent = fmtCur(state.totalBrokerage || 0);
+    if (brokerageEl) { brokerageEl.textContent = fmtCur(state.totalBrokerage || 0); brokerageEl.title = brokerageEl.textContent; }
+    
+    var elMax = document.getElementById('loan-max-eligibility');
+    if(elMax) elMax.textContent = 'Max: ' + fmtCur(getMaxLoanAmount());
 }
 
 function renderWatchlist() {
@@ -4348,7 +4594,22 @@ function calcOptionsValue() {
 }
 
 function calcPortfolioValue() {
-    return state.margin + calcEquityValue() + calcOptionsValue();
+    var fdValue = 0;
+    if (state.fixedDeposits) {
+        state.fixedDeposits.forEach(function(fd) { fdValue += fd.principal; });
+    }
+    var loanDebt = 0;
+    if (state.loans) {
+        state.loans.forEach(function(l) { loanDebt += (l.principal / l.daysTotal) * l.daysLeft; });
+    }
+    if (state.mortgages) {
+        state.mortgages.forEach(function(m) { loanDebt += (m.principal / m.daysTotal) * m.daysLeft; });
+    }
+    var reValue = 0;
+    if (state.realEstate) {
+        state.realEstate.forEach(function(r) { reValue += r.marketPrice; });
+    }
+    return state.margin + calcEquityValue() + calcOptionsValue() + fdValue + reValue - loanDebt;
 }
 
 
@@ -4433,4 +4694,601 @@ function calcEMA(prices, period) {
         }
     }
     return ema;
+}
+
+// ==================== DALAL BANK ====================
+function initBankUI() {
+    var amtInput = document.getElementById('loan-amount');
+    var termInput = document.getElementById('loan-term');
+    
+    if(amtInput) amtInput.addEventListener('input', updateLoanQuote);
+    if(termInput) termInput.addEventListener('change', updateLoanQuote);
+    var btnTake = document.getElementById('btn-take-loan');
+    if(btnTake) btnTake.addEventListener('click', takeLoan);
+
+    var fdAmtInput = document.getElementById('fd-amount');
+    var fdTermInput = document.getElementById('fd-term');
+    if(fdAmtInput) fdAmtInput.addEventListener('input', updateFdQuote);
+    if(fdTermInput) fdTermInput.addEventListener('change', updateFdQuote);
+    var btnOpenFd = document.getElementById('btn-open-fd');
+    if(btnOpenFd) btnOpenFd.addEventListener('click', openFixedDeposit);
+}
+
+function getInterestRate(cibil, days) {
+    var baseRate;
+    if (cibil >= 850) baseRate = 4;
+    else if (cibil >= 800) baseRate = 6;
+    else if (cibil >= 750) baseRate = 8.5;
+    else if (cibil >= 700) baseRate = 12;
+    else if (cibil >= 600) baseRate = 18;
+    else baseRate = 24;
+    
+    var termPenalty = 0;
+    if (days >= 14) termPenalty = 10;
+    else if (days >= 7) termPenalty = 5;
+    else if (days >= 5) termPenalty = 3;
+    else if (days >= 3) termPenalty = 1;
+    
+    return baseRate + termPenalty;
+}
+
+function getMaxLoanAmount() {
+    var netWorth = calcPortfolioValue();
+    var factor = 0.5;
+    if (state.cibilScore >= 800) factor = 10;
+    else if (state.cibilScore >= 750) factor = 5;
+    else if (state.cibilScore >= 700) factor = 2;
+    else if (state.cibilScore >= 600) factor = 1;
+    
+    return Math.max(50000, netWorth * factor);
+}
+
+function updateLoanQuote() {
+    var amt = parseFloat(document.getElementById('loan-amount').value) || 0;
+    var days = parseInt(document.getElementById('loan-term').value) || 1;
+    var rate = getInterestRate(state.cibilScore, days);
+    
+    document.getElementById('loan-rate').textContent = rate + '% APR';
+    
+    if (amt >= 1000) {
+        var totalInterest = (amt * (rate / 100) / 365) * days;
+        var totalRepayment = amt + totalInterest;
+        var dailyEmi = totalRepayment / days;
+        document.getElementById('loan-emi').textContent = fmtCur(dailyEmi);
+
+    } else {
+        document.getElementById('loan-emi').textContent = '₹ 0.00';
+    }
+}
+
+function takeLoan() {
+    var amt = parseFloat(document.getElementById('loan-amount').value) || 0;
+    var days = parseInt(document.getElementById('loan-term').value) || 1;
+    
+    if (state.loans.length >= 3) {
+        toast('Loan Rejected', 'You can only have up to 3 active loans.', 'error');
+        return;
+    }
+    
+    var currentDebt = 0;
+    if (state.loans) state.loans.forEach(function(l) { currentDebt += l.principal; });
+    var maxAmt = getMaxLoanAmount();
+    if (currentDebt + amt > maxAmt) {
+        toast('Loan Rejected', 'Your CIBIL score and net worth only allow a maximum total debt of ' + fmtCur(maxAmt), 'error');
+        return;
+    }
+    
+    if (amt < 1000) {
+        toast('Loan Rejected', 'Minimum loan amount is ₹ 1,000.', 'error');
+        return;
+    }
+    if (state.cibilScore < 500) {
+        toast('Loan Rejected', 'CIBIL Score too low. Improve your credit first.', 'error');
+        return;
+    }
+    
+    var rate = getInterestRate(state.cibilScore, days);
+    var totalInterest = (amt * (rate / 100) / 365) * days;
+    var dailyEmi = (amt + totalInterest) / days;
+    
+    var loan = {
+        id: state.nextLoanId++,
+        principal: amt,
+        totalInterest: totalInterest,
+        emi: dailyEmi,
+        daysTotal: days,
+        daysLeft: days
+    };
+    
+    state.loans.push(loan);
+    state.margin += amt;
+    
+    state.cibilScore = Math.max(300, state.cibilScore - 5); // small hit for applying
+    toast('Loan Approved', '₹ ' + amt.toLocaleString('en-IN') + ' disbursed to your account. CIBIL score hit.', 'success');
+    
+    renderTopBar();
+    updateBankUI();
+}
+
+function getFdInterestRate(days) {
+    if (days >= 30) return 7.5;
+    if (days >= 15) return 6.0;
+    return 5.0; // 7 days
+}
+
+function updateFdQuote() {
+    var amt = parseFloat(document.getElementById('fd-amount').value) || 0;
+    var days = parseInt(document.getElementById('fd-term').value) || 7;
+    var rate = getFdInterestRate(days);
+    
+    document.getElementById('fd-rate').textContent = rate.toFixed(1) + '% APR';
+    
+    if (amt > 0) {
+        var interest = (amt * (rate / 100) / 365) * days;
+        document.getElementById('fd-maturity').textContent = fmtCur(amt + interest);
+    } else {
+        document.getElementById('fd-maturity').textContent = '₹ 0.00';
+    }
+}
+
+function openFixedDeposit() {
+    var amt = parseFloat(document.getElementById('fd-amount').value) || 0;
+    var days = parseInt(document.getElementById('fd-term').value) || 7;
+    
+    if (amt < 1000) {
+        toast('FD Rejected', 'Minimum deposit is ₹ 1,000.', 'error');
+        return;
+    }
+    if (state.margin < amt) {
+        toast('FD Rejected', 'Insufficient cash balance.', 'error');
+        return;
+    }
+    
+    var rate = getFdInterestRate(days);
+    var interest = (amt * (rate / 100) / 365) * days;
+    
+    var fd = {
+        id: state.nextFdId++,
+        principal: amt,
+        interest: interest,
+        daysTotal: days,
+        daysLeft: days
+    };
+    
+    state.margin -= amt;
+    state.fixedDeposits.push(fd);
+    
+    var dalalStock = marketStocks.find(function(s) { return s.ticker === 'DALAL'; });
+    if (dalalStock) {
+        var pumpVal = (amt / 100000) * 0.02;
+        dalalStock.ltp = parseFloat((dalalStock.ltp + pumpVal).toFixed(4));
+    }
+    
+    document.getElementById('fd-amount').value = '';
+    updateFdQuote();
+    
+    toast('FD Created', '₹ ' + amt.toLocaleString('en-IN') + ' locked for ' + days + ' days.', 'success');
+    
+    renderTopBar();
+    updateBankUI();
+}
+
+function breakFixedDeposit(id) {
+    var fdIndex = state.fixedDeposits.findIndex(function(f) { return f.id === id; });
+    if (fdIndex === -1) return;
+    
+    var fd = state.fixedDeposits[fdIndex];
+    state.fixedDeposits.splice(fdIndex, 1);
+    
+    // Refund principal only (forfeit interest)
+    state.margin += fd.principal;
+    
+    var dalalStock = marketStocks.find(function(s) { return s.ticker === 'DALAL'; });
+    if (dalalStock) {
+        var dumpVal = (fd.principal / 100000) * 0.02;
+        dalalStock.ltp = parseFloat((dalalStock.ltp - dumpVal).toFixed(4));
+        dalalStock.ltp = Math.max(0.0001, dalalStock.ltp);
+    }
+    
+    toast('FD Broken', 'FD #' + fd.id + ' broken. ' + fmtCur(fd.principal) + ' refunded. Interest forfeited.', 'info');
+    
+    renderTopBar();
+    updateBankUI();
+}
+
+function updateBankUI() {
+    var cibilEl = document.getElementById('cibil-score');
+    if(!cibilEl) return;
+    cibilEl.textContent = state.cibilScore;
+    
+    var statusEl = document.getElementById('cibil-status');
+    if (state.cibilScore >= 800) { statusEl.textContent = 'Excellent'; statusEl.style.color = 'var(--green)'; }
+    else if (state.cibilScore >= 700) { statusEl.textContent = 'Good'; statusEl.style.color = '#2962ff'; }
+    else if (state.cibilScore >= 600) { statusEl.textContent = 'Average'; statusEl.style.color = 'var(--orange)'; }
+    else { statusEl.textContent = 'Poor'; statusEl.style.color = 'var(--red)'; }
+    
+    var pct = (state.cibilScore - 300) / 600;
+    pct = Math.max(0, Math.min(1, pct));
+    var offset = 283 - (pct * 283);
+    var prog = document.getElementById('cibil-progress');
+    prog.style.strokeDashoffset = offset;
+    prog.style.stroke = statusEl.style.color;
+    
+    updateLoanQuote();
+    
+    var tbody = document.getElementById('bank-loans-tbody');
+    tbody.innerHTML = '';
+    
+    if (state.loans.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">No active loans</td></tr>';
+    } else {
+        state.loans.forEach(function(l) {
+            var tr = document.createElement('tr');
+            var remainingPrincipal = (l.principal / l.daysTotal) * l.daysLeft;
+            
+            tr.innerHTML = '<td>#L' + l.id.toString().padStart(3, '0') + '</td>' +
+                '<td class="r mono">' + fmtCur(remainingPrincipal) + '</td>' +
+                '<td class="r mono">' + fmtCur(l.totalInterest) + '</td>' +
+                '<td class="r mono">' + fmtCur(l.emi) + '</td>' +
+                '<td class="r">' + l.daysLeft + ' Days</td>' +
+                '<td class="r"><button class="btn-sm" style="background:var(--bg-2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;cursor:pointer;" onclick="forecloseLoan(' + l.id + ')">Foreclose</button></td>';
+            tbody.appendChild(tr);
+        });
+    }
+    var elMax = document.getElementById('loan-max-eligibility');
+    if(elMax) elMax.textContent = 'Max: ' + fmtCur(getMaxLoanAmount());
+
+    var hbody = document.getElementById('bank-history-tbody');
+    if (hbody) {
+        hbody.innerHTML = '';
+        if (!state.loanHistory || state.loanHistory.length === 0) {
+            hbody.innerHTML = '<tr><td colspan="5" class="empty">No credit history</td></tr>';
+        } else {
+            var historyRev = state.loanHistory.slice().reverse();
+            historyRev.forEach(function(l) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td>#L' + l.id.toString().padStart(3, '0') + '</td>' +
+                    '<td class="r mono">' + fmtCur(l.principal) + '</td>' +
+                    '<td class="r">' + l.daysTotal + ' Days</td>' +
+                    '<td class="r">Day ' + (l.closingDay || '?') + '</td>' +
+                    '<td class="r" style="color:' + (l.status.includes('Force') || l.status.includes('Default') ? 'var(--red)' : 'var(--green)') + '">' + l.status + '</td>';
+                hbody.appendChild(tr);
+            });
+        }
+    }
+    
+    updateFdQuote();
+    var fdMaxEl = document.getElementById('fd-max-balance');
+    if(fdMaxEl) fdMaxEl.textContent = 'Avail: ' + fmtCur(state.margin);
+    
+    var fdBody = document.getElementById('bank-fds-tbody');
+    if (fdBody) {
+        fdBody.innerHTML = '';
+        if (!state.fixedDeposits || state.fixedDeposits.length === 0) {
+            fdBody.innerHTML = '<tr><td colspan="5" class="empty">No active deposits</td></tr>';
+        } else {
+            state.fixedDeposits.forEach(function(fd) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td>#FD' + fd.id.toString().padStart(3, '0') + '</td>' +
+                    '<td class="r mono">' + fmtCur(fd.principal) + '</td>' +
+                    '<td class="r mono">' + fmtCur(fd.interest) + '</td>' +
+                    '<td class="r">' + fd.daysLeft + ' Days</td>' +
+                    '<td class="r"><button class="btn-sm" style="background:var(--bg-2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;cursor:pointer;" onclick="breakFixedDeposit(' + fd.id + ')">Break FD</button></td>';
+                fdBody.appendChild(tr);
+            });
+        }
+    }
+}
+
+function forecloseLoan(id) {
+    var idx = state.loans.findIndex(function(l) { return l.id === id; });
+    if (idx === -1) return;
+    
+    var l = state.loans[idx];
+    var remainingPrincipal = (l.principal / l.daysTotal) * l.daysLeft;
+    var penalty = remainingPrincipal * 0.02; // 2% foreclosure penalty
+    var totalToPay = remainingPrincipal + penalty;
+    
+    if (!confirm('Are you sure you want to foreclose this loan?\n\nRemaining Principal: ' + fmtCur(remainingPrincipal) + '\n2% Foreclosure Penalty: ' + fmtCur(penalty) + '\n\nTotal Deducted from Cash: ' + fmtCur(totalToPay))) {
+        return;
+    }
+    
+    if (state.margin < totalToPay) {
+        toast('Foreclosure Failed', 'Insufficient margin to pay ' + fmtCur(totalToPay) + ' (includes 2% penalty).', 'error');
+        return;
+    }
+    
+    state.margin -= totalToPay;
+    state.loans.splice(idx, 1);
+    
+    var daysPaid = l.daysTotal - l.daysLeft;
+    var boost = 5 + Math.floor(35 * (daysPaid / l.daysTotal));
+    state.cibilScore = Math.min(900, state.cibilScore + boost);
+    
+    state.loanHistory.push(Object.assign({}, l, { status: 'Foreclosed', closingDay: state.day }));
+    
+    toast('Loan Foreclosed', 'Paid ' + fmtCur(totalToPay) + ' to settle loan early.', 'success');
+    renderTopBar();
+    updateBankUI();
+}
+
+// ==================== REAL ESTATE ====================
+
+function updateRealEstateUI() {
+    var marketTbody = document.getElementById('re-market-tbody');
+    var ownedTbody = document.getElementById('re-owned-tbody');
+    
+    if (marketTbody) {
+        marketTbody.innerHTML = '';
+        state.propertyMarket.forEach(function(prop) {
+            var owned = state.realEstate.find(function(p) { return p.marketId === prop.id; });
+            if (owned) return; // Don't show owned properties in market
+            
+            var dailyRent = (prop.price * (prop.yieldApr / 100)) / 365;
+            
+            var loanAmount = prop.price * 0.8;
+            var rate = 4.0;
+            if (state.cibilScore < 750) rate = 6.0;
+            if (state.cibilScore < 700) rate = 8.0;
+            var estimatedEmi = (loanAmount + (loanAmount * (rate / 100))) / 14;
+            
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td><strong>' + prop.name + '</strong><br><small style="color:var(--text-dim)">' + prop.type + '</small></td>' +
+                '<td class="r mono">' + fmtCur(prop.price) + '</td>' +
+                '<td class="r mono" style="color:var(--green)">+' + fmtCur(dailyRent) + '</td>' +
+                '<td class="r mono">20% Down<br><small>' + fmtCur(prop.price * 0.2) + '<br>EMI: ~' + fmtCur(estimatedEmi) + '/d</small></td>' +
+                '<td class="r">' +
+                '<button class="btn-sm" style="background:var(--bg-2);border:1px solid var(--green);color:var(--green);padding:4px 8px;border-radius:4px;cursor:pointer;margin-right:5px;" onclick="buyProperty(\'' + prop.id + '\', false)">Buy Cash</button>' +
+                '<button class="btn-sm" style="background:var(--bg-2);border:1px solid var(--orange);color:var(--orange);padding:4px 8px;border-radius:4px;cursor:pointer;" onclick="buyProperty(\'' + prop.id + '\', true)">Mortgage</button>' +
+                '</td>';
+            marketTbody.appendChild(tr);
+        });
+        if (marketTbody.innerHTML === '') {
+            marketTbody.innerHTML = '<tr><td colspan="5" class="empty">No properties available on the market.</td></tr>';
+        }
+    }
+    
+    if (ownedTbody) {
+        ownedTbody.innerHTML = '';
+        if (state.realEstate.length === 0) {
+            ownedTbody.innerHTML = '<tr><td colspan="5" class="empty">You do not own any properties.</td></tr>';
+        } else {
+            state.realEstate.forEach(function(prop) {
+                var dailyRent = (prop.marketPrice * (prop.yieldApr / 100)) / 365;
+                var mortgage = (state.mortgages || []).find(function(m) { return m.propId === prop.id; });
+                var debtToClear = mortgage ? (mortgage.principal / mortgage.daysTotal) * mortgage.daysLeft : 0;
+                var debtStr = mortgage ? fmtCur(debtToClear) + '<br><small>EMI: ' + fmtCur(mortgage.emi) + '/d</small>' : '<span style="color:var(--text-dim)">Fully Owned</span>';
+                
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td><strong>' + prop.name + '</strong><br><small style="color:var(--text-dim)">' + prop.type + '</small></td>' +
+                    '<td class="r mono">' + fmtCur(prop.marketPrice) + '<br><small class="' + (prop.marketPrice >= prop.purchasePrice ? 'up' : 'dn') + '">' + ((prop.marketPrice / prop.purchasePrice - 1)*100).toFixed(2) + '%</small></td>' +
+                    '<td class="r mono" style="color:var(--green)">+' + fmtCur(dailyRent) + '</td>' +
+                    '<td class="r mono">' + debtStr + '</td>' +
+                    '<td class="r">' +
+                    (mortgage ? '<button class="btn-sm" style="background:var(--bg-2);border:1px solid var(--orange);color:var(--orange);padding:4px 8px;border-radius:4px;cursor:pointer;margin-right:5px;" onclick="payOffMortgage(' + prop.id + ')">Pay Off</button>' : '') +
+                    '<button class="btn-sm" style="background:var(--bg-2);border:1px solid var(--red);color:var(--red);padding:4px 8px;border-radius:4px;cursor:pointer;" onclick="sellProperty(' + prop.id + ')">Sell Property</button></td>';
+                ownedTbody.appendChild(tr);
+            });
+        }
+    }
+    
+    var newsContainer = document.getElementById('re-news-container');
+    if (newsContainer && state.reNews) {
+        if (state.reNews.length === 0) {
+            newsContainer.innerHTML = '<div style="color:var(--text-dim); font-size:12px; text-align:center; padding: 20px;">Waiting for market events...</div>';
+        } else {
+            newsContainer.innerHTML = '';
+            state.reNews.forEach(function(item) {
+                var icon = item.type === 'bull' ? '<i class="fa-solid fa-arrow-trend-up" style="color:var(--green)"></i>' : '<i class="fa-solid fa-arrow-trend-down" style="color:var(--red)"></i>';
+                var div = document.createElement('div');
+                div.style = 'background: rgba(0,0,0,0.2); padding: 10px; border-left: 3px solid ' + (item.type === 'bull' ? 'var(--green)' : 'var(--red)');
+                div.innerHTML = '<div style="font-size:10px; color:var(--text-dim); margin-bottom:5px;">Day ' + item.day + '</div>' +
+                                '<div style="font-size:13px;">' + icon + ' ' + item.text + '</div>';
+                newsContainer.appendChild(div);
+            });
+        }
+    }
+}
+
+function buyProperty(marketId, useMortgage) {
+    var marketProp = state.propertyMarket.find(function(p) { return p.id === marketId; });
+    if (!marketProp) return;
+    
+    var price = marketProp.price;
+    var downPayment = useMortgage ? price * 0.2 : price;
+    
+    if (state.margin < downPayment) {
+        toast('Purchase Failed', 'Insufficient funds for ' + (useMortgage ? 'down payment' : 'purchase') + '. You need ' + fmtCur(downPayment), 'error');
+        return;
+    }
+    
+    if (useMortgage && state.cibilScore < 650) {
+        toast('Mortgage Denied', 'Your CIBIL score is too low for a mortgage. Minimum 650 required.', 'error');
+        return;
+    }
+    
+    var term = 14; // default 14 day mortgage
+    var loanAmount = useMortgage ? price - downPayment : 0;
+    
+    var prop = {
+        id: state.nextPropId++,
+        marketId: marketProp.id,
+        name: marketProp.name,
+        type: marketProp.type,
+        yieldApr: marketProp.yieldApr,
+        purchasePrice: price,
+        marketPrice: price
+    };
+    
+    state.margin -= downPayment;
+    state.realEstate.push(prop);
+    
+    if (useMortgage) {
+        var rate = 4.0; // base mortgage rate
+        if (state.cibilScore < 750) rate = 6.0;
+        if (state.cibilScore < 700) rate = 8.0;
+        
+        var totalInterest = (loanAmount * (rate / 100) / 365) * term;
+        var emi = (loanAmount + totalInterest) / term;
+        
+        var mortgage = {
+            id: state.nextLoanId++,
+            propId: prop.id,
+            principal: loanAmount,
+            totalInterest: totalInterest,
+            emi: emi,
+            daysTotal: term,
+            daysLeft: term
+        };
+        state.mortgages = state.mortgages || [];
+        state.mortgages.push(mortgage);
+        state.cibilScore = Math.max(300, state.cibilScore - 10); // Hard pull
+    }
+    
+    toast('Property Acquired', 'You purchased ' + prop.name + '!', 'success');
+    updateRealEstateUI();
+    renderTopBar();
+}
+
+function sellProperty(propId) {
+    var idx = state.realEstate.findIndex(function(p) { return p.id === propId; });
+    if (idx === -1) return;
+    var prop = state.realEstate[idx];
+    
+    state.mortgages = state.mortgages || [];
+    var mortgageIdx = state.mortgages.findIndex(function(m) { return m.propId === prop.id; });
+    var mortgage = mortgageIdx !== -1 ? state.mortgages[mortgageIdx] : null;
+    
+    var debtToClear = 0;
+    if (mortgage) {
+        debtToClear = (mortgage.principal / mortgage.daysTotal) * mortgage.daysLeft;
+    }
+    
+    var proceeds = prop.marketPrice - debtToClear;
+    
+    if (!confirm('Are you sure you want to sell ' + prop.name + ' at market value?\n\nMarket Value: ' + fmtCur(prop.marketPrice) + '\nMortgage Debt Cleared: ' + fmtCur(debtToClear) + '\n\nNet Cash to You: ' + fmtCur(proceeds))) {
+        return;
+    }
+    
+    state.realEstate.splice(idx, 1);
+    if (mortgageIdx !== -1) {
+        state.mortgages.splice(mortgageIdx, 1);
+        state.cibilScore = Math.min(900, state.cibilScore + 15); // Bonus for clearing mortgage
+    }
+    
+    state.margin += proceeds;
+    toast('Property Sold', 'Sold ' + prop.name + ' for net ' + fmtCur(proceeds), 'success');
+    
+    updateRealEstateUI();
+    renderTopBar();
+}
+
+function payOffMortgage(propId) {
+    var mortgageIdx = state.mortgages.findIndex(function(m) { return m.propId === propId; });
+    if (mortgageIdx === -1) return;
+    
+    var mortgage = state.mortgages[mortgageIdx];
+    var debtToClear = (mortgage.principal / mortgage.daysTotal) * mortgage.daysLeft;
+    
+    if (state.margin < debtToClear) {
+        toast('Insufficient Funds', 'You need ' + fmtCur(debtToClear) + ' to pay off this mortgage.', 'error');
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to pay off this mortgage early?\n\nDebt to Clear: ' + fmtCur(debtToClear))) {
+        return;
+    }
+    
+    state.margin -= debtToClear;
+    state.mortgages.splice(mortgageIdx, 1);
+    state.cibilScore = Math.min(900, state.cibilScore + 30); // Big bonus for paying off early!
+    
+    toast('Mortgage Cleared', 'Successfully paid off mortgage. Property is fully owned!', 'success');
+    updateRealEstateUI();
+    renderTopBar();
+    updateBankUI();
+}
+
+const RE_NEWS_DB = [
+    // Global & Macro Events
+    { text: "Central Bank aggressively cuts interest rates! Mortgage applications surge 400%.", impact: 0.15, target: "ALL" },
+    { text: "Recession fears loom! Global real estate market freezes as buyers vanish.", impact: -0.12, target: "ALL" },
+    { text: "Inflation hits record highs! Investors pour cash into hard assets like real estate.", impact: 0.08, target: "ALL" },
+    { text: "Global liquidity crunch: Banks tighten lending standards, crushing mortgage approvals.", impact: -0.10, target: "ALL" },
+    { text: "Massive government stimulus packages announced! Real estate values soar globally.", impact: 0.12, target: "ALL" },
+    { text: "Stock market crash triggers margin calls. Investors forced to liquidate real estate.", impact: -0.15, target: "ALL" },
+    
+    // Sector-wide Events: Residential
+    { text: "Massive zoning deregulation allows new developments. Supply floods the market.", impact: -0.08, target: "Residential" },
+    { text: "New global property tax hits residential homeowners hard.", impact: -0.05, target: "Residential" },
+    { text: "Millennials enter prime homebuying age. Residential demand spikes to all-time highs.", impact: 0.10, target: "Residential" },
+    { text: "Severe shortage of building materials halts new construction. Existing homes see a premium.", impact: 0.08, target: "Residential" },
+    { text: "Remote work reversal: Companies mandate RTO, causing a massive sell-off in suburban housing.", impact: -0.10, target: "Residential" },
+    { text: "Government introduces massive subsidies for first-time homebuyers.", impact: 0.12, target: "Residential" },
+    
+    // Sector-wide Events: Commercial
+    { text: "Tech boom! Companies scramble for office space, driving up commercial rents.", impact: 0.10, target: "Commercial" },
+    { text: "Work-From-Home becomes permanent for top firms. Office buildings empty out.", impact: -0.15, target: "Commercial" },
+    { text: "E-commerce explosion! Demand for retail shops collapses globally.", impact: -0.12, target: "Commercial" },
+    { text: "Retail renaissance! Consumers flock back to physical stores, reviving commercial real estate.", impact: 0.09, target: "Commercial" },
+    { text: "Corporate tax hikes announced. Commercial property yields compress rapidly.", impact: -0.08, target: "Commercial" },
+    { text: "Global supply chain stabilization leads to massive investments in industrial parks.", impact: 0.11, target: "Commercial" },
+
+    // Sector-wide Events: Luxury
+    { text: "Billionaire tax introduced. Luxury properties see mass sell-off.", impact: -0.10, target: "Luxury" },
+    { text: "Foreign investment surges in the luxury market. Mansions selling over asking price!", impact: 0.12, target: "Luxury" },
+    { text: "Crypto billionaires cash out and dump profits into luxury real estate.", impact: 0.15, target: "Luxury" },
+    { text: "Crackdown on offshore shell companies freezes luxury market transactions.", impact: -0.14, target: "Luxury" },
+    { text: "Ultra-high net worth individuals flee volatile equity markets for safe-haven luxury estates.", impact: 0.09, target: "Luxury" },
+
+    // Specific Property Events
+    { text: "Major tech giant announces new headquarters in Bangalore! Local property values skyrocket.", impact: 0.25, target: "prop2" }, // 3BHK Villa, Bangalore
+    { text: "Severe flooding damages coastal properties. Malibu real estate takes a hit.", impact: -0.20, target: "prop11" }, // Malibu
+    { text: "New underground Metro line connects directly to Downtown Tech Park!", impact: 0.18, target: "prop5" }, // Downtown Tech Park
+    { text: "Tourism boom in Maldives! Private islands are in extreme demand.", impact: 0.22, target: "prop6" }, // Maldives
+    { text: "Casino regulations tightened. Macau resorts suffer a massive blow to valuations.", impact: -0.30, target: "prop18" }, // Macau
+    { text: "Global supply chain crisis! German industrial warehouses are completely full.", impact: 0.15, target: "prop17" }, // Germany Warehouse
+    { text: "Historic preservation grant awarded to French Chateaus. Value increases.", impact: 0.10, target: "prop15" }, // French Chateau
+    { text: "Major earthquake rattles Tokyo. Safety concerns cause residential prices to dip.", impact: -0.18, target: "prop7" }, // Tokyo Condo
+    { text: "Oil prices surge! Texas economy booms, driving massive demand for suburban homes.", impact: 0.20, target: "prop8" }, // Texas Home
+    { text: "Toronto enacts strict foreign buyer ban. High-rise condo market crashes.", impact: -0.25, target: "prop9" }, // Toronto Condo
+    { text: "Brexit uncertainties cleared. London townhouse prices surge.", impact: 0.15, target: "prop10" }, // London Townhouse
+    { text: "Record-breaking snowfall boosts ski tourism. Swiss Chalet values peak.", impact: 0.18, target: "prop12" }, // Swiss Alps
+    { text: "New York City introduces aggressive rent control laws. Luxury penthouses take a hit.", impact: -0.15, target: "prop13" }, // NYC Penthouse
+    { text: "Dubai announces zero-tax residency for global elites. Palm Jumeirah villas double in demand.", impact: 0.30, target: "prop14" }, // Dubai Villa
+    { text: "Pro-democracy protests in Hong Kong disrupt business. Skyscrapers lose tenant value.", impact: -0.22, target: "prop16" }, // HK Skyscraper
+    { text: "Singapore emerges as the new financial capital of Asia. Shopping malls see record foot traffic.", impact: 0.25, target: "prop19" }, // Singapore Mall
+    { text: "AI revolution drives unprecedented demand for cloud infrastructure. Nevada Data Center value explodes!", impact: 0.35, target: "prop20" }, // Nevada Data Center
+    { text: "Paris hosts the Olympics! Boutique hotels are fully booked for years, driving up valuations.", impact: 0.28, target: "prop21" }, // Paris Hotel
+    { text: "International student visas capped in Australia. Melbourne student housing market collapses.", impact: -0.28, target: "prop22" }, // Melbourne Housing
+    { text: "Europe's energy crisis impacts logistics. Rotterdam hub operations severely slowed.", impact: -0.15, target: "prop23" }, // Rotterdam Hub
+    { text: "Startup funding dries up. Berlin coworking spaces are forced to slash rents.", impact: -0.20, target: "prop24" }, // Berlin Coworking
+    { text: "Vintage wine boom! Tuscan farmhouses with vineyards see immense buyer interest.", impact: 0.18, target: "prop25" }, // Tuscany Farmhouse
+    { text: "New ultra-efficient living trends make Hong Kong micro-apartments the hottest asset.", impact: 0.15, target: "prop26" }, // HK Micro
+    { text: "Monaco yacht show attracts billionaires globally. Berth values jump 20%.", impact: 0.20, target: "prop27" }, // Monaco Berth
+    { text: "Eco-tourism surges in Africa. Kenyan Safari Lodges become prime investment targets.", impact: 0.25, target: "prop28" }, // Kenya Lodge
+    { text: "Wildfires threaten Napa Valley. California vineyard estates suffer massive insurance hikes and value drops.", impact: -0.30, target: "prop29" }, // California Vineyard
+    { text: "Breakthrough biotech research funded. Boston Medical Complex becomes the most valuable commercial asset.", impact: 0.35, target: "prop30" }, // Boston Medical
+    { text: "Monsoon floods submerge coastal roads in Mumbai. Apartment valuations take a dive.", impact: -0.12, target: "prop1" }, // Mumbai 1BHK
+    { text: "Retail apocalypse! Commercial retail shops face massive wave of bankruptcies.", impact: -0.25, target: "prop4" } // Retail Shop
+];
+
+function generateRealEstateNews() {
+    state.reNews = state.reNews || [];
+    
+    // 50% chance of a news event per day so it's more frequent
+    if (Math.random() > 0.50) return { impact: 0, target: 'NONE' };
+    
+    var event = RE_NEWS_DB[Math.floor(Math.random() * RE_NEWS_DB.length)];
+    
+    var newsItem = {
+        day: state.day,
+        text: event.text,
+        type: event.impact > 0 ? 'bull' : 'bear'
+    };
+    
+    state.reNews.unshift(newsItem);
+    if (state.reNews.length > 20) state.reNews.pop(); // keep last 20
+    
+    return event;
 }

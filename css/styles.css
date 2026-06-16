@@ -103,11 +103,12 @@ body {
     flex: 1;
     justify-content: center;
     overflow: hidden;
+    min-width: 0;
 }
 
-.stat { display: flex; flex-direction: column; align-items: center; }
+.stat { display: flex; flex-direction: column; align-items: center; min-width: 0; }
 .stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); white-space: nowrap; }
-.stat-val { font-size: 13px; font-weight: 600; color: var(--text-bright); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stat-val { font-size: 13px; font-weight: 600; color: var(--text-bright); white-space: nowrap; font-variant-numeric: tabular-nums; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
 .stat-sep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
 
 .topbar-controls {
@@ -1844,7 +1845,100 @@ body.light .chart-time-selector .tf-btn:hover {
     border: 1px solid var(--accent);
     box-shadow: 0 2px 8px rgba(41, 98, 255, 0.15);
 }
+}
 body.light .chart-time-selector .tf-btn.active {
     background: rgba(41, 98, 255, 0.08);
     color: var(--accent);
+}
+
+/* --- View Switcher --- */
+#view-terminal {
+    display: contents;
+}
+#view-terminal.hidden {
+    display: none !important;
+}
+
+#view-bank, #view-realestate {
+    grid-row: 2 / 4;
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-0);
+    z-index: 50;
+    overflow-y: auto;
+}
+
+/* --- Dalal Bank --- */
+#view-bank, #view-realestate {
+    height: 100%;
+    overflow: hidden;
+}
+
+.bank-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+}
+.bank-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+.bank-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.05);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+.bank-card-full { grid-column: 1 / -1; }
+
+.cibil-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+.cibil-circle {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    filter: drop-shadow(0 0 10px rgba(41, 98, 255, 0.2));
+}
+.cibil-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.cibil-bg { fill: none; stroke: var(--bg-2); stroke-width: 8; }
+.cibil-fg { 
+    fill: none; 
+    stroke: var(--accent); 
+    stroke-width: 8; 
+    stroke-linecap: round;
+    stroke-dasharray: 283; /* 2 * pi * r (r=45) = 282.7 */
+    stroke-dashoffset: 283;
+    transition: stroke-dashoffset 1s ease-out, stroke 0.3s;
+}
+.cibil-val {
+    position: absolute;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 32px; font-weight: 700; color: var(--text-bright); font-family: var(--mono);
+}
+.cibil-status { font-size: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+.loan-quote {
+    background: var(--bg-2);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    border: 1px solid var(--border);
+}
+
+.table-wrap {
+    overflow-y: auto;
 }
