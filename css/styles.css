@@ -2285,8 +2285,8 @@ body.light .chart-time-selector .tf-btn.active {
 }
 
 .toggle-checkbox:checked + .switch .led {
-  background: yellow;
-  box-shadow: 0 0 7px 2px yellow;
+  background: rgb(25, 178, 14);
+  box-shadow: 0 0 7px 2px rgb(25, 178, 14);
 }
 
 /* Hover Effect */
