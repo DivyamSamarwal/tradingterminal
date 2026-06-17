@@ -14,10 +14,10 @@
     <div class="app">
         <!-- Top Bar -->
         <header class="topbar">
-            <div class="topbar-brand">
-                <i class="fa-solid fa-bolt accent"></i>
-                <span>Dalal Street <span class="accent">Terminal</span></span>
-            </div>
+            <button class="topbar-brand gradient-button">
+                <i class="fa-solid fa-bolt gradient-text" style="font-size:14px; margin-right:4px;"></i>
+                <span class="gradient-text">Dalal Street Terminal</span>
+            </button>
             <div class="topbar-stats">
                 <div class="stat"><span class="stat-label">Day</span><span class="stat-val" id="day-counter">Day 1</span></div>
                 <div class="stat-sep"></div>
@@ -41,14 +41,36 @@
                 <div class="stat"><span class="stat-label">Brokerage</span><span class="stat-val" id="brokerage-paid">₹ 0.00</span></div>
             </div>
             <div class="topbar-controls">
-                <button class="ctrl-btn" id="btn-pause" title="Pause" aria-label="Pause simulation"><i class="fa-solid fa-pause"></i></button>
-                <button class="ctrl-btn on" id="btn-play" title="1x Speed" aria-label="Run simulation at 1x speed"><i class="fa-solid fa-play"></i></button>
-                <button class="ctrl-btn" id="btn-fast" title="10x Speed" aria-label="Run simulation at 10x speed"><i class="fa-solid fa-forward-fast"></i></button>
+                <button class="playback-btn ctrl-btn" id="btn-pause" title="Pause" aria-label="Pause simulation">
+                  <div class="btn">
+                    <span class="btn-txt"><i class="fa-solid fa-pause"></i></span>
+                    <div class="dot"></div>
+                  </div>
+                </button>
+                <button class="playback-btn ctrl-btn on" id="btn-play" title="1x Speed" aria-label="Run simulation at 1x speed">
+                  <div class="btn">
+                    <span class="btn-txt"><i class="fa-solid fa-play"></i></span>
+                    <div class="dot"></div>
+                  </div>
+                </button>
+                <button class="playback-btn ctrl-btn" id="btn-fast" title="10x Speed" aria-label="Run simulation at 10x speed">
+                  <div class="btn">
+                    <span class="btn-txt"><i class="fa-solid fa-forward-fast"></i></span>
+                    <div class="dot"></div>
+                  </div>
+                </button>
                 <span class="ctrl-sep"></span>
                 <button class="ctrl-btn" id="btn-bank" title="Dalal Bank" aria-label="Open Bank"><i class="fa-solid fa-building-columns"></i></button>
                 <button class="ctrl-btn" id="btn-realestate" title="Property Market" aria-label="Open Real Estate"><i class="fa-solid fa-house"></i></button>
                 <button class="ctrl-btn" id="btn-settings" title="Settings" aria-label="Open settings"><i class="fa-solid fa-gear"></i></button>
-                <button class="ctrl-btn" id="btn-theme" title="Toggle Light/Dark" aria-label="Toggle light or dark theme"><i class="fa-solid fa-sun"></i></button>
+                <div class="switch-container" title="Toggle Light/Dark" aria-label="Toggle light or dark theme">
+                  <input class="toggle-checkbox" id="toggle-switch" type="checkbox" />
+                  <label class="switch" for="toggle-switch">
+                    <div class="theme-toggle">
+                      <div class="led"></div>
+                    </div>
+                  </label>
+                </div>
             </div>
         </header>
 
@@ -94,17 +116,17 @@
                     </div>
                     <div class="ct-chart-type">
                         <div class="segmented-control">
-                            <button class="chart-type-btn active" id="btn-chart-line" title="Line Chart"><i class="fa-solid fa-chart-line"></i> Line</button>
-                            <button class="chart-type-btn" id="btn-chart-candle" title="Candlestick Chart">&#8718; Candles</button>
+                            <button class="chart-type-btn active" id="btn-chart-line" title="Line Chart"><i class="fa-solid fa-chart-line"></i> <span>Line</span></button>
+                            <button class="chart-type-btn" id="btn-chart-candle" title="Candlestick Chart"><span>&#8718; Candles</span></button>
                         </div>
                         <div class="segmented-control">
-                            <button class="chart-type-btn scale-btn active" id="btn-scale-linear" title="Linear price scale">Linear</button>
-                            <button class="chart-type-btn scale-btn" id="btn-scale-log" title="Logarithmic price scale">Log</button>
-                            <button class="chart-type-btn scale-btn" id="btn-scale-pct" title="% Change from view start">%Chg</button>
+                            <button class="chart-type-btn scale-btn active" id="btn-scale-linear" title="Linear price scale"><span>Linear</span></button>
+                            <button class="chart-type-btn scale-btn" id="btn-scale-log" title="Logarithmic price scale"><span>Log</span></button>
+                            <button class="chart-type-btn scale-btn" id="btn-scale-pct" title="% Change from view start"><span>%Chg</span></button>
                         </div>
                         <div class="segmented-control">
-                            <button class="chart-type-btn indicator-btn" id="btn-toggle-sma" title="Toggle SMA (20)">SMA</button>
-                            <button class="chart-type-btn indicator-btn" id="btn-toggle-ema" title="Toggle EMA (20)">EMA</button>
+                            <button class="chart-type-btn indicator-btn" id="btn-toggle-sma" title="Toggle SMA (20)"><span>SMA</span></button>
+                            <button class="chart-type-btn indicator-btn" id="btn-toggle-ema" title="Toggle EMA (20)"><span>EMA</span></button>
                         </div>
                     </div>
                     <div class="ct-right">
@@ -135,16 +157,16 @@
                         <span class="mono news-badge" id="news-count">0</span>
                     </div>
                     <div class="news-market-filters">
-                        <button class="news-mf-btn active" data-market="ALL">All</button>
-                        <button class="news-mf-btn" data-market="NSE">NSE</button>
-                        <button class="news-mf-btn nmf-nasdaq" data-market="NASDAQ">NASDAQ</button>
-                        <button class="news-mf-btn nmf-eu" data-market="EU">EU</button>
-                        <button class="news-mf-btn nmf-sse" data-market="SSE">SSE</button>
-                        <button class="news-mf-btn nmf-tse" data-market="TSE">TSE</button>
-                        <button class="news-mf-btn nmf-comm" data-market="COMM">Comm</button>
-                        <button class="news-mf-btn nmf-crypto" data-market="CRYPTO"><i class="fa-brands fa-bitcoin"></i> Crypto</button>
-                        <button class="news-mf-btn nmf-fx" data-market="FX">FX</button>
-                        <button class="news-mf-btn nmf-war" data-market="WAR"><i class="fa-solid fa-triangle-exclamation"></i> War</button>
+                        <button class="news-mf-btn active" data-market="ALL"><span>All</span></button>
+                        <button class="news-mf-btn" data-market="NSE"><span>NSE</span></button>
+                        <button class="news-mf-btn nmf-nasdaq" data-market="NASDAQ"><span>NASDAQ</span></button>
+                        <button class="news-mf-btn nmf-eu" data-market="EU"><span>EU</span></button>
+                        <button class="news-mf-btn nmf-sse" data-market="SSE"><span>SSE</span></button>
+                        <button class="news-mf-btn nmf-tse" data-market="TSE"><span>TSE</span></button>
+                        <button class="news-mf-btn nmf-comm" data-market="COMM"><span>Comm</span></button>
+                        <button class="news-mf-btn nmf-crypto" data-market="CRYPTO"><i class="fa-brands fa-bitcoin"></i> <span>Crypto</span></button>
+                        <button class="news-mf-btn nmf-fx" data-market="FX"><span>FX</span></button>
+                        <button class="news-mf-btn nmf-war" data-market="WAR"><i class="fa-solid fa-triangle-exclamation"></i> <span>War</span></button>
                     </div>
                     <div class="news-body" id="news-container">
                         <div class="news-item" data-market="GLOBAL">
@@ -255,8 +277,20 @@
                     </div>
 
                     <div class="order-actions">
-                        <button class="btn-buy" id="btn-buy"><i class="fa-solid fa-arrow-up"></i> BUY</button>
-                        <button class="btn-sell" id="btn-sell"><i class="fa-solid fa-arrow-down"></i> SELL / SHORT</button>
+                        <button class="btn-buy uiverse-btn" id="btn-buy">
+                            <div class="button-outer">
+                                <div class="button-inner">
+                                    <span><i class="fa-solid fa-arrow-up"></i> BUY</span>
+                                </div>
+                            </div>
+                        </button>
+                        <button class="btn-sell uiverse-btn" id="btn-sell">
+                            <div class="button-outer">
+                                <div class="button-inner">
+                                    <span><i class="fa-solid fa-arrow-down"></i> SELL / SHORT</span>
+                                </div>
+                            </div>
+                        </button>
                     </div>
                     <div class="short-info">
                         <i class="fa-solid fa-info-circle"></i> Sell without holdings = Short position. Cover later by buying back.
@@ -321,8 +355,20 @@
                         <span>Req Margin</span><span class="mono" id="req-margin-opt">₹ 0.00</span>
                     </div>
                     <div class="order-actions">
-                        <button class="btn-buy" id="btn-buy-option"><i class="fa-solid fa-arrow-up"></i> BUY</button>
-                        <button class="btn-sell" id="btn-sell-option"><i class="fa-solid fa-arrow-down"></i> SELL</button>
+                        <button class="btn-buy uiverse-btn" id="btn-buy-option">
+                            <div class="button-outer">
+                                <div class="button-inner">
+                                    <span><i class="fa-solid fa-arrow-up"></i> BUY</span>
+                                </div>
+                            </div>
+                        </button>
+                        <button class="btn-sell uiverse-btn" id="btn-sell-option">
+                            <div class="button-outer">
+                                <div class="button-inner">
+                                    <span><i class="fa-solid fa-arrow-down"></i> SELL</span>
+                                </div>
+                            </div>
+                        </button>
                     </div>
                 </div>
 
@@ -450,7 +496,13 @@
                             <div class="stat" style="align-items:flex-start;"><span class="stat-label">Interest Rate</span><span class="stat-val mono" id="loan-rate" style="color:var(--orange)">8.5% APR</span></div>
                             <div class="stat" style="align-items:flex-end;"><span class="stat-label">Daily EMI</span><span class="stat-val mono" id="loan-emi" style="color:var(--text-bright)">₹ 0.00</span></div>
                         </div>
-                        <button class="btn-buy" id="btn-take-loan" style="margin-top:auto;flex:none;width:100%;height:40px;"><i class="fa-solid fa-file-signature"></i> Accept & Disburse Funds</button>
+                        <button class="btn-buy uiverse-btn" id="btn-take-loan" style="margin-top:auto;flex:none;width:100%;">
+                            <div class="button-outer">
+                                <div class="button-inner">
+                                    <span><i class="fa-solid fa-file-signature"></i> Accept & Disburse Funds</span>
+                                </div>
+                            </div>
+                        </button>
                     </div>
 
                     <!-- Active Loans -->
@@ -521,7 +573,13 @@
                             <div class="stat" style="align-items:flex-start;"><span class="stat-label">Interest Rate</span><span class="stat-val mono" id="fd-rate" style="color:var(--green)">5.0% APR</span></div>
                             <div class="stat" style="align-items:flex-end;"><span class="stat-label">Maturity Amount</span><span class="stat-val mono" id="fd-maturity" style="color:var(--text-bright)">₹ 0.00</span></div>
                         </div>
-                        <button class="btn-buy" id="btn-open-fd" style="margin-top:auto;flex:none;width:100%;height:40px;background:var(--green);"><i class="fa-solid fa-lock"></i> Lock Funds</button>
+                        <button class="btn-buy uiverse-btn" id="btn-open-fd" style="margin-top:auto;flex:none;width:100%;">
+                            <div class="button-outer">
+                                <div class="button-inner">
+                                    <span><i class="fa-solid fa-lock"></i> Lock Funds</span>
+                                </div>
+                            </div>
+                        </button>
                     </div>
 
                     <!-- Active FDs -->
@@ -708,6 +766,6 @@
         </div>
     </div>
     <div id="toast-container" class="toast-box"></div>
-    <script src="js/app.js?v=85"></script>
+    <script src="js/app.js?v=100"></script>
 </body>
 </html>

@@ -1383,7 +1383,7 @@ function setupListeners() {
     document.getElementById('btn-pause').addEventListener('click', function(e) { setSpeed(0, e.currentTarget); });
     document.getElementById('btn-play').addEventListener('click', function(e) { setSpeed(1000, e.currentTarget); });
     document.getElementById('btn-fast').addEventListener('click', function(e) { setSpeed(100, e.currentTarget); });
-    document.getElementById('btn-theme').addEventListener('click', toggleTheme);
+    document.getElementById('toggle-switch').addEventListener('change', toggleTheme);
     document.getElementById('btn-bank').addEventListener('click', toggleBankView);
     document.getElementById('btn-realestate').addEventListener('click', toggleRealEstateView);
     document.getElementById('btn-new-day').addEventListener('click', startNewDay);
@@ -1701,7 +1701,8 @@ function setTimeframe(label) {
 function toggleTheme() {
     state.theme = state.theme === 'dark' ? 'light' : 'dark';
     document.body.classList.toggle('light');
-    document.querySelector('#btn-theme i').className = state.theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    var ts = document.getElementById('toggle-switch');
+    if(ts) ts.checked = state.theme === 'light';
     if (state.activeStock) renderChart(state.activeStock);
     toast('Theme', state.theme === 'light' ? 'Light Mode' : 'Dark Mode', 'info');
 }
@@ -5060,8 +5061,8 @@ function updateRealEstateUI() {
                 '<td class="r mono" style="color:var(--green)">+' + fmtCur(dailyRent) + '</td>' +
                 '<td class="r mono">20% Down<br><small>' + fmtCur(prop.price * 0.2) + '<br>EMI: ~' + fmtCur(estimatedEmi) + '/d</small></td>' +
                 '<td class="r">' +
-                '<button class="btn-sm" style="background:var(--bg-2);border:1px solid var(--green);color:var(--green);padding:4px 8px;border-radius:4px;cursor:pointer;margin-right:5px;" onclick="buyProperty(\'' + prop.id + '\', false)">Buy Cash</button>' +
-                '<button class="btn-sm" style="background:var(--bg-2);border:1px solid var(--orange);color:var(--orange);padding:4px 8px;border-radius:4px;cursor:pointer;" onclick="buyProperty(\'' + prop.id + '\', true)">Mortgage</button>' +
+                '<button class="uiverse-btn btn-buy-cash" onclick="buyProperty(\'' + prop.id + '\', false)"><div class="button-outer"><div class="button-inner"><span>Buy Cash</span></div></div></button>' +
+                '<button class="uiverse-btn btn-mortgage" onclick="buyProperty(\'' + prop.id + '\', true)"><div class="button-outer"><div class="button-inner"><span>Mortgage</span></div></div></button>' +
                 '</td>';
             marketTbody.appendChild(tr);
         });
