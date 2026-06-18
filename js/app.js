@@ -7156,6 +7156,16 @@ function renderAll() {
 	_rafPending = true;
 	requestAnimationFrame(function () {
 		_rafPending = false;
+
+		// 1. LIVE ANALYTICS HOOK (Runs every tick if the panel is open)
+		var analyticsEl = document.getElementById("analytics-panel");
+		if (analyticsEl && !analyticsEl.classList.contains("hidden")) {
+			if (typeof window.updateAnalyticsLive === "function") {
+				window.updateAnalyticsLive();
+			}
+		}
+
+		// 2. STANDARD TERMINAL RENDER
 		renderTopBar();
 		renderWatchlist();
 		renderActiveStock();
@@ -7166,6 +7176,7 @@ function renderAll() {
 		if (state.activeBottomTab === "history") renderHistoryTable();
 	});
 }
+
 
 // Watchlist DOM row cache — built once per filter change, updated in-place every tick
 var _wlCache = {};
@@ -7497,14 +7508,19 @@ function renderWatchlist() {
 function selectStock(stock) {
 	if (!stock) return;
 	state.activeStock = stock;
+
+	// Trigger main UI update
 	renderAll();
-    if (state.activeTab === "options") updateStrikesAndPremium();
-    //Added this to trigger analytics refresh if the panel is open
-    if (
-			window.renderAnalytics &&
-			!document.getElementById("analytics-panel").classList.contains("hidden")
-		)
+
+	if (state.activeTab === "options") updateStrikesAndPremium();
+
+	// If Analytics is currently open, do a full rebuild for the new stock
+	var analyticsEl = document.getElementById("analytics-panel");
+	if (analyticsEl && !analyticsEl.classList.contains("hidden")) {
+		if (typeof window.renderAnalytics === "function") {
 			window.renderAnalytics();
+		}
+	}
 }
 
 function renderActiveStock() {

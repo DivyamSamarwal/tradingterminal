@@ -4,6 +4,7 @@
  */
 
 var analyticsChartInstance = null;
+var currentAnalyticsTicker = null; // Track to prevent unnecessary chart rebuilds
 
 // Deterministic random number generator seeded by string
 function getSeededRandom(seedStr) {
@@ -20,32 +21,26 @@ function getSeededRandom(seedStr) {
 	};
 }
 
+// 1. FULL RENDER (Runs once when stock is clicked)
 function renderAnalytics() {
 	var stock = state.activeStock;
 	if (!stock) return;
 
 	var rng = getSeededRandom(stock.ticker);
 
-	// 1. GENERATE DETERMINISTIC FUNDAMENTALS
-	// Generate Market Cap (Based on LTP and a seeded multiplier)
+	// Generate static values deterministically
 	var sharesOutstanding = Math.floor(rng() * 900000000) + 100000000;
-	var marketCap = stock.ltp * sharesOutstanding;
+	stock._sharesOutstanding = sharesOutstanding; // Save for live Market Cap calc
 
-	// PE Ratio (10 to 80)
 	var peRatio = (rng() * 70 + 10).toFixed(2);
-
-	// Dividend Yield (0% to 5%)
 	var divYield = (rng() * 5).toFixed(2);
-
-	// 52 Week High/Low (derived from base price)
 	var high52 = (stock.base * (1 + (rng() * 0.4 + 0.1))).toFixed(2);
 	var low52 = (stock.base * (1 - (rng() * 0.4 + 0.1))).toFixed(2);
-
-	// Next Earnings Day (1 to 90 days from now)
 	var nextEarnings = Math.floor(rng() * 90) + 1;
 
+	// Build the grid (Notice the empty <span> tags with ID's for live data)
 	var fundHTML = `
-        <div class="data-row"><span class="data-label">Market Cap</span><span class="data-value">${formatLargeCurrency(marketCap, stock.currency)}</span></div>
+        <div class="data-row"><span class="data-label">Market Cap</span><span class="data-value" id="an-market-cap">--</span></div>
         <div class="data-row"><span class="data-label">P/E Ratio</span><span class="data-value">${peRatio}</span></div>
         <div class="data-row"><span class="data-label">Dividend Yield</span><span class="data-value">${divYield}%</span></div>
         <div class="data-row"><span class="data-label">52-Week High</span><span class="data-value">${fmtPrice(stock, parseFloat(high52))}</span></div>
@@ -54,51 +49,113 @@ function renderAnalytics() {
     `;
 	document.getElementById("analytics-fundamentals").innerHTML = fundHTML;
 
-	// 2. CALCULATE TECHNICALS
+	var techHTML = `
+        <div class="data-row"><span class="data-label">1 Day Return</span><span class="data-value" id="an-1d">--</span></div>
+        <div class="data-row"><span class="data-label">1 Week Return</span><span class="data-value" id="an-1w">--</span></div>
+        <div class="data-row"><span class="data-label">1 Month Return</span><span class="data-value" id="an-1m">--</span></div>
+        <div class="data-row"><span class="data-label">SMA (20) Signal</span><span class="data-value" id="an-sma">--</span></div>
+        <div class="data-row"><span class="data-label">EMA (20) Signal</span><span class="data-value" id="an-ema">--</span></div>
+        <div class="data-row"><span class="data-label">Daily Volume</span><span class="data-value" id="an-volume">--</span></div>
+    `;
+	document.getElementById("analytics-technicals").innerHTML = techHTML;
+
+	// Force full chart rebuild
+	currentAnalyticsTicker = stock.ticker;
+	var fullHistory = (stock.preHistory || []).concat(stock.history || []);
+	renderAnalyticsChart(stock, fullHistory);
+
+	// Immediately trigger the live update so fields aren't blank
+	updateAnalyticsLive();
+}
+
+// 2. LIVE UPDATE (Runs every second in sync with the market)
+function updateAnalyticsLive() {
+	var stock = state.activeStock;
+	if (!stock) return;
+
+	// Update Market Cap & Volume
+	var marketCap = stock.ltp * (stock._sharesOutstanding || 100000000);
+	var elCap = document.getElementById("an-market-cap");
+	if (elCap) elCap.textContent = formatLargeCurrency(marketCap, stock.currency);
+
+	var elVol = document.getElementById("an-volume");
+	if (elVol) elVol.textContent = formatLargeVolume(stock.volume);
+
+	// Calculate Returns
 	var ticksPerDay = 375;
-	var preHist = stock.preHistory || [];
-	var fullHistory = preHist.concat(stock.history || []);
+	var fullHistory = (stock.preHistory || []).concat(stock.history || []);
 
-	// 1 Day Return
 	var dayReturn = ((stock.ltp - stock.open) / stock.open) * 100;
-
-	// 1 Week Return (5 trading days ago)
 	var weekIndex = Math.max(0, fullHistory.length - 5 * ticksPerDay);
 	var weekPrice = fullHistory[weekIndex] || stock.base;
 	var weekReturn = ((stock.ltp - weekPrice) / weekPrice) * 100;
 
-	// 1 Month Return (22 trading days ago)
 	var monthIndex = Math.max(0, fullHistory.length - 22 * ticksPerDay);
 	var monthPrice = fullHistory[monthIndex] || stock.base;
 	var monthReturn = ((stock.ltp - monthPrice) / monthPrice) * 100;
 
-	// SMA / EMA Signals
+	// Helper to colorize text
+	var setReturn = function (id, val) {
+		var el = document.getElementById(id);
+		if (!el) return;
+		el.textContent = (val >= 0 ? "+" : "") + val.toFixed(2) + "%";
+		el.className = "data-value " + (val >= 0 ? "up" : "dn");
+	};
+
+	setReturn("an-1d", dayReturn);
+	setReturn("an-1w", weekReturn);
+	setReturn("an-1m", monthReturn);
+
+	// Update Technical Signals
 	var smaArr = calcSMA(fullHistory, 20);
 	var emaArr = calcEMA(fullHistory, 20);
 	var currentSMA = smaArr[smaArr.length - 1];
 	var currentEMA = emaArr[emaArr.length - 1];
 
-	var smaSignal =
-		stock.ltp > currentSMA
-			? '<span class="up">Bullish</span>'
-			: '<span class="dn">Bearish</span>';
-	var emaSignal =
-		stock.ltp > currentEMA
-			? '<span class="up">Bullish</span>'
-			: '<span class="dn">Bearish</span>';
+	var elSma = document.getElementById("an-sma");
+	if (elSma)
+		elSma.innerHTML =
+			stock.ltp > currentSMA
+				? '<span class="up">Bullish</span>'
+				: '<span class="dn">Bearish</span>';
 
-	var techHTML = `
-        <div class="data-row"><span class="data-label">1 Day Return</span><span class="data-value ${dayReturn >= 0 ? "up" : "dn"}">${dayReturn >= 0 ? "+" : ""}${dayReturn.toFixed(2)}%</span></div>
-        <div class="data-row"><span class="data-label">1 Week Return</span><span class="data-value ${weekReturn >= 0 ? "up" : "dn"}">${weekReturn >= 0 ? "+" : ""}${weekReturn.toFixed(2)}%</span></div>
-        <div class="data-row"><span class="data-label">1 Month Return</span><span class="data-value ${monthReturn >= 0 ? "up" : "dn"}">${monthReturn >= 0 ? "+" : ""}${monthReturn.toFixed(2)}%</span></div>
-        <div class="data-row"><span class="data-label">SMA (20) Signal</span><span class="data-value">${smaSignal}</span></div>
-        <div class="data-row"><span class="data-label">EMA (20) Signal</span><span class="data-value">${emaSignal}</span></div>
-        <div class="data-row"><span class="data-label">Daily Volume</span><span class="data-value">${formatLargeVolume(stock.volume)}</span></div>
-    `;
-	document.getElementById("analytics-technicals").innerHTML = techHTML;
+	var elEma = document.getElementById("an-ema");
+	if (elEma)
+		elEma.innerHTML =
+			stock.ltp > currentEMA
+				? '<span class="up">Bullish</span>'
+				: '<span class="dn">Bearish</span>';
 
-	// 3. RENDER RELATIVE PERFORMANCE CHART
-	renderAnalyticsChart(stock, fullHistory);
+	// 3. Update the live Chart Point seamlessly
+	if (analyticsChartInstance && currentAnalyticsTicker === stock.ticker) {
+		// Calculate latest % change for Active Stock
+		var stockBasePrice =
+			fullHistory[Math.max(0, fullHistory.length - 22 * ticksPerDay)] ||
+			stock.base;
+		var livePct = ((stock.ltp - stockBasePrice) / stockBasePrice) * 100;
+
+		// Calculate latest % change for NIFTY
+		var indexStock =
+			marketStocks.find((s) => s.ticker === "NIFTY 50") || marketStocks[0];
+		var indexHistory = (indexStock.preHistory || []).concat(
+			indexStock.history || [],
+		);
+		var indexMonthPrice =
+			indexHistory[Math.max(0, indexHistory.length - 22 * ticksPerDay)] ||
+			indexStock.base;
+		var indexLivePct =
+			((indexStock.ltp - indexMonthPrice) / indexMonthPrice) * 100;
+
+		// Update the final points on the graph
+		var stockDataset = analyticsChartInstance.data.datasets[0];
+		stockDataset.data[stockDataset.data.length - 1] = livePct;
+
+		var indexDataset = analyticsChartInstance.data.datasets[1];
+		indexDataset.data[indexDataset.data.length - 1] = indexLivePct;
+
+		// update('none') tells Chart.js to repaint without triggering a heavy sliding animation
+		analyticsChartInstance.update("none");
+	}
 }
 
 function renderAnalyticsChart(stock, stockHistory) {
@@ -107,14 +164,12 @@ function renderAnalyticsChart(stock, stockHistory) {
 	var ctx = canvas.getContext("2d");
 	var isLight = state.theme === "light";
 
-	// Get Index Data (NIFTY 50 is base)
 	var indexStock =
 		marketStocks.find((s) => s.ticker === "NIFTY 50") || marketStocks[0];
 	var indexHistory = (indexStock.preHistory || []).concat(
 		indexStock.history || [],
 	);
 
-	// We want to plot the End-Of-Day prices for the last 22 days (1 month)
 	var ticksPerDay = 375;
 	var daysToPlot = 22;
 
@@ -122,7 +177,6 @@ function renderAnalyticsChart(stock, stockHistory) {
 	var indexEOD = [];
 	var labels = [];
 
-	// Extract EOD (End of Day) prices
 	for (var d = daysToPlot; d >= 0; d--) {
 		var tickIdx = stockHistory.length - 1 - d * ticksPerDay;
 		if (tickIdx < 0) tickIdx = 0;
@@ -130,11 +184,10 @@ function renderAnalyticsChart(stock, stockHistory) {
 		stockEOD.push(stockHistory[tickIdx] || stock.base);
 		indexEOD.push(indexHistory[tickIdx] || indexStock.base);
 
-		if (d === 0) labels.push("Today");
+		if (d === 0) labels.push("Live");
 		else labels.push(d + "d ago");
 	}
 
-	// Normalize to Percentage base 100 for comparison
 	var stockBasePrice = stockEOD[0];
 	var indexBasePrice = indexEOD[0];
 
@@ -179,6 +232,7 @@ function renderAnalyticsChart(stock, stockHistory) {
 		options: {
 			responsive: true,
 			maintainAspectRatio: false,
+			animation: false,
 			plugins: {
 				legend: {
 					display: true,
@@ -226,7 +280,7 @@ function renderAnalyticsChart(stock, stockHistory) {
 	});
 }
 
-// Helpers for Analytics formatting
+// Helpers
 function formatLargeCurrency(val, currency) {
 	var sym = "₹";
 	if (currency === "USD") sym = "$";
