@@ -26,21 +26,27 @@ var EXCHANGE_RATES = {
 	CHF: 102.4,
 };
 
-var TIMEFRAMES = [
-	{ label: "5M", viewLen: 5, candlePeriod: 1 },
-	{ label: "15M", viewLen: 15, candlePeriod: 3 },
-	{ label: "30M", viewLen: 30, candlePeriod: 5 },
-	{ label: "1H", viewLen: 60, candlePeriod: 10 },
-	{ label: "Day", viewLen: 375, candlePeriod: 15 },
-	{ label: "Week", viewLen: 1875, candlePeriod: 75 },
-	{ label: "1M", viewLen: 8250, candlePeriod: 375 }, // 22 trading days
+var VIEW_LENGTHS = [
+	{ label: "1D", viewLen: 375 },
+	{ label: "1W", viewLen: 1875 },
+	{ label: "1M", viewLen: 8250 },
+	{ label: "3M", viewLen: 24750 },
+];
+
+var INTERVALS = [
+	{ label: "5m", candlePeriod: 5 },
+	{ label: "15m", candlePeriod: 15 },
+	{ label: "30m", candlePeriod: 30 },
+	{ label: "1h", candlePeriod: 60 },
+	{ label: "1d", candlePeriod: 375 },
+	{ label: "1w", candlePeriod: 1875 },
 ];
 
 // ==================== PRE-HISTORY GENERATOR ====================
-// Generates 22 days × 375 ticks of realistic price history using a seeded LCG PRNG
+// Generates 66 days × 375 ticks of realistic price history using a seeded LCG PRNG
 // so each stock always gets the same deterministic pattern on every simulation reset.
 function generatePreHistory(stock, days) {
-	days = days || 22;
+	days = days || 66;
 	var TPD = 375; // ticks per trading day
 
 	// Deterministic seeded LCG per ticker
@@ -101,7 +107,7 @@ function generatePreHistory(stock, days) {
 		}
 	}
 	// Round to appropriate precision
-	var decimals = stock.currency === "JPY" ? 0 : 2;
+	var decimals = stock.currency === "JPY" ? 0 : (targetEnd < 10 ? 4 : 2);
 	return history.map(function (p) {
 		return parseFloat(p.toFixed(decimals));
 	});
@@ -4358,9 +4364,9 @@ var state = {
 	sentiment: 0, // -100 to +100
 	chartType: "line",
 	chartScale: "linear", // 'linear' | 'log' | 'pct'
-	timeframe: "30M",
-	viewLen: 30,
-	candlePeriod: 5,
+	timeframe: "1H",
+	viewLen: 60,
+	candlePeriod: 10,
 	slTargets: {}, // { ticker: { sl: num|null, target: num|null } }
 	wlMarketFilter: "ALL", // watchlist market filter
 	newsMarketFilter: "ALL", // news feed market filter
@@ -4761,8 +4767,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
 function initMarket() {
 	marketStocks.forEach(function (s) {
-		// Generate 1 month (22 days × 375 ticks) of realistic price history
-		s.preHistory = generatePreHistory(s, 22);
+		// Generate 3 months (66 days × 375 ticks) of realistic price history
+		s.preHistory = generatePreHistory(s, 66);
 		// Live history starts with a single tick (preHistory fills the visual history)
 		s.history = [s.ltp];
 		s.volumeHistory = [0];
@@ -4880,13 +4886,43 @@ function setupListeners() {
 			e.currentTarget.classList.toggle("active", state.showEMA);
 			if (state.activeStock) renderChart(state.activeStock);
 		});
-	TIMEFRAMES.forEach(function (tf) {
+	VIEW_LENGTHS.forEach(function (tf) {
 		var btn = document.getElementById("tf-" + tf.label);
 		if (btn)
 			btn.addEventListener("click", function () {
-				setTimeframe(tf.label);
+				setViewLength(tf.label);
 			});
 	});
+
+	var customDropdown = document.getElementById("custom-interval-dropdown");
+	if (customDropdown) {
+		customDropdown.addEventListener("click", function (e) {
+			customDropdown.classList.toggle("open");
+		});
+
+		document.querySelectorAll(".dropdown-option").forEach(function (opt) {
+			opt.addEventListener("click", function (e) {
+				if (opt.classList.contains("disabled")) {
+					e.stopPropagation();
+					return;
+				}
+				var val = opt.dataset.value;
+				setIntervalDropdown(val, opt.textContent);
+				
+				document.querySelectorAll(".dropdown-option").forEach(function(o) {
+					o.classList.remove("active");
+				});
+				opt.classList.add("active");
+			});
+		});
+
+		// Close dropdown when clicking outside
+		document.addEventListener("click", function(e) {
+			if (!customDropdown.contains(e.target)) {
+				customDropdown.classList.remove("open");
+			}
+		});
+	}
 
 	// Cash preset buttons
 	document.querySelectorAll(".cash-preset").forEach(function (btn) {
@@ -5166,7 +5202,7 @@ function applySettings() {
 			s.open = s.base;
 			s.prevClose = s.base;
 			s._prevTick = s.base;
-			s.preHistory = generatePreHistory(s, 22);
+			s.preHistory = generatePreHistory(s, 66);
 			s.history = [s.ltp];
 			s.volumeHistory = [0];
 			s.volume = 0;
@@ -5240,19 +5276,65 @@ function setChartScale(scale) {
 	if (state.activeStock) renderChart(state.activeStock);
 }
 
-// ==================== TIMEFRAME TOGGLE ====================
-function setTimeframe(label) {
-	var tf = TIMEFRAMES.find(function (t) {
+// ==================== VIEW LENGTH TOGGLE ====================
+function setViewLength(label) {
+	var tf = VIEW_LENGTHS.find(function (t) {
 		return t.label === label;
 	});
 	if (!tf) return;
-	state.timeframe = label;
 	state.viewLen = tf.viewLen;
-	state.candlePeriod = tf.candlePeriod;
-	document.querySelectorAll(".tf-btn").forEach(function (b) {
+	document.querySelectorAll(".chart-view-lengths .tf-btn").forEach(function (b) {
 		b.classList.remove("active");
 	});
-	document.getElementById("tf-" + label).classList.add("active");
+	var activeBtn = document.getElementById("tf-" + label);
+	if (activeBtn) activeBtn.classList.add("active");
+	
+	// Auto-adjust interval based on view length to prevent too many candles
+	var autoInterval = state.candlePeriod;
+	if (label === "1D") autoInterval = 5;      // 5m
+	else if (label === "1W") autoInterval = 15; // 15m
+	else if (label === "1M") autoInterval = 60; // 1h
+	else if (label === "3M") autoInterval = 375; // 1d
+	
+	var customDropdown = document.getElementById("custom-interval-dropdown");
+	if (customDropdown) {
+		var maxInterval = 1875;
+		if (label === "1D") maxInterval = 60; // max 1H
+		else if (label === "1W") maxInterval = 375; // max 1D
+
+		document.querySelectorAll(".dropdown-option").forEach(function(opt) {
+			var val = parseInt(opt.dataset.value, 10);
+			if (val > maxInterval) {
+				opt.classList.add("disabled");
+				// If currently selected interval is now disabled, fallback to autoInterval
+				if (state.candlePeriod === val) state.candlePeriod = autoInterval;
+			} else {
+				opt.classList.remove("disabled");
+			}
+		});
+
+		// Ensure we don't automatically override a valid user interval
+		if (state.candlePeriod > maxInterval || state.candlePeriod === autoInterval) {
+			state.candlePeriod = autoInterval;
+		}
+		
+		// Update UI
+		document.querySelectorAll(".dropdown-option").forEach(function(opt) {
+			if (parseInt(opt.dataset.value, 10) === state.candlePeriod) {
+				opt.classList.add("active");
+				document.getElementById("interval-display").textContent = opt.textContent;
+			} else {
+				opt.classList.remove("active");
+			}
+		});
+	}
+
+	if (state.activeStock) renderChart(state.activeStock);
+}
+
+function setIntervalDropdown(val, text) {
+	state.candlePeriod = parseInt(val, 10);
+	if (text) document.getElementById("interval-display").textContent = text;
 	if (state.activeStock) renderChart(state.activeStock);
 }
 
@@ -5901,10 +5983,10 @@ function resetMarketStock(stock) {
 	stock.volume = 0;
 	stock.circuitHit = null;
 
-	// Roll preHistory: append this day's live ticks and trim to last 22 days (31680 ticks)
+	// Roll preHistory: append this day's live ticks and trim to last 66 days
 	if (stock.preHistory && stock.history.length > 1) {
 		var todayTicks = stock.history.slice(1); // skip the opening placeholder
-		stock.preHistory = stock.preHistory.concat(todayTicks).slice(-22 * 1440);
+		stock.preHistory = stock.preHistory.concat(todayTicks).slice(-66 * 1440);
 	}
 	// Reset live history for new day
 	stock.history = [stock.ltp];
@@ -7899,7 +7981,7 @@ function _applyChartData(stock, isLight) {
 
 	if (state.chartType === "candle") {
 		var baseTotal = Math.min(
-			200,
+			1000,
 			Math.ceil(state.viewLen / state.candlePeriod) + 2,
 		);
 		var ohlcData = buildCandleData(stock, baseTotal);
@@ -7975,8 +8057,13 @@ function _applyChartData(stock, isLight) {
 		chartInstance._volumes = ohlcData.map(function (d) {
 			return d.v || 0;
 		});
-		scY.min = yMin - yBottomPad;
-		scY.max = yMax + yPad;
+		if (state.chartScale === "log") {
+			scY.min = undefined;
+			scY.max = undefined;
+		} else {
+			scY.min = yMin - yBottomPad;
+			scY.max = yMax + yPad;
+		}
 
 		var ds2c = chartInstance.data.datasets[1];
 		if (stock.prevClose && ohlcData.length) {
@@ -8220,6 +8307,92 @@ function _applyChartData(stock, isLight) {
 	chartInstance.update("none");
 }
 
+// ==================== CUSTOM HTML TOOLTIP ====================
+function customTooltipHandler(context) {
+	var chart = context.chart;
+	var tooltip = context.tooltip;
+
+	var tooltipEl = document.getElementById('custom-tooltip');
+	if (!tooltipEl) {
+		tooltipEl = document.createElement('div');
+		tooltipEl.id = 'custom-tooltip';
+		document.body.appendChild(tooltipEl);
+	}
+
+	if (tooltip.opacity === 0) {
+		tooltipEl.style.opacity = 0;
+		return;
+	}
+
+	// Set Text
+	if (tooltip.body) {
+		var isPct = state.chartScale === "pct";
+		var cd = chart._ohlc;
+		var d = cd && cd[tooltip.dataPoints[0].dataIndex];
+		
+		if (!d) {
+			tooltipEl.style.opacity = 0;
+			return;
+		}
+
+		var fmt = isPct
+			? function (n) { return (n >= 0 ? "+" : "") + n.toFixed(2) + "%"; }
+			: function (n) { return fmtPrice(state.activeStock, n); };
+
+		var isBull = d.c >= d.o;
+		var bullBearClass = isBull ? "bull" : "bear";
+		var closeFmt = fmt(d.c);
+		var openFmt = fmt(d.o);
+		var highFmt = fmt(d.h);
+		var lowFmt = fmt(d.l);
+
+		var volStr = d.v ? formatVolume(d.v, state.activeStock ? state.activeStock.currency : "INR") : "0";
+
+		var period = state.candlePeriod || 375;
+		var totalLen = cd.length;
+		var idx = tooltip.dataPoints[0].dataIndex;
+		var reverseIdx = totalLen - 1 - idx;
+		
+		var dTime = new Date();
+		// subtract (reverseIdx * period) minutes
+		dTime.setMinutes(dTime.getMinutes() - (reverseIdx * period));
+		var timeStr = dTime.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+
+		var pctMove = ((d.c - d.o) / d.o) * 100;
+		var pctStr = (pctMove > 0 ? "+" : "") + pctMove.toFixed(2) + "%";
+
+		tooltipEl.innerHTML = `
+			<div class="tooltip-header">
+				<span>${state.activeStock ? state.activeStock.ticker : ""}</span>
+				<span>${timeStr}</span>
+			</div>
+			<div class="tooltip-grid">
+				<div class="tooltip-row"><span class="tooltip-label">O</span> <span class="tooltip-val">${openFmt}</span></div>
+				<div class="tooltip-row"><span class="tooltip-label">H</span> <span class="tooltip-val" style="color:var(--green)">${highFmt}</span></div>
+				<div class="tooltip-row"><span class="tooltip-label">C</span> <span class="tooltip-val ${bullBearClass}">${closeFmt}</span></div>
+				<div class="tooltip-row"><span class="tooltip-label">L</span> <span class="tooltip-val" style="color:var(--red)">${lowFmt}</span></div>
+			</div>
+			<div class="tooltip-footer">
+				<span class="tooltip-label">Vol: <span style="color:var(--text)">${volStr}</span></span>
+				<span class="tooltip-pct ${bullBearClass}">${pctStr}</span>
+			</div>
+		`;
+	}
+
+	var position = context.chart.canvas.getBoundingClientRect();
+	tooltipEl.style.opacity = 1;
+	tooltipEl.style.left = position.left + window.pageXOffset + tooltip.caretX + 'px';
+	
+	// Better positioning: if too close to top edge, push down
+	var topPos = position.top + window.pageYOffset + tooltip.caretY;
+	if (topPos - 130 < window.pageYOffset) {
+		tooltipEl.style.transform = 'translate(-50%, 20px)';
+	} else {
+		tooltipEl.style.transform = 'translate(-50%, -110%)';
+	}
+	tooltipEl.style.top = topPos + 'px';
+}
+
 function renderChart(stock) {
 	var canvas = document.getElementById("main-chart");
 	var ctx = canvas.getContext("2d");
@@ -8346,22 +8519,10 @@ function renderChart(stock) {
 			plugins: {
 				legend: { display: false },
 				tooltip: {
-					enabled: true,
+					enabled: false,
 					mode: "index",
 					intersect: false,
-					backgroundColor: "rgba(10, 10, 20, 0.75)",
-					titleColor: "#FFFFFF",
-					bodyColor: "#D0D2D9",
-					borderColor: "rgba(255, 255, 255, 0.08)",
-					borderWidth: 1,
-					padding: 12,
-					displayColors: false,
-					filter: function (item) {
-						return item.datasetIndex === 0;
-					},
-					titleFont: { family: "Outfit", size: 11, weight: "700" },
-					bodyFont: { family: "Outfit", size: 11 },
-					callbacks: {},
+					external: customTooltipHandler
 				},
 			},
 			scales: {
@@ -8386,8 +8547,11 @@ function renderChart(stock) {
 					ticks: {
 						font: { family: "Outfit", size: 10 },
 						padding: 10,
-						maxTicksLimit: 12,
+						maxTicksLimit: needsLog ? 8 : 12,
 						callback: function (v) {
+							if (state.chartScale === "pct") {
+								return (v > 0 ? "+" : "") + v.toFixed(2) + "%";
+							}
 							var cur = state.activeStock ? state.activeStock.currency : "INR";
 							var sym = "\u20b9";
 							if (cur === "USD") sym = "$";
@@ -9383,8 +9547,8 @@ function getMaxLoanAmount() {
 	else if (state.cibilScore >= 700) factor = 1;
 	else if (state.cibilScore >= 600) factor = 0.7;
 
-	// Hard cap: max loan = 10 Crores
-	return Math.min(10000000, Math.max(50000, netWorth * factor));
+	// No hard cap, based purely on netWorth and factor
+	return Math.max(50000, netWorth * factor);
 }
 
 function updateLoanQuote() {
@@ -9472,9 +9636,9 @@ function takeLoan() {
 }
 
 function getFdInterestRate(days) {
-	if (days >= 30) return 7.5;
-	if (days >= 15) return 6.0;
-	return 5.0; // 7 days
+	if (days >= 15) return 12.5;
+	if (days >= 10) return 10.0;
+	return 7.5; // 5 days
 }
 
 function updateFdQuote() {

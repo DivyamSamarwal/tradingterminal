@@ -7,7 +7,71 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=6">
+    <link rel="stylesheet" href="css/styles.css?v=999">
+    <style>
+        #custom-tooltip {
+            position: absolute;
+            background: rgba(18, 18, 26, 0.85);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 10px;
+            pointer-events: none;
+            transition: opacity 0.1s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 99999;
+            opacity: 0;
+            font-size: 13px;
+            min-width: 220px;
+            backdrop-filter: blur(10px);
+        }
+        body.light #custom-tooltip {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .tooltip-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-weight: 600;
+            border-bottom: 1px dashed rgba(255,255,255,0.1);
+            padding-bottom: 6px;
+        }
+        body.light .tooltip-header {
+            border-bottom: 1px dashed rgba(0,0,0,0.1);
+        }
+        .tooltip-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 12px;
+            font-family: 'Roboto Mono', monospace;
+        }
+        .tooltip-row {
+            display: flex;
+            justify-content: space-between;
+        }
+        .tooltip-label {
+            color: #7A7C8C;
+        }
+        .tooltip-val {
+            font-weight: 500;
+        }
+        .tooltip-footer {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px dashed rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+        }
+        body.light .tooltip-footer {
+            border-top: 1px dashed rgba(0,0,0,0.1);
+        }
+        .tooltip-pct {
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+    </style>
 </head>
 <body>
     <div class="aurora-bg"></div>
@@ -146,13 +210,27 @@
                 <div class="chart-container">
                     <canvas id="main-chart" role="img" aria-label="Price chart for the selected instrument"></canvas>
                     <div class="chart-time-selector">
-                        <button class="tf-btn" id="tf-5M">5M</button>
-                        <button class="tf-btn" id="tf-15M">15M</button>
-                        <button class="tf-btn active" id="tf-30M">30M</button>
-                        <button class="tf-btn" id="tf-1H">1H</button>
-                        <button class="tf-btn" id="tf-Day">Day</button>
-                        <button class="tf-btn" id="tf-Week">Week</button>
-                        <button class="tf-btn" id="tf-1M">1M</button>
+                        <div class="chart-view-lengths">
+                            <button class="tf-btn" id="tf-1D">1D</button>
+                            <button class="tf-btn" id="tf-1W">1W</button>
+                            <button class="tf-btn active" id="tf-1M">1M</button>
+                            <button class="tf-btn" id="tf-3M">3M</button>
+                        </div>
+                        <div class="chart-interval-selector custom-dropdown" id="custom-interval-dropdown">
+                            <span class="dropdown-label">Interval:</span>
+                            <div class="dropdown-selected" id="chart-interval-selected">
+                                <span id="interval-display">1d</span>
+                                <i class="fa-solid fa-chevron-down" style="font-size: 8px; margin-left: 4px;"></i>
+                            </div>
+                            <div class="dropdown-options" id="chart-interval-options">
+                                <div class="dropdown-option" data-value="5">5m</div>
+                                <div class="dropdown-option" data-value="15">15m</div>
+                                <div class="dropdown-option" data-value="30">30m</div>
+                                <div class="dropdown-option" data-value="60">1h</div>
+                                <div class="dropdown-option active" data-value="375">1d</div>
+                                <div class="dropdown-option" data-value="1875">1w</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -589,9 +667,9 @@
                         <div class="fg">
                             <label>Term (Days)</label>
                             <select id="fd-term" class="fc">
-                                <option value="7">7 Days</option>
+                                <option value="5">5 Days</option>
+                                <option value="10">10 Days</option>
                                 <option value="15">15 Days</option>
-                                <option value="30">30 Days</option>
                             </select>
                         </div>
                         <div class="loan-quote">
@@ -791,7 +869,7 @@
         </div>
     </div>
     <div id="toast-container" class="toast-box"></div>
-    <script src="js/app.js?v=100"></script>
-    <script src="js/analytics.js?v=1"></script>
+    <script src="js/app.js?v=115"></script>
+    <script src="js/analytics.js?v=8"></script>
 </body>
 </html>

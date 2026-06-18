@@ -69,6 +69,16 @@ function renderAnalytics() {
 }
 
 // 2. LIVE UPDATE (Runs every second in sync with the market)
+function getBenchmarkIndex(currency) {
+	if (currency === "USD") return "SPX500";
+	if (currency === "EUR") return "STOXX600";
+	if (currency === "JPY") return "NIKKEI225";
+	if (currency === "GBP") return "FTSE100";
+	if (currency === "HKD") return "HSI";
+	if (currency === "CNY") return "SHCOMP";
+	return "NIFTY 50";
+}
+
 function updateAnalyticsLive() {
 	var stock = state.activeStock;
 	if (!stock) return;
@@ -85,7 +95,7 @@ function updateAnalyticsLive() {
 	var ticksPerDay = 375;
 	var fullHistory = (stock.preHistory || []).concat(stock.history || []);
 
-	var dayReturn = ((stock.ltp - stock.open) / stock.open) * 100;
+	var dayReturn = ((stock.ltp - stock.prevClose) / stock.prevClose) * 100;
 	var weekIndex = Math.max(0, fullHistory.length - 5 * ticksPerDay);
 	var weekPrice = fullHistory[weekIndex] || stock.base;
 	var weekReturn = ((stock.ltp - weekPrice) / weekPrice) * 100;
@@ -106,9 +116,18 @@ function updateAnalyticsLive() {
 	setReturn("an-1w", weekReturn);
 	setReturn("an-1m", monthReturn);
 
-	// Update Technical Signals
-	var smaArr = calcSMA(fullHistory, 20);
-	var emaArr = calcEMA(fullHistory, 20);
+	// Update Technical Signals (Calculate using End Of Day prices, not ticks)
+	var eodPrices = [];
+	for (var d = 22; d >= 0; d--) {
+		var tickIdx = fullHistory.length - 1 - d * ticksPerDay;
+		if (tickIdx < 0) tickIdx = 0;
+		eodPrices.push(fullHistory[tickIdx] || stock.base);
+	}
+	// Add the live price as the latest data point
+	eodPrices[eodPrices.length - 1] = stock.ltp;
+
+	var smaArr = calcSMA(eodPrices, 20);
+	var emaArr = calcEMA(eodPrices, 20);
 	var currentSMA = smaArr[smaArr.length - 1];
 	var currentEMA = emaArr[emaArr.length - 1];
 
@@ -134,9 +153,10 @@ function updateAnalyticsLive() {
 			stock.base;
 		var livePct = ((stock.ltp - stockBasePrice) / stockBasePrice) * 100;
 
-		// Calculate latest % change for NIFTY
+		// 4. Update Relative Performance Chart
+		var benchmarkTicker = getBenchmarkIndex(stock.currency);
 		var indexStock =
-			marketStocks.find((s) => s.ticker === "NIFTY 50") || marketStocks[0];
+			marketStocks.find(function(s) { return s.ticker === benchmarkTicker; }) || marketStocks[0];
 		var indexHistory = (indexStock.preHistory || []).concat(
 			indexStock.history || [],
 		);
@@ -164,8 +184,9 @@ function renderAnalyticsChart(stock, stockHistory) {
 	var ctx = canvas.getContext("2d");
 	var isLight = state.theme === "light";
 
+	var benchmarkTicker = getBenchmarkIndex(stock.currency);
 	var indexStock =
-		marketStocks.find((s) => s.ticker === "NIFTY 50") || marketStocks[0];
+		marketStocks.find(function(s) { return s.ticker === benchmarkTicker; }) || marketStocks[0];
 	var indexHistory = (indexStock.preHistory || []).concat(
 		indexStock.history || [],
 	);
@@ -202,6 +223,10 @@ function renderAnalyticsChart(stock, stockHistory) {
 		analyticsChartInstance.destroy();
 	}
 
+	var grad = ctx.createLinearGradient(0, 0, 0, 300);
+	grad.addColorStop(0, "rgba(41, 98, 255, 0.2)");
+	grad.addColorStop(1, "rgba(41, 98, 255, 0.0)");
+
 	analyticsChartInstance = new Chart(ctx, {
 		type: "line",
 		data: {
@@ -211,11 +236,12 @@ function renderAnalyticsChart(stock, stockHistory) {
 					label: stock.ticker,
 					data: stockPct,
 					borderColor: "rgba(41, 98, 255, 1)",
-					backgroundColor: "rgba(41, 98, 255, 0.1)",
+					backgroundColor: grad,
 					borderWidth: 2,
-					pointRadius: 3,
+					pointRadius: 0,
+					pointHoverRadius: 6,
 					fill: true,
-					tension: 0.2,
+					tension: 0.4,
 				},
 				{
 					label: indexStock.ticker,
@@ -224,8 +250,9 @@ function renderAnalyticsChart(stock, stockHistory) {
 					borderWidth: 2,
 					borderDash: [5, 5],
 					pointRadius: 0,
+					pointHoverRadius: 0,
 					fill: false,
-					tension: 0.2,
+					tension: 0.4,
 				},
 			],
 		},
@@ -237,6 +264,7 @@ function renderAnalyticsChart(stock, stockHistory) {
 				legend: {
 					display: true,
 					labels: {
+						usePointStyle: true,
 						color: isLight ? "#333" : "#D0D2D9",
 						font: { family: "Outfit" },
 					},
@@ -266,7 +294,13 @@ function renderAnalyticsChart(stock, stockHistory) {
 				},
 				y: {
 					grid: {
-						color: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)",
+						color: function(ctx) {
+							if (ctx.tick.value === 0) {
+								return isLight ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.2)";
+							}
+							return isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)";
+						},
+						zeroLineColor: isLight ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.2)",
 					},
 					ticks: {
 						color: isLight ? "#666" : "#707888",
