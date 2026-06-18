@@ -443,11 +443,13 @@ body {
     text-align: right; 
     display: flex; 
     flex-direction: column; 
-    flex-shrink: 0;      /* Pin to the right edge */
+    flex-shrink: 0; 
     justify-content: center; 
     min-width: 0; 
-    max-width: 250px;    /* Limit width */
-    margin-left: 12px; 
+    max-width: 320px;     /* Increased from 250px so more of the volume text is visible */
+    margin-left: 24px;    /* Much bigger gap pushing it away from the buttons */
+    padding-left: 24px;   /* Internal padding for breathing room */
+    border-left: 1px solid var(--border); /* Subtle vertical divider line */
 }
 
 .ct-price { 
@@ -477,7 +479,7 @@ body {
     min-width: 0;        /* CRITICAL: Allows flexbox to scroll its contents */
     overflow-x: auto;    /* Enable horizontal scrolling */
     overflow-y: hidden;
-    padding: 10px 12px;
+    padding: 10px 24px 14px 12px; /* The '24px' adds empty space after the Analytics button */
     
     /* Hide scrollbar for a clean UI but keep scroll functionality */
     -ms-overflow-style: none;  /* IE and Edge */
