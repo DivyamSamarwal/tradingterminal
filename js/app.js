@@ -5073,6 +5073,36 @@ function setupListeners() {
 	document
 		.getElementById("btn-toggle-analytics")
 		.addEventListener("click", toggleAnalyticsView);
+
+	// // Drag-to-scroll for the chart topbar tools
+	// var slider = document.querySelector(".ct-chart-type");
+	// var isDown = false;
+	// var startX;
+	// var scrollLeft;
+
+	// if (slider) {
+	// 	slider.addEventListener("mousedown", function (e) {
+	// 		isDown = true;
+	// 		slider.style.cursor = "grabbing";
+	// 		startX = e.pageX - slider.offsetLeft;
+	// 		scrollLeft = slider.scrollLeft;
+	// 	});
+	// 	slider.addEventListener("mouseleave", function () {
+	// 		isDown = false;
+	// 		slider.style.cursor = "default";
+	// 	});
+	// 	slider.addEventListener("mouseup", function () {
+	// 		isDown = false;
+	// 		slider.style.cursor = "default";
+	// 	});
+	// 	slider.addEventListener("mousemove", function (e) {
+	// 		if (!isDown) return;
+	// 		e.preventDefault();
+	// 		var x = e.pageX - slider.offsetLeft;
+	// 		var walk = (x - startX) * 1.5; // Scroll speed multiplier
+	// 		slider.scrollLeft = scrollLeft - walk;
+	// 	});
+	// }
 }
 
 // ==================== SETTINGS / MODIFIABLE CASH ====================
@@ -7486,7 +7516,13 @@ function renderActiveStock() {
 	if (badge) {
 		var open = isMarketOpen(stock, state.time);
 		badge.textContent = open ? "OPEN" : "CLOSED";
-		badge.style.backgroundColor = open ? "#00e67622" : "#ff4b4b22";
+		// Give it a slightly bolder background so the pill stands out nicely
+		badge.style.backgroundColor = open
+			? "rgba(0, 200, 83, 0.15)"
+			: "rgba(255, 23, 68, 0.15)";
+		badge.style.border = open
+			? "1px solid rgba(0, 200, 83, 0.3)"
+			: "1px solid rgba(255, 23, 68, 0.3)";
 		badge.style.color = open ? "#00e676" : "#ff4b4b";
 	}
 	document.getElementById("active-name").textContent =

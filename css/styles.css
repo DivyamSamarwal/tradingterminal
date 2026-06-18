@@ -437,17 +437,57 @@ body {
 .ct-left { display: flex; flex-direction: column; flex-shrink: 0; justify-content: center; }
 .ct-symbol { font-size: 22px; font-weight: 800; color: var(--text-bright); line-height: 1.1; letter-spacing: -0.02em; }
 .ct-name { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
-.ct-right { text-align: right; display: flex; flex-direction: column; flex-shrink: 0; justify-content: center; }
-.ct-price { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--text-bright); line-height: 1.1; font-variant-numeric: tabular-nums; }
+
+/* Fixed UI Things for overflow */
+.ct-right { 
+    text-align: right; 
+    display: flex; 
+    flex-direction: column; 
+    flex-shrink: 0;      /* Pin to the right edge */
+    justify-content: center; 
+    min-width: 0; 
+    max-width: 250px;    /* Limit width */
+    margin-left: 12px; 
+}
+
+.ct-price { 
+    font-size: 26px; 
+    font-weight: 800; 
+    letter-spacing: -0.02em; 
+    color: var(--text-bright); 
+    line-height: 1.1; 
+    font-variant-numeric: tabular-nums; 
+}
+
+.ct-change, .ct-prev-close { 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; /* Truncates long text with '...' */
+    width: 100%; 
+}
+
 .ct-change { font-size: 13px; font-weight: 500; margin-top: 2px; font-variant-numeric: tabular-nums; }
 .ct-prev-close { font-size: 11px; color: var(--text-dim); margin-top: 2px; font-variant-numeric: tabular-nums; }
+
 .ct-chart-type {
-    display: flex; gap: 8px; align-items: center;
-    flex: 1;
-    overflow-x: visible;
-    padding: 6px 12px;
+    display: flex; 
+    gap: 12px; 
+    align-items: center;
+    flex: 1;             /* Take up all available middle space */
+    min-width: 0;        /* CRITICAL: Allows flexbox to scroll its contents */
+    overflow-x: auto;    /* Enable horizontal scrolling */
+    overflow-y: hidden;
+    padding: 10px 12px;
+    
+    /* Hide scrollbar for a clean UI but keep scroll functionality */
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
 }
-.ct-chart-type::-webkit-scrollbar { display: none; }
+/* .ct-chart-type::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera
+} 
+*/
+
 .segmented-control {
     display: flex;
     border-radius: 20px;
@@ -457,6 +497,7 @@ body {
     transform: perspective(500px) rotateX(5deg);
     transform-style: preserve-3d;
     transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    flex-shrink: 0; /* CRITICAL: Never shrink, force the parent to scroll! */
 }
 .segmented-control:hover {
     transform: perspective(500px) rotateX(2deg);
