@@ -427,7 +427,7 @@ body {
 .chart-topbar {
     height: auto;          /* Removed fixed 56px height */
     min-height: 68px;      /* Taller minimum height */
-    padding: 12px 20px;    /* 12px padding on TOP and BOTTOM to give text breathing room */
+    padding: 6px 20px;    /* 12px padding on TOP and BOTTOM to give text breathing room */
     display: flex;
     align-items: center;
     justify-content: space-between;
