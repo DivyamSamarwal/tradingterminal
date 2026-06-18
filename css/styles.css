@@ -2492,3 +2492,56 @@ body.light .chart-time-selector .tf-btn.active {
     filter: hue-rotate(360deg);
   }
 }
+
+
+/* ========== ANALYTICS PANEL ========== */
+.analytics-container {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    background: var(--bg-0);
+}
+.analytics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.analytics-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+.analytics-card.full-width {
+    grid-column: 1 / -1;
+}
+.analytics-card h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.analytics-card h3 i {
+    color: var(--accent);
+    margin-right: 6px;
+}
+.analytics-chart-wrapper {
+    height: 250px;
+    position: relative;
+    width: 100%;
+}
+.data-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 12px;
+}
+.data-row:last-child { border-bottom: none; }
+.data-label { color: var(--text-dim); font-weight: 500;}
+.data-value { font-weight: 600; color: var(--text-bright); font-family: var(--mono); }

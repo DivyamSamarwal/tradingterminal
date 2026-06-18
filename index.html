@@ -128,7 +128,11 @@
                             <button class="chart-type-btn indicator-btn" id="btn-toggle-sma" title="Toggle SMA (20)"><span>SMA</span></button>
                             <button class="chart-type-btn indicator-btn" id="btn-toggle-ema" title="Toggle EMA (20)"><span>EMA</span></button>
                         </div>
+                        <div class="segmented-control">
+                            <button class="chart-type-btn" id="btn-toggle-analytics" title="Stock Analytics & Fundamentals"><span><i class="fa-solid fa-chart-pie"></i> Analytics</span></button>
+                        </div>
                     </div>
+
                     <div class="ct-right">
                         <span class="ct-price" id="active-price">2500.00</span>
                         <span class="ct-change up" id="active-change">+12.50 (0.50%)</span>
@@ -173,6 +177,25 @@
                             <span class="news-time mono">12:00 AM</span>
                             <span class="news-mkt-badge nmb-global" style="background:#555;color:#fff">GLOBAL</span>
                             <span class="news-text">Global 24-hour simulation started. Waiting for events...</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Analytics & Fundamentals Panel -->
+                <div class="analytics-container hidden" id="analytics-panel">
+                    <div class="analytics-grid">
+                        <div class="analytics-card">
+                            <h3><i class="fa-solid fa-building"></i> Fundamentals</h3>
+                            <div id="analytics-fundamentals"></div>
+                        </div>
+                        <div class="analytics-card">
+                            <h3><i class="fa-solid fa-gauge-high"></i> Technicals</h3>
+                            <div id="analytics-technicals"></div>
+                        </div>
+                        <div class="analytics-card full-width">
+                            <h3><i class="fa-solid fa-chart-line"></i> Relative Performance vs Index (1 Month)</h3>
+                            <div class="analytics-chart-wrapper">
+                                <canvas id="analytics-chart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -767,5 +790,6 @@
     </div>
     <div id="toast-container" class="toast-box"></div>
     <script src="js/app.js?v=100"></script>
+    <script src="js/analytics.js?v=1"></script>
 </body>
 </html>
