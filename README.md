@@ -1,6 +1,6 @@
-# Trading Terminal Simulator
+# 📈 Trading Terminal Simulator
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-green.svg)]()
 [![Environment](https://img.shields.io/badge/environment-Client--Side-orange.svg)]()
 
@@ -10,7 +10,7 @@ This project provides a highly accurate, tick-by-tick financial market microstru
 
 ---
 
-## Core Architecture
+## ⚡ Core Architecture
 
 The application is built with a focus on zero-latency execution and high-frequency DOM updates.
 * **Frontend Framework**: Vanilla HTML5, CSS3, JavaScript (ES5/ES6).
@@ -19,73 +19,69 @@ The application is built with a focus on zero-latency execution and high-frequen
 
 ---
 
-## Features
+## 🚀 Features
 
-### 1. Market Microstructure & Liquidity
+### 🏛️ 1. Market Microstructure & Liquidity
 The simulation enforces strict market microstructure rules, rejecting the concept of infinite liquidity found in basic simulators.
 * **Tick Volume Modeling**: Order book depth is mathematically scaled to the real-world daily volume of specific asset classes. Order execution is constrained by available synthetic liquidity.
-* **Asynchronous Exchange Hours**: The engine tracks the operating hours of global exchanges (NYSE, NASDAQ, NSE, TSE, SSE). Assets are only tradable during their respective timezone sessions.
+* **Asynchronous Exchange Hours**: The engine tracks the operating hours of global exchanges (NYSE, NASDAQ, NSE, TSE, SSE, HKEX, LSE). Assets are only tradable during their respective timezone sessions.
 * **After-Hours Processing**: When an exchange closes, its order book state is frozen. Market orders are rejected, while Limit and Stop orders are securely queued for the subsequent market open.
 * **Circuit Breakers**: Simulates exchange-mandated trading halts. Assets experiencing extreme volatility (±10%) hit Upper or Lower Circuit Limits, instantly drying up order book liquidity and preventing execution.
 
-### 2. Order Execution Engine
-A robust routing and execution engine supporting advanced order types and Time-in-Force (TIF) instructions.
-* **Market Orders**: Executes immediately against available liquidity. Excess quantity exceeding the current order book depth is queued as pending.
-* **Limit Orders**: Guarantees execution at the specified limit price or better. Fills tick-by-tick based on available market volume.
-* **Stop Orders**: Triggers upon price crossing a specified threshold, instantly converting to a Market order to capture momentum.
-* **Time In Force (TIF)**:
-  * **DAY**: Orders remain active in the pending queue until filled or canceled at the End-of-Day (EOD) settlement.
-  * **IOC (Immediate or Cancel)**: Fills the maximum possible quantity against current liquidity; any unfilled remainder is immediately canceled.
-  * **FOK (Fill or Kill)**: Requires the entire order quantity to be filled instantly. If insufficient liquidity exists, the entire order is canceled.
-* **Position Limits**: Implements algebraic exposure calculation (Current Position + Pending Orders) to enforce strict maximum position caps (e.g., 1,000,000 shares) and prevent exploitation.
+### 📊 2. Concurrent Market-Cap Weighted Indices
+* **Live Aggregation**: Global indices (e.g., S&P 500, NIFTY 50, HSI, STOXX 600) are rigorously tied to their underlying constituent stocks.
+* **Market-Cap Weighting**: Index prices update concurrently based on the real-time share prices and shares outstanding of their components.
+* **Overnight Gaps**: When markets open, indices accurately gap up or down based on the overnight pre-market movements of their underlying assets.
 
-### 3. Derivatives & Pricing Models
+### ⚙️ 3. Advanced Order Execution Engine
+A robust routing and execution engine supporting advanced order types and Time-in-Force (TIF) instructions.
+* **Market & Limit Orders**: Executes immediately against available liquidity or guarantees execution at the specified limit price.
+* **Stop Orders**: Triggers upon price crossing a specified threshold, instantly converting to a Market order to capture momentum.
+* **Time In Force (TIF)**: Supports **DAY**, **IOC** (Immediate or Cancel), and **FOK** (Fill or Kill) instructions.
+* **Position Limits**: Implements algebraic exposure calculation to enforce strict maximum position caps and prevent exploitation.
+
+### 📉 4. Derivatives & Pricing Models
 * **Synthetic Options**: Supports Call and Put options on underlying equities.
 * **Live Greeks Calculation**: Dynamically computes premium pricing using standard risk metrics (Delta, Gamma, Theta, Vega).
 * **Time Decay**: Options premiums realistically decay as the contract approaches expiry (Theta).
 * **Clearing & Settlement**: Automated End-of-Day (EOD) processing handles the exercise or expiration of derivatives based on the underlying asset's closing price.
 
-### 4. Global Multi-Asset Universe
-* **Equities**: Instruments from US, Indian, Japanese, and Chinese exchanges.
-* **Indices**: Tracking major benchmarks (S&P 500, NIFTY 50, Nikkei 225).
+### 🌍 5. Global Multi-Asset Universe
+* **Equities**: Instruments from US, Indian, Japanese, Chinese, Hong Kong, and European exchanges.
+* **Indices**: Tracking major benchmarks (S&P 500, NIFTY 50, Nikkei 225, HSI, DAX, FTSE 100).
 * **Commodities**: Futures-style contracts for precious metals and energy.
 * **Cryptocurrency**: Continuous 24/7 trading for digital assets.
 * **Forex (FX) & Fixed Income**: Currency pairs and sovereign debt yields.
 * **Automated FX Conversion**: Real-time cross-currency conversion dynamically settles international P&L into the base portfolio currency.
 
-### 5. Risk Management & Analysis
-* **Live Portfolio Metrics**: Real-time calculation of Portfolio Value, Cash Balance, Required Margin, and Unrealized P&L.
-* **Bracket Orders**: Integrated Stop-Loss and Take-Profit functionality for automated risk management.
-* **Technical Charting**: Integrated candlestick charting with customizable intervals, logarithmic scaling, and technical overlays (SMA, EMA).
-* **News & Sentiment Engine**: Injects simulated macroeconomic data and geopolitical events, triggering localized volatility spikes and algorithmic sentiment shifts.
-
-### 6. Dalal Bank & Credit System
+### 🏦 6. Dalal Bank & Credit System
 * **Dynamic Credit Scoring**: Tracks a live CIBIL Score (300-900) based on financial behavior, affecting loan eligibility and interest rates.
 * **Margin Loans**: Take out short-term, high-interest loans to multiply buying power. Daily EMI is automatically deducted from the cash margin.
 * **Fixed Deposits**: Lock in excess cash for guaranteed risk-free returns over set maturity periods.
 * **Liquidations & Defaults**: Failing to cover daily loan EMIs triggers CIBIL score penalties and forces immediate liquidation of trading assets to cover debts.
 
-### 7. Real Estate & Property Market
+### 🏢 7. Real Estate & Property Market
 * **Property Portfolio**: Buy, hold, and sell 30 unique global properties spanning Residential, Commercial, and Luxury sectors.
 * **Dynamic Rent Collection**: Earn daily rental yields automatically based on the live fluctuating market value of owned properties.
 * **Mortgages & Foreclosure**: Purchase properties with 20% down payments via 14-day mortgages. Missing EMI payments results in bank foreclosure, asset seizure, and severe credit damage.
-* **Real Estate News**: A dedicated news engine generates macroeconomic events that directly pump or crash real estate market valuations.
+
+### 📰 8. Risk Management & News Engine
+* **Live Portfolio Metrics**: Real-time calculation of Portfolio Value, Cash Balance, Required Margin, and Unrealized P&L.
+* **Bracket Orders**: Integrated Stop-Loss and Take-Profit functionality for automated risk management.
+* **Technical Charting**: Integrated candlestick charting with customizable intervals, logarithmic scaling, and technical overlays.
+* **News & Sentiment Engine**: Injects simulated macroeconomic data and geopolitical events, triggering localized volatility spikes and algorithmic sentiment shifts.
 
 ---
 
-## Installation
+## 💻 Installation & Usage
 
 The application requires no backend configuration or package installation.
 
 1. Clone the repository to your local environment.
-2. Navigate to the project directory.
-3. Open `index.html` in any modern web browser (Google Chrome, Firefox, Safari, Edge).
-4. The simulation engine will initialize automatically.
+2. Open `index.html` in any modern web browser (Google Chrome, Firefox, Safari, Edge).
+3. The simulation engine will initialize automatically.
 
----
-
-## Usage Guide
-
+### Quick Start
 1. **Asset Selection**: Utilize the categorical tabs (Equities, Indices, Crypto, etc.) to navigate the asset universe.
 2. **Market Data**: Select an instrument to render its live chart and Level 2 Market Depth order book.
 3. **Order Entry**: Navigate to the order panel, input the desired quantity, and select the order type (MARKET, LIMIT, STOP) and TIF instruction.
@@ -93,6 +89,6 @@ The application requires no backend configuration or package installation.
 
 ---
 
-## Disclaimer
+## ⚠️ Disclaimer
 
 This software is a **SIMULATOR**. All market data, pricing models, and liquidity metrics are generated by mathematical algorithms. It does not reflect live data from actual financial exchanges and is strictly intended for educational, testing, and entertainment purposes. Do not use this software for actual financial trading or decision-making.

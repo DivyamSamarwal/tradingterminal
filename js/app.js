@@ -24,13 +24,42 @@ var EXCHANGE_RATES = {
 	AUD: 54.2,
 	CAD: 61.3,
 	CHF: 102.4,
+	"SPX500": [
+		"AAPL", "MSFT", "NVDA", "TSLA", "META", "GOOGL", "AMZN", "NFLX", "ADBE", "AVGO", "COIN", "MU"
+	],
+	"NDX100": [
+		"AAPL", "MSFT", "NVDA", "META", "GOOGL", "AMZN", "NFLX", "ADBE", "AVGO", "MU"
+	],
+	"DJIA": [
+		"AAPL", "MSFT", "AMZN"
+	],
+	"NIKKEI225": [
+		"TOYOTA", "SONY", "HONDA", "NINTNDO", "DAIKIN", "CANON7751", "NISSAN", "HITACHI", "MITSUI", "NIDEC"
+	],
+	"SHCOMP": [
+		"MOUTAI", "CMBANK", "PINGAN", "PETROCH", "BYD", "CATL", "LONGI", "SAIC", "CITICS", "SINOPEC", "AGBANK", "ZTE"
+	],
+	"HSI": [
+		"TENCENT", "BABA", "MEITUAN", "AIA", "HSBC_HK", "XIAOMI"
+	],
+	"FTSE100": [
+		"AZN", "SHEL", "HSBA"
+	],
+	"DAX": [
+		"SAP", "SIEMENS"
+	],
+	"CAC40": [
+		"LVMH", "LOREAL"
+	],
+	"STOXX600": [
+		"LVMH", "ASML", "SAP", "SIEMENS", "LOREAL", "AZN", "SHEL", "HSBA"
+	]
 };
 
 var VIEW_LENGTHS = [
 	{ label: "1D", viewLen: 375 },
 	{ label: "1W", viewLen: 1875 },
 	{ label: "1M", viewLen: 8250 },
-	{ label: "3M", viewLen: 24750 },
 ];
 
 var INTERVALS = [
@@ -111,6 +140,46 @@ function generatePreHistory(stock, days) {
 	return history.map(function (p) {
 		return parseFloat(p.toFixed(decimals));
 	});
+}
+
+// Generates perfectly concurrent index pre-history based on market-cap weighted constituents
+function generateIndexPreHistory(indexStock, constituentTickers) {
+	var TPD = 375;
+	var days = 66;
+	var totalTicks = days * TPD;
+	var history = new Array(totalTicks);
+
+	var comps = [];
+	constituentTickers.forEach(function(tk) {
+		if (stockMap[tk]) comps.push(stockMap[tk]);
+	});
+	if (comps.length === 0) return Array(totalTicks).fill(indexStock.ltp);
+
+	var shape = new Array(totalTicks);
+	shape[0] = 1.0;
+
+	for (var t = 1; t < totalTicks; t++) {
+		var prevTotalCap = 0;
+		var currentTotalCap = 0;
+		comps.forEach(function(comp) {
+			if (!comp.preHistory || comp.preHistory.length < totalTicks) return;
+			var shares = comp.shares || 100000000;
+			var prevLtp = comp.preHistory[t - 1];
+			var curLtp = comp.preHistory[t];
+			prevTotalCap += prevLtp * shares;
+			currentTotalCap += curLtp * shares;
+		});
+		var tickReturn = prevTotalCap > 0 ? (currentTotalCap - prevTotalCap) / prevTotalCap : 0;
+		shape[t] = shape[t - 1] * (1 + tickReturn);
+	}
+
+	var finalShapeVal = shape[totalTicks - 1];
+	var startPrice = finalShapeVal > 0 ? indexStock.ltp / finalShapeVal : indexStock.ltp;
+
+	for (var t = 0; t < totalTicks; t++) {
+		history[t] = parseFloat((startPrice * shape[t]).toFixed(2));
+	}
+	return history;
 }
 
 // Build OHLC candles from pre-history ticks (for candle chart on pre-data)
@@ -230,7 +299,7 @@ var LOT_SIZES = {
 };
 
 // Helper to make a stock entry cleanly
-function mkStock(ticker, name, ltp, vol, sector, market, currency) {
+function mkStock(ticker, name, ltp, vol, sector, market, currency, shares) {
 	market = market || "NSE";
 	currency = currency || "INR";
 
@@ -281,6 +350,7 @@ function mkStock(ticker, name, ltp, vol, sector, market, currency) {
 		currency: currency,
 		volumeHistory: [],
 		baseVolume: baseVolume,
+		shares: shares || 100000000,
 	};
 }
 
@@ -352,102 +422,100 @@ var marketStocks = [
 	mkStock("CAC40", "CAC 40", 8100, 0.001, "Index", "INDEX", "EUR"),
 	mkStock("STOXX600", "STOXX Europe 600", 510, 0.0008, "Index", "INDEX", "EUR"),
 	// ── Banking & Finance ──  (prices: Feb 28, 2026)
-	mkStock("HDFCBANK", "HDFC Bank Ltd", 1755, 0.002, "Banking"),
-	mkStock("SBIN", "State Bank of India", 715, 0.003, "Banking"),
-	mkStock("ICICIBANK", "ICICI Bank", 1275, 0.0022, "Banking"),
-	mkStock("KOTAKBANK", "Kotak Mahindra Bank", 2010, 0.0019, "Banking"),
-	mkStock("AXISBANK", "Axis Bank Ltd", 1050, 0.0024, "Banking"),
-	mkStock("BAJFINANCE", "Bajaj Finance Ltd", 7450, 0.0028, "Finance"),
-	mkStock("BAJAJFINSV", "Bajaj Finserv Ltd", 2015, 0.0022, "Finance"),
-	mkStock(
-		"DALAL",
-		"Dalal Street Inc.",
-		1000,
-		0.0015,
-		"Financials",
-		"NSE",
-		"INR",
-	),
+	mkStock("HDFCBANK", "HDFC Bank Ltd", 1755, 0.002, "Banking", "NSE", "INR", 7590000000),
+	mkStock("SBIN", "State Bank of India", 715, 0.003, "Banking", "NSE", "INR", 8920000000),
+	mkStock("ICICIBANK", "ICICI Bank", 1275, 0.0022, "Banking", "NSE", "INR", 7020000000),
+	mkStock("KOTAKBANK", "Kotak Mahindra Bank", 2010, 0.0019, "Banking", "NSE", "INR", 1980000000),
+	mkStock("AXISBANK", "Axis Bank Ltd", 1050, 0.0024, "Banking", "NSE", "INR", 3080000000),
+	mkStock("INDUSINDBK", "IndusInd Bank", 1550, 0.0028, "Banking", "NSE", "INR", 770000000),
+	mkStock("PNB", "Punjab National Bank", 135, 0.004, "Banking", "NSE", "INR", 11010000000),
+	mkStock("BANKBARODA", "Bank of Baroda", 270, 0.0035, "Banking", "NSE", "INR", 5170000000),
+	mkStock("FEDERALBNK", "Federal Bank", 170, 0.003, "Banking", "NSE", "INR", 2430000000),
+	mkStock("IDFCFIRSTB", "IDFC First Bank", 85, 0.0045, "Banking", "NSE", "INR", 7050000000),
+	mkStock("AUBANK", "AU Small Finance", 620, 0.0038, "Banking", "NSE", "INR", 660000000),
+	mkStock("BANDHANBNK", "Bandhan Bank", 210, 0.004, "Banking", "NSE", "INR", 1610000000),
+	mkStock("BAJFINANCE", "Bajaj Finance Ltd", 7450, 0.0028, "Finance", "NSE", "INR", 610000000),
+	mkStock("BAJAJFINSV", "Bajaj Finserv Ltd", 2015, 0.0022, "Finance", "NSE", "INR", 1590000000),
+	mkStock("HDFCLIFE", "HDFC Life", 650, 0.0025, "Finance", "NSE", "INR", 2150000000),
+	mkStock("SBILIFE", "SBI Life Insurance", 1550, 0.0022, "Finance", "NSE", "INR", 1000000000),
+	mkStock("CHOLAFIN", "Chola Investment", 1250, 0.003, "Finance", "NSE", "INR", 840000000),
+	mkStock("MUTHOOTFIN", "Muthoot Finance", 1650, 0.0028, "Finance", "NSE", "INR", 400000000),
+	mkStock("SHRIRAMFIN", "Shriram Finance", 2450, 0.003, "Finance", "NSE", "INR", 370000000),
+	mkStock("PFC", "Power Finance Corp", 450, 0.0035, "Finance", "NSE", "INR", 3300000000),
+	mkStock("RECLTD", "REC Ltd", 510, 0.0035, "Finance", "NSE", "INR", 2630000000),
+	mkStock("DALAL", "Dalal Street Inc.", 10000, 0.0015, "Financials", "NSE", "INR", 1000000000),
 	// ── IT ──
-	mkStock("TCS", "Tata Consultancy Services", 3560, 0.0014, "IT"),
-	mkStock("INFY", "Infosys Ltd", 1870, 0.0025, "IT"),
-	mkStock("HCLTECH", "HCL Technologies", 1720, 0.002, "IT"),
-	mkStock("WIPRO", "Wipro Ltd", 295, 0.0026, "IT"),
-	mkStock("TECHM", "Tech Mahindra Ltd", 1685, 0.0022, "IT"),
-	mkStock("LTIM", "LTIMindtree Ltd", 5150, 0.002, "IT"),
+	mkStock("TCS", "Tata Consultancy Services", 3560, 0.0014, "IT", "NSE", "INR", 3650000000),
+	mkStock("INFY", "Infosys Ltd", 1870, 0.0025, "IT", "NSE", "INR", 4140000000),
+	mkStock("HCLTECH", "HCL Technologies", 1720, 0.002, "IT", "NSE", "INR", 2710000000),
+	mkStock("WIPRO", "Wipro Ltd", 295, 0.0026, "IT", "NSE", "INR", 5220000000),
+	mkStock("TECHM", "Tech Mahindra Ltd", 1685, 0.0022, "IT", "NSE", "INR", 970000000),
+	mkStock("LTIM", "LTIMindtree Ltd", 5150, 0.002, "IT", "NSE", "INR", 290000000),
 	// ── Energy & Conglomerate ──
-	mkStock("RELIANCE", "Reliance Industries", 1225, 0.0018, "Energy"),
-	mkStock("ONGC", "Oil & Natural Gas Corp", 235, 0.0025, "Energy"),
-	mkStock("BPCL", "Bharat Petroleum Corp", 265, 0.0028, "Energy"),
+	mkStock("RELIANCE", "Reliance Industries", 1225, 0.0018, "Energy", "NSE", "INR", 6760000000),
+	mkStock("ONGC", "Oil & Natural Gas Corp", 235, 0.0025, "Energy", "NSE", "INR", 12580000000),
+	mkStock("BPCL", "Bharat Petroleum Corp", 265, 0.0028, "Energy", "NSE", "INR", 4330000000),
 	// ── Power ──
-	mkStock("NTPC", "NTPC Ltd", 320, 0.0018, "Power"),
-	mkStock("POWERGRID", "Power Grid Corporation", 305, 0.0015, "Power"),
+	mkStock("NTPC", "NTPC Ltd", 320, 0.0018, "Power", "NSE", "INR", 9690000000),
+	mkStock("POWERGRID", "Power Grid Corporation", 305, 0.0015, "Power", "NSE", "INR", 9300000000),
 	// ── Infra ──
-	mkStock("ADANIENT", "Adani Enterprises", 2185, 0.004, "Infra"),
-	mkStock("LT", "Larsen & Toubro", 3255, 0.0016, "Infra"),
-	mkStock("BEL", "Bharat Electronics Ltd", 255, 0.003, "Infra"),
+	mkStock("ADANIENT", "Adani Enterprises", 2185, 0.004, "Infra", "NSE", "INR", 1140000000),
+	mkStock("ADANIPORTS", "Adani Ports", 1350, 0.0035, "Infra", "NSE", "INR", 2160000000),
+	mkStock("LT", "Larsen & Toubro", 3255, 0.0016, "Infra", "NSE", "INR", 1370000000),
+	mkStock("BEL", "Bharat Electronics Ltd", 255, 0.003, "Infra", "NSE", "INR", 7300000000),
 	// ── Auto ──
-	mkStock("TATAMOTORS", "Tata Motors Ltd", 665, 0.0035, "Auto"),
-	mkStock("MARUTI", "Maruti Suzuki India", 11800, 0.0016, "Auto"),
-	mkStock("MM", "Mahindra & Mahindra", 2855, 0.0022, "Auto"),
-	mkStock("EICHERMOT", "Eicher Motors Ltd", 5035, 0.0018, "Auto"),
+	mkStock("TATAMOTORS", "Tata Motors Ltd", 665, 0.0035, "Auto", "NSE", "INR", 3320000000),
+	mkStock("MARUTI", "Maruti Suzuki India", 11800, 0.0016, "Auto", "NSE", "INR", 314000000),
+	mkStock("MM", "Mahindra & Mahindra", 2855, 0.0022, "Auto", "NSE", "INR", 1240000000),
+	mkStock("EICHERMOT", "Eicher Motors Ltd", 5035, 0.0018, "Auto", "NSE", "INR", 270000000),
+	mkStock("BAJAJ-AUTO", "Bajaj Auto Ltd", 9500, 0.002, "Auto", "NSE", "INR", 280000000),
+	mkStock("HEROMOTOCO", "Hero MotoCorp", 4800, 0.002, "Auto", "NSE", "INR", 200000000),
 	// ── Pharma ──
-	mkStock("SUNPHARMA", "Sun Pharma Industries", 1745, 0.0018, "Pharma"),
-	mkStock("CIPLA", "Cipla Ltd", 1555, 0.002, "Pharma"),
-	mkStock("DRREDDY", "Dr Reddy's Laboratories", 1165, 0.0022, "Pharma"),
+	mkStock("SUNPHARMA", "Sun Pharma Industries", 1745, 0.0018, "Pharma", "NSE", "INR", 2390000000),
+	mkStock("CIPLA", "Cipla Ltd", 1555, 0.002, "Pharma", "NSE", "INR", 800000000),
+	mkStock("DRREDDY", "Dr Reddy's Laboratories", 1165, 0.0022, "Pharma", "NSE", "INR", 166000000),
+	mkStock("DIVISLAB", "Divi's Laboratories", 4200, 0.0025, "Pharma", "NSE", "INR", 260000000),
+	mkStock("APOLLOHOSP", "Apollo Hospitals", 6200, 0.002, "Pharma", "NSE", "INR", 140000000),
 	// ── Metals & Mining ──
-	mkStock("TATASTEEL", "Tata Steel Ltd", 140, 0.0038, "Metal"),
-	mkStock("JSWSTEEL", "JSW Steel Ltd", 930, 0.0032, "Metal"),
-	mkStock("COALINDIA", "Coal India Ltd", 355, 0.0022, "Metal"),
-	// ── FMCG ──
-	mkStock("ITC", "ITC Ltd", 415, 0.001, "FMCG"),
-	mkStock("HINDUNILVR", "Hindustan Unilever", 2290, 0.0012, "FMCG"),
-	mkStock("BRITANNIA", "Britannia Industries", 4755, 0.0016, "FMCG"),
-	mkStock("NESTLEIND", "Nestle India Ltd", 2155, 0.0014, "FMCG"),
-	mkStock("TATACONSUM", "Tata Consumer Products", 960, 0.0022, "FMCG"),
+	mkStock("TATASTEEL", "Tata Steel Ltd", 140, 0.0038, "Metal", "NSE", "INR", 12400000000),
+	mkStock("JSWSTEEL", "JSW Steel Ltd", 930, 0.0032, "Metal", "NSE", "INR", 2440000000),
+	mkStock("COALINDIA", "Coal India Ltd", 355, 0.0022, "Metal", "NSE", "INR", 6160000000),
+	mkStock("HINDALCO", "Hindalco Industries", 650, 0.003, "Metal", "NSE", "INR", 2240000000),
+	// ── FMCG & Consumer ──
+	mkStock("ITC", "ITC Ltd", 415, 0.001, "FMCG", "NSE", "INR", 12400000000),
+	mkStock("HINDUNILVR", "Hindustan Unilever", 2290, 0.0012, "FMCG", "NSE", "INR", 2350000000),
+	mkStock("BRITANNIA", "Britannia Industries", 4755, 0.0016, "FMCG", "NSE", "INR", 240000000),
+	mkStock("NESTLEIND", "Nestle India Ltd", 2155, 0.0014, "FMCG", "NSE", "INR", 960000000),
+	mkStock("TATACONSUM", "Tata Consumer Products", 960, 0.0022, "FMCG", "NSE", "INR", 920000000),
+	mkStock("ASIANPAINT", "Asian Paints", 2950, 0.0016, "Consumer", "NSE", "INR", 950000000),
+	mkStock("TITAN", "Titan Company Ltd", 3155, 0.0018, "Consumer", "NSE", "INR", 880000000),
+	mkStock("TRENT", "Trent Ltd", 4300, 0.003, "Consumer", "NSE", "INR", 350000000),
 	// ── Telecom ──
-	mkStock("BHARTIARTL", "Bharti Airtel", 1730, 0.002, "Telecom"),
-	// ── Consumer ──
-	mkStock("TITAN", "Titan Company Ltd", 3155, 0.0018, "Consumer"),
+	mkStock("BHARTIARTL", "Bharti Airtel", 1730, 0.002, "Telecom", "NSE", "INR", 5660000000),
 	// ── Cement ──
-	mkStock("ULTRACEMCO", "UltraTech Cement Ltd", 10300, 0.0016, "Cement"),
+	mkStock("ULTRACEMCO", "UltraTech Cement Ltd", 10300, 0.0016, "Cement", "NSE", "INR", 280000000),
+	mkStock("GRASIM", "Grasim Industries", 2300, 0.002, "Cement", "NSE", "INR", 680000000),
 	// ── New Age Tech ──
-	mkStock("ZOMATO", "Zomato Ltd", 235, 0.005, "Tech"),
-	mkStock("PAYTM", "One97 Communications", 855, 0.006, "Tech"),
-	mkStock("IRCTC", "IRCTC Ltd", 775, 0.003, "Tech"),
+	mkStock("ZOMATO", "Zomato Ltd", 235, 0.005, "Tech", "NSE", "INR", 8800000000),
+	mkStock("PAYTM", "One97 Communications", 855, 0.006, "Tech", "NSE", "INR", 630000000),
+	mkStock("IRCTC", "IRCTC Ltd", 775, 0.003, "Tech", "NSE", "INR", 800000000),
 	// ── NASDAQ ──  (USD prices, post-split adjusted, Feb 2026)
-	mkStock("AAPL", "Apple Inc.", 264, 0.0018, "Tech", "NASDAQ", "USD"),
-	mkStock("MSFT", "Microsoft Corp.", 393, 0.0016, "Tech", "NASDAQ", "USD"),
-	mkStock("NVDA", "NVIDIA Corp.", 177, 0.004, "Semicon", "NASDAQ", "USD"), // post 10:1 split Jun'24
-	mkStock("TSLA", "Tesla Inc.", 403, 0.0055, "EV", "NASDAQ", "USD"),
-	mkStock("META", "Meta Platforms", 648, 0.003, "SocMedia", "NASDAQ", "USD"),
-	mkStock("GOOGL", "Alphabet Inc.", 311, 0.002, "Tech", "NASDAQ", "USD"),
-	mkStock("AMZN", "Amazon.com Inc.", 210, 0.0025, "E-Comm", "NASDAQ", "USD"),
-	mkStock("NFLX", "Netflix Inc.", 96, 0.0035, "Streaming", "NASDAQ", "USD"), // post 10:1 split Feb'26
-	mkStock(
-		"AMD",
-		"Advanced Micro Devices",
-		200,
-		0.0045,
-		"Semicon",
-		"NASDAQ",
-		"USD",
-	),
-	mkStock("ADBE", "Adobe Inc.", 262, 0.0022, "Software", "NASDAQ", "USD"),
-	mkStock("AVGO", "Broadcom Inc.", 320, 0.003, "Semicon", "NASDAQ", "USD"),
-	mkStock("COIN", "Coinbase Global", 176, 0.007, "Crypto", "NASDAQ", "USD"),
-	mkStock(
-		"PLTR",
-		"Palantir Technologies",
-		137,
-		0.006,
-		"AI/Data",
-		"NASDAQ",
-		"USD",
-	),
-	mkStock("MU", "Micron Technology", 412, 0.004, "Semicon", "NASDAQ", "USD"),
+	mkStock("AAPL", "Apple Inc.", 264, 0.0018, "Tech", "NASDAQ", "USD", 15400000000),
+	mkStock("MSFT", "Microsoft Corp.", 393, 0.0016, "Tech", "NASDAQ", "USD", 7400000000),
+		mkStock("NVDA", "NVIDIA Corp.", 177, 0.004, "Semicon", "NASDAQ", "USD", 24500000000), // post 10:1 split Jun'24
+	mkStock("TSLA", "Tesla Inc.", 403, 0.0055, "EV", "NASDAQ", "USD", 3180000000),
+	mkStock("META", "Meta Platforms", 648, 0.003, "SocMedia", "NASDAQ", "USD", 2540000000),
+	mkStock("GOOGL", "Alphabet Inc.", 311, 0.002, "Tech", "NASDAQ", "USD", 12400000000),
+	mkStock("AMZN", "Amazon.com Inc.", 210, 0.0025, "E-Comm", "NASDAQ", "USD", 10400000000),
+	mkStock("NFLX", "Netflix Inc.", 96, 0.0035, "Streaming", "NASDAQ", "USD", 4300000000), // post 10:1 split Feb'26
+	mkStock("AMD", "Advanced Micro Devices", 200, 0.0045, "Semicon", "NASDAQ", "USD", 1620000000),
+	mkStock("ADBE", "Adobe Inc.", 262, 0.0022, "Software", "NASDAQ", "USD", 450000000),
+	mkStock("AVGO", "Broadcom Inc.", 320, 0.003, "Semicon", "NASDAQ", "USD", 4600000000),
+	mkStock("COIN", "Coinbase Global", 176, 0.007, "Crypto", "NASDAQ", "USD", 240000000),
+	mkStock("PLTR", "Palantir Technologies", 137, 0.006, "AI/Data", "NASDAQ", "USD", 2130000000),
+	mkStock("MU", "Micron Technology", 412, 0.004, "Semicon", "NASDAQ", "USD", 1100000000),
 	// ── SSE (Shanghai) ──  (CNY)
-	mkStock("MOUTAI", "Kweichow Moutai", 1535, 0.0018, "Liquor", "SSE", "CNY"),
+	mkStock("MOUTAI", "Kweichow Moutai", 1535, 0.0018, "Liquor", "SSE", "CNY", 1256000000),
 	mkStock(
 		"ICBC",
 		"Ind & Comm Bank China",
@@ -457,16 +525,16 @@ var marketStocks = [
 		"SSE",
 		"CNY",
 	),
-	mkStock("CMBANK", "China Merchants Bank", 48, 0.002, "Banking", "SSE", "CNY"),
-	mkStock("PINGAN", "Ping An Insurance", 52, 0.0022, "Insurance", "SSE", "CNY"),
-	mkStock("PETROCH", "PetroChina Co.", 10.8, 0.002, "Energy", "SSE", "CNY"),
-	mkStock("BYD", "BYD Co. Ltd.", 285, 0.0035, "EV", "SSE", "CNY"),
-	mkStock("CATL", "CATL (CATLSH)", 242, 0.0032, "EV Battery", "SSE", "CNY"),
-	mkStock("LONGI", "LONGi Green Energy", 18, 0.004, "Solar", "SSE", "CNY"),
-	mkStock("SAIC", "SAIC Motor Corp.", 22, 0.0028, "Auto", "SSE", "CNY"),
-	mkStock("CITICS", "CITIC Securities", 28, 0.0025, "Finance", "SSE", "CNY"),
-	mkStock("SINOPEC", "Sinopec Corp.", 6.5, 0.0018, "Energy", "SSE", "CNY"),
-	mkStock("AGBANK", "Agricultural Bank", 4.5, 0.0015, "Banking", "SSE", "CNY"),
+	mkStock("CMBANK", "China Merchants Bank", 48, 0.002, "Banking", "SSE", "CNY", 25200000000),
+	mkStock("PINGAN", "Ping An Insurance", 52, 0.0022, "Insurance", "SSE", "CNY", 18200000000),
+	mkStock("PETROCH", "PetroChina Co.", 10.8, 0.002, "Energy", "SSE", "CNY", 183000000000),
+	mkStock("BYD", "BYD Co. Ltd.", 285, 0.0035, "EV", "SSE", "CNY", 2900000000),
+	mkStock("CATL", "CATL (CATLSH)", 242, 0.0032, "EV Battery", "SSE", "CNY", 4400000000),
+	mkStock("LONGI", "LONGi Green Energy", 18, 0.004, "Solar", "SSE", "CNY", 7500000000),
+	mkStock("SAIC", "SAIC Motor Corp.", 22, 0.0028, "Auto", "SSE", "CNY", 11600000000),
+	mkStock("CITICS", "CITIC Securities", 28, 0.0025, "Finance", "SSE", "CNY", 14800000000),
+	mkStock("SINOPEC", "Sinopec Corp.", 6.5, 0.0018, "Energy", "SSE", "CNY", 119000000000),
+	mkStock("AGBANK", "Agricultural Bank", 4.5, 0.0015, "Banking", "SSE", "CNY", 349000000000),
 	mkStock(
 		"CHINALIFE",
 		"China Life Insurance",
@@ -476,7 +544,7 @@ var marketStocks = [
 		"SSE",
 		"CNY",
 	),
-	mkStock("ZTE", "ZTE Corporation", 35, 0.0035, "Telecom", "SSE", "CNY"),
+	mkStock("ZTE", "ZTE Corporation", 35, 0.0035, "Telecom", "SSE", "CNY", 4700000000),
 	mkStock(
 		"BAOSTEEL",
 		"Baoshan Iron & Steel",
@@ -487,8 +555,8 @@ var marketStocks = [
 		"CNY",
 	),
 	// ── TSE (Japan) ──  (JPY)
-	mkStock("TOYOTA", "Toyota Motor Corp.", 2755, 0.0018, "Auto", "TSE", "JPY"),
-	mkStock("SONY", "Sony Group Corp.", 2850, 0.0025, "Consumer", "TSE", "JPY"),
+	mkStock("TOYOTA", "Toyota Motor Corp.", 2755, 0.0018, "Auto", "TSE", "JPY", 13500000000),
+	mkStock("SONY", "Sony Group Corp.", 2850, 0.0025, "Consumer", "TSE", "JPY", 126000000),
 	mkStock(
 		"SOFTBNK",
 		"SoftBank Group Corp.",
@@ -498,8 +566,8 @@ var marketStocks = [
 		"TSE",
 		"JPY",
 	),
-	mkStock("HONDA", "Honda Motor Co.", 1450, 0.0022, "Auto", "TSE", "JPY"),
-	mkStock("NINTNDO", "Nintendo Co. Ltd.", 870, 0.0028, "Gaming", "TSE", "JPY"), // post 10:1 split Oct'24
+	mkStock("HONDA", "Honda Motor Co.", 1450, 0.0022, "Auto", "TSE", "JPY", 4800000000),
+	mkStock("NINTNDO", "Nintendo Co. Ltd.", 870, 0.0028, "Gaming", "TSE", "JPY", 12900000000), // post 10:1 split Oct'24
 	mkStock(
 		"MUFG",
 		"Mitsubishi UFJ Financial",
@@ -527,9 +595,9 @@ var marketStocks = [
 		"TSE",
 		"JPY",
 	),
-	mkStock("DAIKIN", "Daikin Industries", 22500, 0.0022, "HVAC", "TSE", "JPY"),
-	mkStock("CANON7751", "Canon Inc.", 4250, 0.002, "Tech", "TSE", "JPY"),
-	mkStock("NISSAN", "Nissan Motor Co.", 650, 0.0025, "Auto", "TSE", "JPY"),
+	mkStock("DAIKIN", "Daikin Industries", 22500, 0.0022, "HVAC", "TSE", "JPY", 290000000),
+	mkStock("CANON7751", "Canon Inc.", 4250, 0.002, "Tech", "TSE", "JPY", 1000000000),
+	mkStock("NISSAN", "Nissan Motor Co.", 650, 0.0025, "Auto", "TSE", "JPY", 3900000000),
 	mkStock(
 		"PANASONIC",
 		"Panasonic Holdings",
@@ -539,18 +607,18 @@ var marketStocks = [
 		"TSE",
 		"JPY",
 	),
-	mkStock("HITACHI", "Hitachi Ltd.", 13500, 0.002, "Industrial", "TSE", "JPY"),
-	mkStock("MITSUI", "Mitsui & Co.", 7200, 0.0025, "Trading", "TSE", "JPY"),
-	mkStock("NIDEC", "Nidec Corp.", 6800, 0.003, "Components", "TSE", "JPY"),
+	mkStock("HITACHI", "Hitachi Ltd.", 13500, 0.002, "Industrial", "TSE", "JPY", 930000000),
+	mkStock("MITSUI", "Mitsui & Co.", 7200, 0.0025, "Trading", "TSE", "JPY", 1500000000),
+	mkStock("NIDEC", "Nidec Corp.", 6800, 0.003, "Components", "TSE", "JPY", 570000000),
 	// ── European (EU) ── (EUR / GBP)
-	mkStock("LVMH", "LVMH Moet Hennessy", 780, 0.002, "Luxury", "EU", "EUR"),
-	mkStock("ASML", "ASML Holding N.V.", 850, 0.0025, "Tech", "EU", "EUR"),
-	mkStock("SAP", "SAP SE", 160, 0.0022, "Tech", "EU", "EUR"),
-	mkStock("SIEMENS", "Siemens AG", 175, 0.002, "Industrial", "EU", "EUR"),
-	mkStock("LOREAL", "L'Oreal S.A.", 420, 0.0018, "Consumer", "EU", "EUR"),
-	mkStock("AZN", "AstraZeneca PLC", 10500, 0.0022, "Pharma", "EU", "GBP"),
-	mkStock("SHEL", "Shell PLC", 2650, 0.002, "Energy", "EU", "GBP"),
-	mkStock("HSBA", "HSBC Holdings", 630, 0.0025, "Banking", "EU", "GBP"),
+	mkStock("LVMH", "LVMH Moet Hennessy", 780, 0.002, "Luxury", "EU", "EUR", 500000000),
+	mkStock("ASML", "ASML Holding N.V.", 850, 0.0025, "Tech", "EU", "EUR", 390000000),
+	mkStock("SAP", "SAP SE", 160, 0.0022, "Tech", "EU", "EUR", 1200000000),
+	mkStock("SIEMENS", "Siemens AG", 175, 0.002, "Industrial", "EU", "EUR", 800000000),
+	mkStock("LOREAL", "L'Oreal S.A.", 420, 0.0018, "Consumer", "EU", "EUR", 530000000),
+	mkStock("AZN", "AstraZeneca PLC", 10500, 0.0022, "Pharma", "EU", "GBP", 1550000000),
+	mkStock("SHEL", "Shell PLC", 2650, 0.002, "Energy", "EU", "GBP", 6300000000),
+	mkStock("HSBA", "HSBC Holdings", 630, 0.0025, "Banking", "EU", "GBP", 19000000000),
 	// ── Commodities ──  (USD)
 	mkStock("GOLD", "Gold (USD/oz)", 5248, 0.0012, "Precious", "COMM", "USD"),
 	mkStock("SILVER", "Silver (USD/oz)", 93, 0.0025, "Precious", "COMM", "USD"),
@@ -581,9 +649,7 @@ var marketStocks = [
 		"Palladium (USD/oz)",
 		950,
 		0.004,
-		"Precious",
-		"COMM",
-		"USD",
+		"Precious", "COMM", "USD",
 	),
 	mkStock("LEAD", "Lead (USD/ton)", 2100, 0.002, "Industrial", "COMM", "USD"),
 	// ── Crypto ──  (USD)
@@ -592,25 +658,121 @@ var marketStocks = [
 	mkStock("SOL", "Solana", 145, 0.025, "Crypto", "CRYPTO", "USD"),
 	mkStock("BNB", "Binance Coin", 580, 0.018, "Crypto", "CRYPTO", "USD"),
 	mkStock("XRP", "Ripple", 0.55, 0.02, "Crypto", "CRYPTO", "USD"),
-	mkStock("DOGE", "Dogecoin", 0.15, 0.04, "Crypto", "CRYPTO", "USD"),
-	// ── Forex ──
-	mkStock("EURUSD", "EUR/USD", 1.08, 0.0015, "Currency", "FX", "USD"),
-	mkStock("GBPUSD", "GBP/USD", 1.25, 0.002, "Currency", "FX", "USD"),
-	mkStock("USDJPY", "USD/JPY", 155.5, 0.0025, "Currency", "FX", "JPY"),
-	mkStock("AUDUSD", "AUD/USD", 0.65, 0.002, "Currency", "FX", "USD"),
-	mkStock("USDCAD", "USD/CAD", 1.37, 0.0018, "Currency", "FX", "USD"),
-	mkStock("USDINR", "USD/INR", 91.03, 0.0015, "Currency", "FX", "INR"),
-	mkStock("CNYINR", "CNY/INR", 13.28, 0.002, "Currency", "FX", "INR"),
-	mkStock("JPYINR", "JPY/INR", 0.583, 0.0025, "Currency", "FX", "INR"),
+	mkStock("TENCENT", "Tencent Holdings", 310, 0.0022, "Tech", "HKEX", "HKD", 9400000000),
+	mkStock("BABA", "Alibaba Group", 75, 0.0028, "E-Comm", "HKEX", "HKD", 20000000000),
+	mkStock("MEITUAN", "Meituan", 110, 0.0035, "Consumer", "HKEX", "HKD", 6200000000),
+	mkStock("AIA", "AIA Group", 60, 0.0018, "Insurance", "HKEX", "HKD", 11200000000),
+	mkStock("HSBC_HK", "HSBC Holdings HK", 62, 0.0015, "Banking", "HKEX", "HKD", 19000000000),
+	mkStock("XIAOMI", "Xiaomi Corp", 18, 0.004, "Tech", "HKEX", "HKD", 25000000000),
 ];
 
-// O(1) ticker → stock reference map (references, so in-place stock mutations are always reflected)
+// ── Index Constituents ──
+var INDEX_CONSTITUENTS = {
+	// ── India ──
+	"NIFTY 50": [
+		"HDFCBANK", "SBIN", "ICICIBANK", "KOTAKBANK", "AXISBANK", "INDUSINDBK",
+		"BAJFINANCE", "BAJAJFINSV", "HDFCLIFE", "SBILIFE", "TCS", "INFY",
+		"HCLTECH", "WIPRO", "TECHM", "LTIM", "RELIANCE", "ONGC", "BPCL",
+		"NTPC", "POWERGRID", "ADANIENT", "ADANIPORTS", "LT", "BEL",
+		"TATAMOTORS", "MARUTI", "MM", "EICHERMOT", "BAJAJ-AUTO", "HEROMOTOCO",
+		"SUNPHARMA", "CIPLA", "DRREDDY", "DIVISLAB", "APOLLOHOSP", "TATASTEEL",
+		"JSWSTEEL", "COALINDIA", "HINDALCO", "ITC", "HINDUNILVR", "BRITANNIA",
+		"NESTLEIND", "TATACONSUM", "ASIANPAINT", "TITAN", "TRENT", "ULTRACEMCO", "GRASIM"
+	],
+	"SENSEX": [
+		"HDFCBANK", "SBIN", "ICICIBANK", "KOTAKBANK", "AXISBANK", "INDUSINDBK",
+		"BAJFINANCE", "BAJAJFINSV", "TCS", "INFY", "HCLTECH", "WIPRO", "TECHM",
+		"RELIANCE", "NTPC", "POWERGRID", "LT", "TATAMOTORS", "MARUTI", "MM",
+		"SUNPHARMA", "TATASTEEL", "JSWSTEEL", "ITC", "HINDUNILVR", "NESTLEIND",
+		"ASIANPAINT", "TITAN", "ULTRACEMCO", "BHARTIARTL"
+	],
+	"BANKNIFTY": [
+		"HDFCBANK", "SBIN", "ICICIBANK", "KOTAKBANK", "AXISBANK", "INDUSINDBK",
+		"PNB", "BANKBARODA", "FEDERALBNK", "IDFCFIRSTB", "AUBANK", "BANDHANBNK"
+	],
+	"FINNIFTY": [
+		"HDFCBANK", "SBIN", "ICICIBANK", "KOTAKBANK", "AXISBANK", "BAJFINANCE",
+		"BAJAJFINSV", "HDFCLIFE", "SBILIFE", "CHOLAFIN", "MUTHOOTFIN", "SHRIRAMFIN",
+		"PFC", "RECLTD"
+	],
+	// ── USA (USD) ──
+	"SPX500": [
+		"AAPL", "MSFT", "NVDA", "TSLA", "META", "GOOGL", "AMZN", "NFLX",
+		"AMD", "ADBE", "AVGO", "COIN", "PLTR", "MU"
+	],
+	"NDX100": [
+		"AAPL", "MSFT", "NVDA", "META", "GOOGL", "AMZN", "NFLX",
+		"AMD", "ADBE", "AVGO", "PLTR", "MU"
+	],
+	"DJIA": [
+		"AAPL", "MSFT", "AMZN", "NVDA", "GOOGL", "META"
+	],
+	// ── Japan (JPY) ──
+	"NIKKEI225": [
+		"TOYOTA", "SONY", "SOFTBNK", "HONDA", "NINTNDO", "MUFG", "FASTRET",
+		"KEYENCE", "DAIKIN", "CANON7751", "NISSAN", "PANASONIC", "HITACHI", "MITSUI", "NIDEC"
+	],
+	// ── China (CNY) ──
+	"SHCOMP": [
+		"MOUTAI", "ICBC", "CMBANK", "PINGAN", "PETROCH", "BYD", "CATL",
+		"LONGI", "SAIC", "CITICS", "SINOPEC", "AGBANK", "CHINALIFE", "ZTE", "BAOSTEEL"
+	],
+	// ── Hong Kong (HKD) ──
+	"HSI": [
+		"TENCENT", "BABA", "MEITUAN", "AIA", "HSBC_HK", "XIAOMI"
+	],
+	// ── UK (GBP) ──
+	"FTSE100": [
+		"AZN", "SHEL", "HSBA"
+	],
+	// ── Europe EUR ──
+	"DAX": [
+		"SAP", "SIEMENS", "ASML"
+	],
+	"CAC40": [
+		"LVMH", "LOREAL", "ASML"
+	],
+	"STOXX600": [
+		"LVMH", "ASML", "SAP", "SIEMENS", "LOREAL", "AZN", "SHEL", "HSBA"
+	]
+};
+
+// O(1) ticker → stock reference map
 var stockMap = {};
 (function () {
 	marketStocks.forEach(function (s) {
 		stockMap[s.ticker] = s;
 	});
 })();
+
+// Helper: reset concurrent index when its market opens
+function resetConcurrentIndexGroup(currency) {
+	marketStocks.forEach(function (indexStock) {
+		var constituents = INDEX_CONSTITUENTS[indexStock.ticker];
+		if (!constituents || indexStock.currency !== currency) return;
+		indexStock.prevClose = indexStock.ltp;
+		var totalPrevCap = 0, totalNewCap = 0;
+		constituents.forEach(function (tk) {
+			var comp = stockMap[tk];
+			if (comp) {
+				var shares = comp.shares || 100000000;
+				totalPrevCap += comp.prevClose * shares;
+				totalNewCap  += comp.ltp * shares;
+			}
+		});
+		var overnightReturn = totalPrevCap > 0 ? (totalNewCap - totalPrevCap) / totalPrevCap : 0;
+		indexStock.ltp        = parseFloat((indexStock.ltp * (1 + overnightReturn)).toFixed(2));
+		indexStock.open       = indexStock.ltp;
+		indexStock.base       = indexStock.ltp;
+		indexStock._prevTick  = indexStock.ltp;
+		indexStock.volume     = 0;
+		indexStock.circuitHit = null;
+		indexStock.history    = [indexStock.ltp];
+		indexStock.volumeHistory = [0];
+		indexStock.ohlcHistory   = [];
+		indexStock.currentCandle = null;
+	});
+}
 
 // ==================== NEWS EVENTS (80+) ====================
 var newsEvents = [
@@ -4766,14 +4928,25 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function initMarket() {
+	// 1. Generate history for all regular stocks
 	marketStocks.forEach(function (s) {
-		// Generate 3 months (66 days × 375 ticks) of realistic price history
+		if (INDEX_CONSTITUENTS[s.ticker]) return; // Skip concurrent indices
 		s.preHistory = generatePreHistory(s, 66);
-		// Live history starts with a single tick (preHistory fills the visual history)
+	});
+
+	// 2. Generate history for concurrent indices based on constituents
+	marketStocks.forEach(function (s) {
+		if (INDEX_CONSTITUENTS[s.ticker]) {
+			s.preHistory = generateIndexPreHistory(s, INDEX_CONSTITUENTS[s.ticker]);
+		}
+	});
+
+	// 3. Finalize initialization
+	marketStocks.forEach(function (s) {
+		s.preOHLC = buildPreOHLC(s, state.candlePeriod);
 		s.history = [s.ltp];
 		s.volumeHistory = [0];
 		s.open = s.ltp;
-		// prevClose = last tick of pre-history (the "previous day's close")
 		s.prevClose =
 			s.preHistory.length > 0 ? s.preHistory[s.preHistory.length - 1] : s.ltp;
 		s._prevTick = s.ltp;
@@ -5202,7 +5375,18 @@ function applySettings() {
 			s.open = s.base;
 			s.prevClose = s.base;
 			s._prevTick = s.base;
-			s.preHistory = generatePreHistory(s, 66);
+			if (!INDEX_CONSTITUENTS[s.ticker]) {
+				s.preHistory = generatePreHistory(s, 66);
+			}
+		});
+
+		marketStocks.forEach(function (s) {
+			if (INDEX_CONSTITUENTS[s.ticker]) {
+				s.preHistory = generateIndexPreHistory(s, INDEX_CONSTITUENTS[s.ticker]);
+			}
+		});
+
+		marketStocks.forEach(function (s) {
 			s.history = [s.ltp];
 			s.volumeHistory = [0];
 			s.volume = 0;
@@ -5294,7 +5478,6 @@ function setViewLength(label) {
 	if (label === "1D") autoInterval = 5;      // 5m
 	else if (label === "1W") autoInterval = 15; // 15m
 	else if (label === "1M") autoInterval = 60; // 1h
-	else if (label === "3M") autoInterval = 375; // 1d
 	
 	var customDropdown = document.getElementById("custom-interval-dropdown");
 	if (customDropdown) {
@@ -5489,13 +5672,41 @@ function tickMinute() {
 	var t = state.time;
 	if (t === 555) {
 		pushMarketAnnouncement("Indian Market (NSE) is now OPEN", "NSE", true);
+		// First reset all non-index INR equities
 		marketStocks.forEach(function (s) {
 			if (
 				s.ticker !== "DALAL" &&
 				s.currency === "INR" &&
-				!["CRYPTO", "COMM", "FX", "BOND"].includes(s.market)
+				!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
 			)
 				resetMarketStock(s);
+		});
+		// Then reset concurrent indices based on their constituents' new opens
+		marketStocks.forEach(function (indexStock) {
+			var constituents = INDEX_CONSTITUENTS[indexStock.ticker];
+			if (!constituents || indexStock.currency !== "INR") return;
+			indexStock.prevClose = indexStock.ltp;
+			// Compute a market-cap-weighted open from constituent opens
+			var totalPrevCap = 0, totalNewCap = 0;
+			constituents.forEach(function(tk) {
+				var comp = stockMap[tk];
+				if (comp) {
+					var shares = comp.shares || 100000000;
+					totalPrevCap += comp.prevClose * shares;
+					totalNewCap  += comp.ltp * shares;
+				}
+			});
+			var overnightReturn = totalPrevCap > 0 ? (totalNewCap - totalPrevCap) / totalPrevCap : 0;
+			indexStock.ltp   = parseFloat((indexStock.ltp * (1 + overnightReturn)).toFixed(2));
+			indexStock.open  = indexStock.ltp;
+			indexStock.base  = indexStock.ltp;
+			indexStock._prevTick = indexStock.ltp;
+			indexStock.volume = 0;
+			indexStock.circuitHit = null;
+			indexStock.history = [indexStock.ltp];
+			indexStock.volumeHistory = [0];
+			indexStock.ohlcHistory = [];
+			indexStock.currentCandle = null;
 		});
 	}
 	if (t === 930)
@@ -5506,10 +5717,11 @@ function tickMinute() {
 		marketStocks.forEach(function (s) {
 			if (
 				s.currency === "USD" &&
-				!["CRYPTO", "COMM", "FX", "BOND"].includes(s.market)
+				!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
 			)
 				resetMarketStock(s);
 		});
+		resetConcurrentIndexGroup("USD");
 	}
 	if (t === 90)
 		pushMarketAnnouncement("US Markets (NASDAQ) have CLOSED", "NASDAQ", false);
@@ -5519,10 +5731,11 @@ function tickMinute() {
 		marketStocks.forEach(function (s) {
 			if (
 				s.currency === "CNY" &&
-				!["CRYPTO", "COMM", "FX", "BOND"].includes(s.market)
+				!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
 			)
 				resetMarketStock(s);
 		});
+		resetConcurrentIndexGroup("CNY");
 	}
 	if (t === 750)
 		pushMarketAnnouncement("Chinese Market (SSE) has CLOSED", "SSE", false);
@@ -5532,10 +5745,11 @@ function tickMinute() {
 		marketStocks.forEach(function (s) {
 			if (
 				s.currency === "JPY" &&
-				!["CRYPTO", "COMM", "FX", "BOND"].includes(s.market)
+				!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
 			)
 				resetMarketStock(s);
 		});
+		resetConcurrentIndexGroup("JPY");
 	}
 	if (t === 690)
 		pushMarketAnnouncement("Japanese Market (TSE) has CLOSED", "TSE", false);
@@ -5545,10 +5759,11 @@ function tickMinute() {
 		marketStocks.forEach(function (s) {
 			if (
 				s.currency === "HKD" &&
-				!["CRYPTO", "COMM", "FX", "BOND"].includes(s.market)
+				!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
 			)
 				resetMarketStock(s);
 		});
+		resetConcurrentIndexGroup("HKD");
 	}
 	if (t === 810)
 		pushMarketAnnouncement("Hong Kong Market (HKEX) has CLOSED", "HKEX", false);
@@ -5558,10 +5773,12 @@ function tickMinute() {
 		marketStocks.forEach(function (s) {
 			if (
 				!["INR", "USD", "CNY", "JPY", "HKD"].includes(s.currency) &&
-				!["CRYPTO", "COMM", "FX", "BOND"].includes(s.market)
+				!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
 			)
 				resetMarketStock(s);
 		});
+		resetConcurrentIndexGroup("EUR");
+		resetConcurrentIndexGroup("GBP");
 	}
 	if (t === 1320)
 		pushMarketAnnouncement("European Markets have CLOSED", "GLOBAL", false);
@@ -5592,6 +5809,9 @@ function tickMinute() {
 		stock._prevTick = stock.ltp; // save for flash animation
 		if (!isMarketOpen(stock, state.time)) return; // Skip closed markets
 		if (stock.circuitHit) return;
+
+		// If it's a perfectly concurrent index, SKIP the random walk and update it later
+		if (INDEX_CONSTITUENTS[stock.ticker]) return;
 
 		var v = stock.vol * VOL_MULTIPLIER;
 		var isNoCircuit =
@@ -5694,23 +5914,68 @@ function tickMinute() {
 		stock.volume += tickVol;
 		stock.available_liquidity = tickVol * 1.5; // Minute volume + a bit of ambient depth
 		stock.bidAskSpread = stock.ltp * (Math.random() * 0.001 + 0.0001); // 0.01% to 0.1% spread
-
-		// Track for NIFTY
-		totalChange += (stock.ltp - stock.open) / stock.open;
 	});
 
-	// NIFTY index simulation
-	var avgChange = totalChange / marketStocks.length;
-	state.niftyValue = parseFloat(
-		(state.niftyBase * (1 + avgChange * 2)).toFixed(2),
-	);
+	// --- 2. Update Concurrent Indices ---
+	marketStocks.forEach(function (indexStock) {
+		var constituents = INDEX_CONSTITUENTS[indexStock.ticker];
+		if (!constituents) return;
+		if (!isMarketOpen(indexStock, state.time)) return;
+		
+		indexStock._prevTick = indexStock.ltp;
+		
+		var prevTotalCap = 0;
+		var currentTotalCap = 0;
+		var tickVolSum = 0;
+		
+		constituents.forEach(function(tk) {
+			var comp = stockMap[tk];
+			if (comp) {
+				var shares = comp.shares || 100000000;
+				prevTotalCap += comp._prevTick * shares;
+				currentTotalCap += comp.ltp * shares;
+				tickVolSum += (comp.volumeHistory[comp.volumeHistory.length - 1] || 0);
+			}
+		});
+		
+		var weightedReturn = prevTotalCap > 0 ? (currentTotalCap - prevTotalCap) / prevTotalCap : 0;
+		indexStock.ltp = parseFloat((indexStock.ltp * (1 + weightedReturn)).toFixed(2));
+		
+		indexStock.history.push(indexStock.ltp);
+		if (indexStock.history.length > state.historyLen) indexStock.history.shift();
+		
+		var tickVol = Math.max(1, Math.floor(tickVolSum * 0.1)); // Index volume is a fraction of total constituent volume
+		indexStock.volumeHistory.push(tickVol);
+		if (indexStock.volumeHistory.length > state.historyLen) indexStock.volumeHistory.shift();
+		indexStock.volume += tickVol;
+		
+		if (!indexStock.currentCandle) {
+			indexStock.currentCandle = {
+				o: indexStock.ltp, h: indexStock.ltp, l: indexStock.ltp, c: indexStock.ltp, v: tickVol, ticks: 1
+			};
+		} else {
+			if (indexStock.ltp > indexStock.currentCandle.h) indexStock.currentCandle.h = indexStock.ltp;
+			if (indexStock.ltp < indexStock.currentCandle.l) indexStock.currentCandle.l = indexStock.ltp;
+			indexStock.currentCandle.c = indexStock.ltp;
+			indexStock.currentCandle.v += tickVol;
+			indexStock.currentCandle.ticks++;
+			if (indexStock.currentCandle.ticks >= state.candlePeriod) {
+				indexStock.ohlcHistory.push({
+					o: indexStock.currentCandle.o, h: indexStock.currentCandle.h, l: indexStock.currentCandle.l, c: indexStock.currentCandle.c, v: indexStock.currentCandle.v
+				});
+				if (indexStock.ohlcHistory.length > 120) indexStock.ohlcHistory.shift();
+				indexStock.currentCandle = null;
+			}
+		}
+	});
+
+	// --- Legacy redundant UI variables (preserved for backward compatibility if needed) ---
+	var legacyNifty = stockMap["NIFTY 50"];
+	var legacySensex = stockMap["SENSEX"];
+	if (legacyNifty) state.niftyValue = legacyNifty.ltp;
+	if (legacySensex) state.sensexValue = legacySensex.ltp;
 	state.niftyHistory.push(state.niftyValue);
 	if (state.niftyHistory.length > state.historyLen) state.niftyHistory.shift();
-	// SENSEX follows NIFTY closely (ratio ~3.3x, with slight independent noise)
-	var sensexChange = avgChange * 2.05 + (Math.random() - 0.5) * 0.0008;
-	state.sensexValue = parseFloat(
-		(state.sensexBase * (1 + sensexChange)).toFixed(2),
-	);
 
 	// Market sentiment (-100 to +100)
 	var gainers = marketStocks.filter(function (s) {
@@ -5983,10 +6248,11 @@ function resetMarketStock(stock) {
 	stock.volume = 0;
 	stock.circuitHit = null;
 
-	// Roll preHistory: append this day's live ticks and trim to last 66 days
+	// Roll preHistory: append this day's live ticks and trim to last 66 trading days
+	// 375 ticks per trading day (not 1440 which is calendar minutes)
 	if (stock.preHistory && stock.history.length > 1) {
 		var todayTicks = stock.history.slice(1); // skip the opening placeholder
-		stock.preHistory = stock.preHistory.concat(todayTicks).slice(-66 * 1440);
+		stock.preHistory = stock.preHistory.concat(todayTicks).slice(-66 * 375);
 	}
 	// Reset live history for new day
 	stock.history = [stock.ltp];
@@ -6206,9 +6472,11 @@ function startNewDay() {
 		}
 	});
 
-	// Reset NIFTY for new day
-	state.niftyBase = state.niftyValue;
-	state.sensexBase = state.sensexValue;
+	// Sync legacy state vars from live index objects
+	var legNifty = stockMap["NIFTY 50"];
+	var legSensex = stockMap["SENSEX"];
+	if (legNifty) { state.niftyValue = legNifty.ltp; state.niftyBase = legNifty.ltp; }
+	if (legSensex) { state.sensexValue = legSensex.ltp; state.sensexBase = legSensex.ltp; }
 	state.niftyHistory = Array(state.historyLen).fill(state.niftyValue);
 	state.sentiment = 0;
 	// Note: slTargets are intentionally NOT cleared — user SL/Targets persist across days
@@ -9672,6 +9940,13 @@ function openFixedDeposit() {
 	var rate = getFdInterestRate(days);
 	var interest = ((amt * (rate / 100)) / 365) * days;
 
+	var dalalStock = marketStocks.find(function (s) {
+		return s.ticker === "DALAL";
+	});
+	if (dalalStock) {
+		var pumpVal = (amt / 100000) * 0.00002;
+		dalalStock.ltp = parseFloat((dalalStock.ltp + pumpVal).toFixed(4));
+	}
 	var fd = {
 		id: state.nextFdId++,
 		principal: amt,
@@ -9682,14 +9957,6 @@ function openFixedDeposit() {
 
 	state.margin -= amt;
 	state.fixedDeposits.push(fd);
-
-	var dalalStock = marketStocks.find(function (s) {
-		return s.ticker === "DALAL";
-	});
-	if (dalalStock) {
-		var pumpVal = (amt / 100000) * 0.02;
-		dalalStock.ltp = parseFloat((dalalStock.ltp + pumpVal).toFixed(4));
-	}
 
 	document.getElementById("fd-amount").value = "";
 	updateFdQuote();
