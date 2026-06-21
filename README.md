@@ -71,6 +71,15 @@ A robust routing and execution engine supporting advanced order types and Time-i
 * **Technical Charting**: Integrated candlestick charting with customizable intervals, logarithmic scaling, and technical overlays.
 * **News & Sentiment Engine**: Injects simulated macroeconomic data and geopolitical events, triggering localized volatility spikes and algorithmic sentiment shifts.
 
+### 🎨 9. Customization & Theming Engine
+* **Dynamic UI Theming**: Switch between multiple highly polished color palettes including Deep Dark Mode and Light Mode.
+* **Typography Control**: Swap between modern sans-serif fonts (Outfit, Inter) and developer-focused monospace fonts (Roboto Mono, JetBrains Mono).
+* **Live Styling Overrides**: The UI instantly reacts and re-renders components using CSS Variables to apply user customization seamlessly.
+
+### 📈 10. Real-Time Simulation Analytics
+* **True Mathematical Fundamentals**: Generates live simulation analytics such as Total Turnover (Volume × Price), Average Daily Volume, All-Time Highs, and Historical Volatility Range calculated directly from the simulation's mathematical history rather than static data.
+* **Live Technical Signals**: EOD (End of Day) tracking for 20-day Simple and Exponential Moving Averages (SMA / EMA) to provide dynamic Bullish/Bearish sentiment signals.
+
 ---
 
 ## 💻 Installation & Usage
