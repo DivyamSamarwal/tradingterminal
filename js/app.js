@@ -5388,8 +5388,8 @@ function toggleSettingsView() {
 
 		// Set initial values
 		document.getElementById("settings-cash").value = INITIAL_MARGIN;
-		document.getElementById("settings-news-freq").value = NEWS_FREQ.toString();
-		document.getElementById("news-freq-val").innerText = NEWS_FREQ + "%";
+		document.getElementById("settings-news-freq").value = Math.round(NEWS_FREQ * 100).toString();
+		document.getElementById("news-freq-val").innerText = Math.round(NEWS_FREQ * 100) + "%";
 		document.getElementById("settings-volatility").value = VOL_MULTIPLIER.toString();
 		document.getElementById("vol-val").innerText = VOL_MULTIPLIER.toFixed(1) + "x";
 	} else {
@@ -5447,6 +5447,12 @@ function applySettings() {
 		state.slTargets = {};
 		state.pendingOrders = [];
 		state.tradeHistory = [];
+		state.loans = [];
+		state.fixedDeposits = [];
+		state.realEstate = [];
+		state.mortgages = [];
+		state.cibilScore = 750;
+		state.loanHistory = [];
 		state.day = 1;
 		state.time = START_TIME;
 		state.newsCount = 0;
