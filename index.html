@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dalal Street Terminal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="css/styles.css?v=999">
@@ -43,7 +43,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 4px 12px;
-            font-family: 'Roboto Mono', monospace;
+            font-family: var(--mono);
         }
         .tooltip-row {
             display: flex;
@@ -905,6 +905,23 @@
                                     <input type="checkbox" id="settings-circuit-limits" checked>
                                     <span class="ts-slider round"></span>
                                 </label>
+                            </div>
+                        </div>
+
+                        <!-- Typography & Fonts Settings -->
+                        <div class="bank-card bank-card-full">
+                            <div class="sec-header" style="margin: -20px -20px 20px -20px; padding: 0 20px; background: rgba(0,0,0,0.2);">
+                                <span><i class="fa-solid fa-font"></i> Typography & Fonts</span>
+                            </div>
+                            <div class="theme-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px;">
+                                <button class="chart-type-btn font-btn active" data-font="outfit" style="font-family: 'Outfit', sans-serif;">Outfit (Modern)</button>
+                                <button class="chart-type-btn font-btn" data-font="inter" style="font-family: 'Inter', sans-serif;">Inter (Clean UI)</button>
+                                <button class="chart-type-btn font-btn" data-font="roboto-mono" style="font-family: 'Roboto Mono', monospace;">Roboto Mono (Terminal)</button>
+                                <button class="chart-type-btn font-btn" data-font="space-grotesk" style="font-family: 'Space Grotesk', sans-serif;">Space Grotesk (Cyber)</button>
+                                <button class="chart-type-btn font-btn" data-font="playfair" style="font-family: 'Playfair Display', serif;">Playfair (Classic)</button>
+                                <button class="chart-type-btn font-btn" data-font="poppins" style="font-family: 'Poppins', sans-serif;">Poppins (Fintech)</button>
+                                <button class="chart-type-btn font-btn" data-font="ibm-plex" style="font-family: 'IBM Plex Sans', sans-serif;">IBM Plex (Institutional)</button>
+                                <button class="chart-type-btn font-btn" data-font="jetbrains" style="font-family: 'JetBrains Mono', monospace;">JetBrains (Code)</button>
                             </div>
                         </div>
                     </div>

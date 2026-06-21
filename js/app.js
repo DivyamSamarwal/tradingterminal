@@ -4539,6 +4539,7 @@ var state = {
 	activeStock: null,
 	historyLen: 1875,
 	theme: "dark",
+	font: "outfit",
 	activeTab: "equity",
 	activeBottomTab: "equity",
 	newsCount: 0,
@@ -5003,6 +5004,12 @@ function setupListeners() {
 		btn.addEventListener("click", function(e) {
 			var themeName = e.currentTarget.getAttribute("data-theme");
 			applyTheme(themeName);
+		});
+	});
+	document.querySelectorAll(".font-btn").forEach(function(btn) {
+		btn.addEventListener("click", function(e) {
+			var fontName = e.currentTarget.getAttribute("data-font");
+			applyFont(fontName);
 		});
 	});
 	document.getElementById("btn-bank").addEventListener("click", toggleBankView);
@@ -5624,6 +5631,27 @@ function applyTheme(themeName) {
 
 	if (state.activeStock) renderChart(state.activeStock);
 	toast("Theme Updated", "Switched to " + themeName + " mode", "info");
+}
+
+function applyFont(fontName) {
+	state.font = fontName;
+	
+	// Remove all font classes from body
+	document.body.classList.remove("font-outfit", "font-inter", "font-roboto-mono", "font-space-grotesk", "font-playfair", "font-poppins", "font-ibm-plex", "font-jetbrains");
+	
+	// Apply new font class
+	document.body.classList.add("font-" + fontName);
+
+	// Update active state on buttons
+	document.querySelectorAll(".font-btn").forEach(function(btn) {
+		if (btn.getAttribute("data-font") === fontName) {
+			btn.classList.add("active");
+		} else {
+			btn.classList.remove("active");
+		}
+	});
+
+	if (state.activeStock) renderChart(state.activeStock);
 }
 
 // ==================== VIEW SWITCHING ====================
@@ -8841,6 +8869,8 @@ function renderChart(stock) {
 	var canvas = document.getElementById("main-chart");
 	var ctx = canvas.getContext("2d");
 	var isLight = state.theme === "light" || state.theme === "sepia";
+	var fontMap = { outfit: "Outfit", inter: "Inter", "roboto-mono": "Roboto Mono", "space-grotesk": "Space Grotesk", playfair: "Playfair Display", poppins: "Poppins", "ibm-plex": "IBM Plex Sans", jetbrains: "JetBrains Mono" };
+	var currentFont = fontMap[state.font] || "Outfit";
 	var needsLog = state.chartScale === "log";
 
 	// Destroy chart if Y-axis type needs to change (log ↔ linear)
@@ -8989,7 +9019,7 @@ function renderChart(stock) {
 						lineWidth: 1,
 					},
 					ticks: {
-						font: { family: "Outfit", size: 10 },
+						font: { family: currentFont, size: 10 },
 						padding: 10,
 						maxTicksLimit: needsLog ? 8 : 12,
 						callback: function (v) {

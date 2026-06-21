@@ -1,4 +1,4 @@
-﻿/* ========== VARIABLES ========== */
+/* ========== VARIABLES ========== */
 :root {
     --bg-0: #05050A;
     --bg-1: #0A0A14;
@@ -296,7 +296,7 @@ body {
 
 .stat { display: flex; flex-direction: column; align-items: center; min-width: 0; }
 .stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); white-space: nowrap; }
-.stat-val { font-size: 13px; font-weight: 600; color: var(--text-bright); white-space: nowrap; font-variant-numeric: tabular-nums; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.stat-val { font-size: 13px; font-weight: 600; color: var(--text-bright); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .stat-sep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
 
 .topbar-controls {
@@ -2902,7 +2902,7 @@ body.light .dropdown-option:hover, body.theme-sepia .dropdown-option:hover {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px 12px;
-  font-family: 'Roboto Mono', monospace;
+  font-family: var(--mono);
 }
 .tooltip-row {
   display: flex;
@@ -3124,3 +3124,110 @@ input:checked + .ts-slider:before {
     box-shadow: 0 0 10px rgba(0,0,0,0.2);
 }
 
+
+
+/* ==================== CUSTOM SETTINGS UI ==================== */
+.custom-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--bg-3);
+    outline: none;
+    margin: 10px 0;
+}
+.custom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    transition: transform 0.1s;
+}
+.custom-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.ts-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-3);
+    transition: .3s;
+    border-radius: 24px;
+}
+.ts-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+input:checked + .ts-slider {
+    background-color: var(--green);
+}
+input:checked + .ts-slider:before {
+    transform: translateX(20px);
+}
+
+
+.theme-btn, .font-btn {
+    padding: 8px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+    text-align: center;
+}
+.theme-btn:hover, .font-btn:hover {
+    background: var(--bg-3);
+    border-color: var(--border-light);
+}
+.theme-btn.active, .font-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+}
+
+/* ==================== GLOBAL FONTS OVERRIDES ==================== */
+button, input, select, textarea { font-family: inherit; }
+
+body.font-outfit { --font: 'Outfit', -apple-system, sans-serif; --mono: 'Outfit', sans-serif; }
+body.font-inter { --font: 'Inter', -apple-system, sans-serif; --mono: 'Inter', sans-serif; }
+body.font-roboto-mono { --font: 'Roboto Mono', monospace; --mono: 'Roboto Mono', monospace; }
+body.font-space-grotesk { --font: 'Space Grotesk', -apple-system, sans-serif; --mono: 'Space Grotesk', sans-serif; }
+
+
+body.font-playfair { --font: 'Playfair Display', serif; --mono: 'Playfair Display', serif; }
+body.font-poppins { --font: 'Poppins', -apple-system, sans-serif; --mono: 'Poppins', sans-serif; }
+body.font-ibm-plex { --font: 'IBM Plex Sans', -apple-system, sans-serif; --mono: 'IBM Plex Mono', monospace; }
+
+
+
+body.font-jetbrains { --font: 'JetBrains Mono', monospace; --mono: 'JetBrains Mono', monospace; }
