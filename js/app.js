@@ -8350,6 +8350,21 @@ function _applyChartData(stock, isLight) {
 		chartInstance._volumes = ohlcData.map(function (d) {
 			return d.v || 0;
 		});
+		
+		var times = [];
+		ohlcData.forEach(function (_, i) {
+			var reverseIdx = ohlcData.length - 1 - i;
+			var pointTime = state.time - (reverseIdx * (state.candlePeriod || 375));
+			var pointDay = state.day;
+			while (pointTime < 0) {
+				pointTime += 1440;
+				pointDay--;
+			}
+			var dayLabel = pointDay < 1 ? "Pre-Day " + Math.abs(pointDay - 1) : "Day " + pointDay;
+			times.push(dayLabel + ", " + formatTime(pointTime));
+		});
+		chartInstance._times = times;
+
 		if (state.chartScale === "log") {
 			scY.min = undefined;
 			scY.max = undefined;
@@ -8424,17 +8439,23 @@ function _applyChartData(stock, isLight) {
 		var rawSMA = calcSMA(lineSliceForIndicators, 20).slice(-lineSlice.length);
 		var rawEMA = calcEMA(lineSliceForIndicators, 20).slice(-lineSlice.length);
 
+		var startIndex = fullHistory.length - lineSlice.length;
+		var dLabels = [];
+		for (var i = 0; i < lineSlice.length; i++) {
+			dLabels.push(startIndex + i);
+		}
+
 		// Chart Virtualization (Decimation) to massively reduce Canvas draw lag
 		var MAX_DRAW_POINTS = 300;
 		if (lineSlice.length > MAX_DRAW_POINTS) {
 			var stepSize = Math.ceil(lineSlice.length / MAX_DRAW_POINTS);
-			var startIndex = fullHistory.length - lineSlice.length;
-			var dLine = [], dSma = [], dEma = [];
+			var dLine = [], dSma = [], dEma = [], dLab = [];
 			for (var i = 0; i < lineSlice.length; i++) {
 				if ((startIndex + i) % stepSize === 0) {
 					dLine.push(lineSlice[i]);
 					dSma.push(rawSMA[i]);
 					dEma.push(rawEMA[i]);
+					dLab.push(dLabels[i]);
 				}
 			}
 			// Ensure the last real-time tick is always the terminal point on the chart
@@ -8442,10 +8463,12 @@ function _applyChartData(stock, isLight) {
 				dLine[dLine.length - 1] = lineSlice[lineSlice.length - 1];
 				dSma[dSma.length - 1] = rawSMA[rawSMA.length - 1];
 				dEma[dEma.length - 1] = rawEMA[rawEMA.length - 1];
+				dLab[dLab.length - 1] = dLabels[lineSlice.length - 1];
 			}
 			lineSlice = dLine;
 			rawSMA = dSma;
 			rawEMA = dEma;
+			dLabels = dLab;
 		}
 
 		// % Change transform
@@ -8487,6 +8510,21 @@ function _applyChartData(stock, isLight) {
 		chartInstance._lineData = lineSlice;
 		scY.min = undefined;
 		scY.max = undefined;
+
+		var times = [];
+		var totalLen = fullHistory.length;
+		dLabels.forEach(function (x) {
+			var reverseIdx = totalLen - 1 - x;
+			var pointTime = state.time - reverseIdx;
+			var pointDay = state.day;
+			while (pointTime < 0) {
+				pointTime += 1440;
+				pointDay--;
+			}
+			var dayLabel = pointDay < 1 ? "Pre-Day " + Math.abs(pointDay - 1) : "Day " + pointDay;
+			times.push(dayLabel + ", " + formatTime(pointTime));
+		});
+		chartInstance._times = times;
 
 		// Prev close reference line
 		var ds2 = chartInstance.data.datasets[1];
@@ -8651,10 +8689,8 @@ function customTooltipHandler(context) {
 			? function (n) { return (n >= 0 ? "+" : "") + n.toFixed(2) + "%"; }
 			: function (n) { return fmtPrice(state.activeStock, n); };
 
-		var timeStr = "";
 		var idx = tooltip.dataPoints[0].dataIndex;
-		var period = state.candlePeriod || 375;
-		var dTime = new Date();
+		var timeStr = chart._times && chart._times[idx] ? chart._times[idx] : "";
 
 		if (!d) {
 			// Line Chart Fallback
@@ -8665,11 +8701,6 @@ function customTooltipHandler(context) {
 			}
 			
 			tooltipEl.style.minWidth = "140px";
-			
-			var totalLen = chart._lineData ? chart._lineData.length : tooltip.dataPoints.length;
-			var reverseIdx = totalLen - 1 - idx;
-			dTime.setMinutes(dTime.getMinutes() - (reverseIdx * period));
-			timeStr = dTime.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
 
 			tooltipEl.innerHTML = `
 				<div class="tooltip-header">
@@ -8691,13 +8722,6 @@ function customTooltipHandler(context) {
 			var lowFmt = fmt(d.l);
 
 			var volStr = d.v ? formatVolume(d.v, state.activeStock ? state.activeStock.currency : "INR") : "0";
-
-			var totalLen = cd.length;
-			var reverseIdx = totalLen - 1 - idx;
-			
-			// subtract (reverseIdx * period) minutes
-			dTime.setMinutes(dTime.getMinutes() - (reverseIdx * period));
-			timeStr = dTime.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
 
 			var pctMove = ((d.c - d.o) / d.o) * 100;
 			var pctStr = (pctMove > 0 ? "+" : "") + pctMove.toFixed(2) + "%";
