@@ -4823,7 +4823,7 @@ var candlestickPlugin = {
 		if (!xScale || !yScale) return;
 		var ohlc = chart._ohlc;
 		var volumes = chart._volumes;
-		var isLight = state.theme === "light";
+		var isLight = state.theme === "light" || state.theme === "sepia";
 		var chartArea = chart.chartArea;
 		if (!chartArea) return;
 
@@ -8840,7 +8840,7 @@ function customTooltipHandler(context) {
 function renderChart(stock) {
 	var canvas = document.getElementById("main-chart");
 	var ctx = canvas.getContext("2d");
-	var isLight = state.theme === "light";
+	var isLight = state.theme === "light" || state.theme === "sepia";
 	var needsLog = state.chartScale === "log";
 
 	// Destroy chart if Y-axis type needs to change (log ↔ linear)

@@ -136,17 +136,17 @@ body.theme-bloomberg {
 /* --- THEME: SEPIA VINTAGE --- */
 body.theme-sepia {
     color-scheme: light;
-    --bg-0: #E6DBC4;
+    --bg-0: linear-gradient(180deg, #FDF7E8 0%, #E6DBC4 100%);
     --bg-1: #F4ECD8;
     --bg-2: #FDF7E8;
     --bg-3: #D8CCB5;
-    --border: #D0C3A8;
-    --border-light: #BCAE93;
+    --border: #C8B699;
+    --border-light: #B09D7D;
     --text: #4A3B32;
     --text-dim: #736054;
     --text-bright: #2B1D16;
-    --accent: #A83C22;
-    --accent-hover: #8A2D16;
+    --accent: #C24B27;
+    --accent-hover: #9E3C1F;
     --green: #2B6636;
     --green-dim: rgba(43, 102, 54, 0.1);
     --green-hover: #1E4D27;
@@ -154,20 +154,20 @@ body.theme-sepia {
     --red-dim: rgba(181, 54, 54, 0.1);
     --red-hover: #8C2525;
     --orange: #D9822B;
-    --shadow: 0 4px 15px rgba(74, 59, 50, 0.08);
+    --shadow: 0 6px 20px rgba(74, 59, 50, 0.12);
     --glass-bg: rgba(244, 236, 216, 0.85);
-    --glass-border: rgba(74, 59, 50, 0.1);
+    --glass-border: rgba(74, 59, 50, 0.15);
 }
 
 /* --- THEME: DEEP OCEAN --- */
 body.theme-ocean {
     color-scheme: dark;
-    --bg-0: linear-gradient(180deg, #0B1B2A 0%, #062A35 100%);
-    --bg-1: #0D263A;
-    --bg-2: #14354D;
-    --bg-3: #1B4563;
-    --border: #184A68;
-    --border-light: #2A6C96;
+    --bg-0: linear-gradient(180deg, #040A18 0%, #082D3D 100%);
+    --bg-1: #0A1C2C;
+    --bg-2: #112F45;
+    --bg-3: #163B56;
+    --border: #123851;
+    --border-light: #1D5478;
     --text: #D0E5F2;
     --text-dim: #7CA1BB;
     --text-bright: #FFFFFF;
@@ -180,20 +180,20 @@ body.theme-ocean {
     --red-dim: rgba(255, 77, 121, 0.15);
     --red-hover: #CC3D61;
     --orange: #FFB347;
-    --shadow: 0 5px 25px rgba(0, 229, 255, 0.15);
-    --glass-bg: rgba(13, 38, 58, 0.75);
-    --glass-border: rgba(0, 229, 255, 0.25);
+    --shadow: 0 8px 30px rgba(0, 229, 255, 0.2);
+    --glass-bg: rgba(10, 28, 44, 0.75);
+    --glass-border: rgba(0, 229, 255, 0.3);
 }
 
 /* --- THEME: SOLARIZED SLATE --- */
 body.theme-solarized {
     color-scheme: dark;
-    --bg-0: #002B36;
+    --bg-0: linear-gradient(180deg, #002B36 0%, #001F27 100%);
     --bg-1: #073642;
     --bg-2: #0E4B5A;
     --bg-3: #185E70;
-    --border: #586E75;
-    --border-light: #657B83;
+    --border: #073642;
+    --border-light: #586E75;
     --text: #EEE8D5;
     --text-dim: #93A1A1;
     --text-bright: #FDF6E3;
@@ -206,9 +206,9 @@ body.theme-solarized {
     --red-dim: rgba(220, 50, 47, 0.15);
     --red-hover: #CB4B16;
     --orange: #B58900;
-    --shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     --glass-bg: rgba(7, 54, 66, 0.85);
-    --glass-border: rgba(101, 123, 131, 0.2);
+    --glass-border: rgba(101, 123, 131, 0.3);
 }
 
 
@@ -1326,7 +1326,7 @@ body {
     border: 1px solid rgba(128, 128, 128, 0.2);
     z-index: 1000;
 }
-body.light .bottom-tabs {
+body.light .bottom-tabs, body.theme-sepia .bottom-tabs {
     background: rgba(128, 128, 128, 0.08);
     box-shadow: 0 10px 40px rgba(0,0,0,0.1);
 }
@@ -2023,20 +2023,20 @@ body.light .bottom-tabs {
 .news-item .news-mkt-badge { margin-right: 2px; }
 
 /* ========== LIGHT MODE ADJUSTMENTS ========== */
-body.light .wlm-nasdaq { background: rgba(41,98,255,0.1); color: #2962ff; }
-body.light .wlm-sse    { background: rgba(213,0,50,0.1);  color: #c62828; }
-body.light .wlm-tse    { background: rgba(245,124,0,0.1); color: #e65100; }
-body.light .wlm-comm   { background: rgba(245,177,0,0.1); color: #f57f17; }
-body.light .wlm-crypto { background: rgba(247,147,26,0.1); color: #d67a00; }
-body.light .wlm-fx     { background: rgba(0,184,212,0.1); color: #0097a7; }
-body.light .nmb-nse    { color: #00a846; }
-body.light .nmb-nasdaq { color: #2962ff; }
-body.light .nmb-eu     { color: #7b1fa2; }
-body.light .nmb-sse    { color: #c62828; }
-body.light .nmb-tse    { color: #e65100; }
-body.light .nmb-comm   { color: #f57f17; }
-body.light .nmb-crypto { color: #d67a00; }
-body.light .nmb-fx     { color: #0097a7; }
+body.light .wlm-nasdaq, body.theme-sepia .wlm-nasdaq { background: rgba(41,98,255,0.1); color: #2962ff; }
+body.light .wlm-sse, body.theme-sepia .wlm-sse    { background: rgba(213,0,50,0.1);  color: #c62828; }
+body.light .wlm-tse, body.theme-sepia .wlm-tse    { background: rgba(245,124,0,0.1); color: #e65100; }
+body.light .wlm-comm, body.theme-sepia .wlm-comm   { background: rgba(245,177,0,0.1); color: #f57f17; }
+body.light .wlm-crypto, body.theme-sepia .wlm-crypto { background: rgba(247,147,26,0.1); color: #d67a00; }
+body.light .wlm-fx, body.theme-sepia .wlm-fx     { background: rgba(0,184,212,0.1); color: #0097a7; }
+body.light .nmb-nse, body.theme-sepia .nmb-nse    { color: #00a846; }
+body.light .nmb-nasdaq, body.theme-sepia .nmb-nasdaq { color: #2962ff; }
+body.light .nmb-eu, body.theme-sepia .nmb-eu     { color: #7b1fa2; }
+body.light .nmb-sse, body.theme-sepia .nmb-sse    { color: #c62828; }
+body.light .nmb-tse, body.theme-sepia .nmb-tse    { color: #e65100; }
+body.light .nmb-comm, body.theme-sepia .nmb-comm   { color: #f57f17; }
+body.light .nmb-crypto, body.theme-sepia .nmb-crypto { color: #d67a00; }
+body.light .nmb-fx, body.theme-sepia .nmb-fx     { color: #0097a7; }
 /* ========== MARKET DEPTH (L2) ========== */
 .l2-depth {
     background: var(--bg-2);
@@ -2320,7 +2320,7 @@ body.light .nmb-fx     { color: #0097a7; }
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.05);
     z-index: 10;
 }
-body.light .chart-time-selector {
+body.light .chart-time-selector, body.theme-sepia .chart-time-selector {
     background: rgba(255, 255, 255, 0.35); /* More transparent */
     border: 1px solid rgba(255, 255, 255, 0.6);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.8);
@@ -2341,7 +2341,7 @@ body.light .chart-time-selector {
     color: var(--text-bright);
     background: rgba(255, 255, 255, 0.05);
 }
-body.light .chart-time-selector .tf-btn:hover {
+body.light .chart-time-selector .tf-btn:hover, body.theme-sepia .chart-time-selector .tf-btn:hover {
     background: rgba(0, 0, 0, 0.04);
 }
 .chart-time-selector .tf-btn.active {
@@ -2351,7 +2351,7 @@ body.light .chart-time-selector .tf-btn:hover {
     box-shadow: 0 2px 8px rgba(41, 98, 255, 0.15);
 }
 }
-body.light .chart-time-selector .tf-btn.active {
+body.light .chart-time-selector .tf-btn.active, body.theme-sepia .chart-time-selector .tf-btn.active {
     background: rgba(41, 98, 255, 0.08);
     color: var(--accent);
 }
@@ -2370,7 +2370,7 @@ body.light .chart-time-selector .tf-btn.active {
     font-size: 10px;
     color: var(--text-dim);
 }
-body.light .chart-interval-selector {
+body.light .chart-interval-selector, body.theme-sepia .chart-interval-selector {
     border-left: 1px solid rgba(0, 0, 0, 0.1);
 }
 /* Custom Dropdown Styling */
@@ -2393,10 +2393,10 @@ body.light .chart-interval-selector {
 .dropdown-selected:hover {
     background: rgba(255, 255, 255, 0.1);
 }
-body.light .dropdown-selected {
+body.light .dropdown-selected, body.theme-sepia .dropdown-selected {
     color: var(--text-dark);
 }
-body.light .dropdown-selected:hover {
+body.light .dropdown-selected:hover, body.theme-sepia .dropdown-selected:hover {
     background: rgba(0, 0, 0, 0.05);
 }
 .dropdown-options {
@@ -2415,7 +2415,7 @@ body.light .dropdown-selected:hover {
     overflow: hidden;
     padding: 4px;
 }
-body.light .dropdown-options {
+body.light .dropdown-options, body.theme-sepia .dropdown-options {
     background: var(--bg-1);
     box-shadow: 0 8px 24px rgba(0,0,0,0.15);
 }
@@ -2435,7 +2435,7 @@ body.light .dropdown-options {
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-bright);
 }
-body.light .dropdown-option:hover {
+body.light .dropdown-option:hover, body.theme-sepia .dropdown-option:hover {
     background: rgba(0, 0, 0, 0.04);
     color: var(--text-dark);
 }
@@ -2886,11 +2886,8 @@ body.light .dropdown-option:hover {
   min-width: 220px;
   backdrop-filter: blur(10px);
 }
-body.light #custom-tooltip {
-  background: rgba(255, 255, 255, 0.85);
-}
 #custom-tooltip {
-  background: rgba(18, 18, 26, 0.85);
+  background: var(--glass-bg);
 }
 .tooltip-header {
   display: flex;
