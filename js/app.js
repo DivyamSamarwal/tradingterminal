@@ -5037,12 +5037,17 @@ function setupListeners() {
 			}
 		});
 
-	// Slider visual updates
+	// Slider & Settings updates
 	document.getElementById("settings-news-freq").addEventListener("input", function (e) {
 		document.getElementById("news-freq-val").innerText = e.target.value + "%";
+		NEWS_FREQ = parseFloat(e.target.value) / 100;
 	});
 	document.getElementById("settings-volatility").addEventListener("input", function (e) {
 		document.getElementById("vol-val").innerText = parseFloat(e.target.value).toFixed(1) + "x";
+		VOL_MULTIPLIER = parseFloat(e.target.value);
+	});
+	document.getElementById("settings-circuit-limits").addEventListener("change", function (e) {
+		state.circuitLimits = e.target.checked;
 	});
 
 	// Simulation Speed Setup
