@@ -127,14 +127,6 @@
                 <button class="ctrl-btn" id="btn-bank" title="Dalal Bank" aria-label="Open Bank"><i class="fa-solid fa-building-columns"></i></button>
                 <button class="ctrl-btn" id="btn-realestate" title="Property Market" aria-label="Open Real Estate"><i class="fa-solid fa-house"></i></button>
                 <button class="ctrl-btn" id="btn-settings" title="Settings" aria-label="Open settings"><i class="fa-solid fa-gear"></i></button>
-                <div class="switch-container" title="Toggle Light/Dark" aria-label="Toggle light or dark theme">
-                  <input class="toggle-checkbox" id="toggle-switch" type="checkbox" />
-                  <label class="switch" for="toggle-switch">
-                    <div class="theme-toggle">
-                      <div class="led"></div>
-                    </div>
-                  </label>
-                </div>
             </div>
         </header>
 
@@ -843,6 +835,24 @@
                             <label class="settings-label" style="color:var(--red);"><i class="fa-solid fa-skull"></i> Danger Zone</label>
                             <p style="font-size: 12px; color:var(--text-dim); margin-bottom:10px;">This will permanently wipe all your saved history, real estate, and loans from your browser.</p>
                             <button class="ov-btn" id="btn-wipe-data" style="background:var(--red);"><i class="fa-solid fa-trash"></i> Wipe All Game Data</button>
+                        </div>
+                        
+                        <!-- Theme Settings -->
+                        <div class="bank-card bank-card-full">
+                            <div class="sec-header" style="margin: -20px -20px 20px -20px; padding: 0 20px; background: rgba(0,0,0,0.2);">
+                                <span><i class="fa-solid fa-palette"></i> Aesthetics & Theming</span>
+                            </div>
+                            <div class="theme-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px;">
+                                <button class="chart-type-btn theme-btn active" data-theme="dark">Dark (Default)</button>
+                                <button class="chart-type-btn theme-btn" data-theme="light">Corporate Light</button>
+                                <button class="chart-type-btn theme-btn" data-theme="retro">Retro Synthwave</button>
+                                <button class="chart-type-btn theme-btn" data-theme="neon">Cyberpunk Neon</button>
+                                <button class="chart-type-btn theme-btn" data-theme="terminal">Hacker Terminal</button>
+                                <button class="chart-type-btn theme-btn" data-theme="bloomberg">Pro Finance</button>
+                                <button class="chart-type-btn theme-btn" data-theme="sepia">Sepia Vintage</button>
+                                <button class="chart-type-btn theme-btn" data-theme="ocean">Deep Ocean</button>
+                                <button class="chart-type-btn theme-btn" data-theme="solarized">Solarized Slate</button>
+                            </div>
                         </div>
                     </div>
                     

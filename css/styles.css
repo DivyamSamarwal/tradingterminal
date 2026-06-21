@@ -26,6 +26,192 @@
     --glass-border: rgba(255, 255, 255, 0.08);
 }
 
+/* --- THEME: RETRO SYNTHWAVE --- */
+body.theme-retro {
+    color-scheme: dark;
+    --bg-0: linear-gradient(180deg, #1A0B2E 0%, #2D144A 100%);
+    --bg-1: #25103F;
+    --bg-2: #2E154F;
+    --bg-3: #3B1B66;
+    --border: #FF007F;
+    --border-light: #FF4DA6;
+    --text: #E2C2FF;
+    --text-dim: #9D74D2;
+    --text-bright: #FFFFFF;
+    --accent: #FF007F;
+    --accent-hover: #D9006C;
+    --green: #00F0FF;
+    --green-dim: rgba(0, 240, 255, 0.15);
+    --green-hover: #00D0DE;
+    --red: #FF3366;
+    --red-dim: rgba(255, 51, 102, 0.15);
+    --red-hover: #CC2952;
+    --orange: #FFD700;
+    --radius: 0px;
+    --shadow: 0 0 20px rgba(255, 0, 127, 0.3);
+    --glass-bg: rgba(37, 16, 63, 0.85);
+    --glass-border: rgba(255, 0, 127, 0.5);
+}
+
+/* --- THEME: CYBERPUNK NEON --- */
+body.theme-neon {
+    color-scheme: dark;
+    --bg-0: linear-gradient(180deg, #050B14 0%, #020408 100%);
+    --bg-1: #0A1424;
+    --bg-2: #101E36;
+    --bg-3: #182A4A;
+    --border: #00FF9D;
+    --border-light: #00FF9D;
+    --text: #CDE2FF;
+    --text-dim: #6082B6;
+    --text-bright: #FFFFFF;
+    --accent: #FF00E6;
+    --accent-hover: #CC00B8;
+    --green: #00FF9D;
+    --green-dim: rgba(0, 255, 157, 0.2);
+    --green-hover: #00CC7E;
+    --red: #FF2A2A;
+    --red-dim: rgba(255, 42, 42, 0.2);
+    --red-hover: #CC2222;
+    --orange: #FFD500;
+    --shadow: 0 0 25px rgba(0, 255, 157, 0.2);
+    --glass-bg: rgba(10, 20, 36, 0.6);
+    --glass-border: rgba(0, 255, 157, 0.4);
+}
+
+/* --- THEME: HACKER TERMINAL --- */
+body.theme-terminal {
+    color-scheme: dark;
+    --bg-0: #000000;
+    --bg-1: #000000;
+    --bg-2: #051A05;
+    --bg-3: #0A260A;
+    --border: #00FF00;
+    --border-light: #00FF00;
+    --text: #00FF00;
+    --text-dim: #008800;
+    --text-bright: #33FF33;
+    --accent: #00FF00;
+    --accent-hover: #00CC00;
+    --green: #00FF00;
+    --green-dim: rgba(0, 255, 0, 0.15);
+    --green-hover: #00CC00;
+    --red: #00FF00;
+    --red-dim: rgba(0, 255, 0, 0.15);
+    --red-hover: #00CC00;
+    --font: var(--mono);
+    --radius: 0px;
+    --shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+    --glass-bg: rgba(0, 0, 0, 0.9);
+    --glass-border: rgba(0, 255, 0, 0.8);
+}
+
+/* --- THEME: PRO FINANCE (BLOOMBERG STYLE) --- */
+body.theme-bloomberg {
+    color-scheme: dark;
+    --bg-0: #000000;
+    --bg-1: #000000;
+    --bg-2: #111111;
+    --bg-3: #1A1A1A;
+    --border: #333333;
+    --border-light: #555555;
+    --text: #FFFFFF;
+    --text-dim: #888888;
+    --text-bright: #FFFFFF;
+    --accent: #FF9900;
+    --accent-hover: #CC7A00;
+    --green: #00CCFF;
+    --green-dim: rgba(0, 204, 255, 0.15);
+    --green-hover: #0099CC;
+    --red: #FF3333;
+    --red-dim: rgba(255, 51, 51, 0.15);
+    --red-hover: #CC0000;
+    --radius: 0px;
+    --font: var(--mono);
+    --shadow: none;
+    --glass-bg: rgba(0, 0, 0, 1);
+    --glass-border: rgba(255, 153, 0, 0.5);
+}
+
+/* --- THEME: SEPIA VINTAGE --- */
+body.theme-sepia {
+    color-scheme: light;
+    --bg-0: #E6DBC4;
+    --bg-1: #F4ECD8;
+    --bg-2: #FDF7E8;
+    --bg-3: #D8CCB5;
+    --border: #D0C3A8;
+    --border-light: #BCAE93;
+    --text: #4A3B32;
+    --text-dim: #736054;
+    --text-bright: #2B1D16;
+    --accent: #A83C22;
+    --accent-hover: #8A2D16;
+    --green: #2B6636;
+    --green-dim: rgba(43, 102, 54, 0.1);
+    --green-hover: #1E4D27;
+    --red: #B53636;
+    --red-dim: rgba(181, 54, 54, 0.1);
+    --red-hover: #8C2525;
+    --orange: #D9822B;
+    --shadow: 0 4px 15px rgba(74, 59, 50, 0.08);
+    --glass-bg: rgba(244, 236, 216, 0.85);
+    --glass-border: rgba(74, 59, 50, 0.1);
+}
+
+/* --- THEME: DEEP OCEAN --- */
+body.theme-ocean {
+    color-scheme: dark;
+    --bg-0: linear-gradient(180deg, #0B1B2A 0%, #062A35 100%);
+    --bg-1: #0D263A;
+    --bg-2: #14354D;
+    --bg-3: #1B4563;
+    --border: #184A68;
+    --border-light: #2A6C96;
+    --text: #D0E5F2;
+    --text-dim: #7CA1BB;
+    --text-bright: #FFFFFF;
+    --accent: #00E5FF;
+    --accent-hover: #00B8CC;
+    --green: #00FFB2;
+    --green-dim: rgba(0, 255, 178, 0.15);
+    --green-hover: #00CC8E;
+    --red: #FF4D79;
+    --red-dim: rgba(255, 77, 121, 0.15);
+    --red-hover: #CC3D61;
+    --orange: #FFB347;
+    --shadow: 0 5px 25px rgba(0, 229, 255, 0.15);
+    --glass-bg: rgba(13, 38, 58, 0.75);
+    --glass-border: rgba(0, 229, 255, 0.25);
+}
+
+/* --- THEME: SOLARIZED SLATE --- */
+body.theme-solarized {
+    color-scheme: dark;
+    --bg-0: #002B36;
+    --bg-1: #073642;
+    --bg-2: #0E4B5A;
+    --bg-3: #185E70;
+    --border: #586E75;
+    --border-light: #657B83;
+    --text: #EEE8D5;
+    --text-dim: #93A1A1;
+    --text-bright: #FDF6E3;
+    --accent: #268BD2;
+    --accent-hover: #2AA198;
+    --green: #859900;
+    --green-dim: rgba(133, 153, 0, 0.15);
+    --green-hover: #718200;
+    --red: #DC322F;
+    --red-dim: rgba(220, 50, 47, 0.15);
+    --red-hover: #CB4B16;
+    --orange: #B58900;
+    --shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    --glass-bg: rgba(7, 54, 66, 0.85);
+    --glass-border: rgba(101, 123, 131, 0.2);
+}
+
+
 body.light {
     color-scheme: light;
     --bg-0: #F1F5F9;
@@ -2270,7 +2456,7 @@ body.light .dropdown-option:hover {
     display: none !important;
 }
 
-#view-bank, #view-realestate {
+#view-bank, #view-realestate, #view-settings {
     grid-row: 2 / 4;
     grid-column: 1 / -1;
     display: flex;
@@ -2281,7 +2467,7 @@ body.light .dropdown-option:hover {
 }
 
 /* --- Dalal Bank --- */
-#view-bank, #view-realestate {
+#view-bank, #view-realestate, #view-settings {
     height: 100%;
     overflow: hidden;
 }
@@ -2825,6 +3011,29 @@ body.light #custom-tooltip {
  } 
  i n p u t : c h e c k e d   +   . t s - s l i d e r : b e f o r e   { 
          t r a n s f o r m :   t r a n s l a t e X ( 2 0 p x ) ; 
+ } 
+  
+ 
+ . t h e m e - b t n   { 
+         p a d d i n g :   8 p x   1 2 p x ; 
+         b a c k g r o u n d :   v a r ( - - b g - 2 ) ; 
+         b o r d e r :   1 p x   s o l i d   v a r ( - - b o r d e r ) ; 
+         c o l o r :   v a r ( - - t e x t ) ; 
+         b o r d e r - r a d i u s :   v a r ( - - r a d i u s ) ; 
+         c u r s o r :   p o i n t e r ; 
+         f o n t - s i z e :   1 3 p x ; 
+         t r a n s i t i o n :   a l l   0 . 2 s ; 
+         t e x t - a l i g n :   c e n t e r ; 
+ } 
+ . t h e m e - b t n : h o v e r   { 
+         b a c k g r o u n d :   v a r ( - - b g - 3 ) ; 
+         b o r d e r - c o l o r :   v a r ( - - b o r d e r - l i g h t ) ; 
+ } 
+ . t h e m e - b t n . a c t i v e   { 
+         b a c k g r o u n d :   v a r ( - - a c c e n t ) ; 
+         c o l o r :   w h i t e ; 
+         b o r d e r - c o l o r :   v a r ( - - a c c e n t ) ; 
+         b o x - s h a d o w :   0   0   1 0 p x   r g b a ( 0 , 0 , 0 , 0 . 2 ) ; 
  } 
   
  

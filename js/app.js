@@ -4939,6 +4939,9 @@ document.addEventListener("DOMContentLoaded", function () {
 	renderAll();
 	renderFxRates();
 	startClock();
+	
+	// Initialize UI theme state
+	applyTheme(state.theme);
 
 	// High-frequency HFT order book flicker (visual realism)
 	setInterval(function () {
@@ -4995,9 +4998,13 @@ function setupListeners() {
 	document.getElementById("btn-fast").addEventListener("click", function (e) {
 		setSpeed(100, e.currentTarget);
 	});
-	document
-		.getElementById("toggle-switch")
-		.addEventListener("change", toggleTheme);
+	// Set up Theme selectors
+	document.querySelectorAll(".theme-btn").forEach(function(btn) {
+		btn.addEventListener("click", function(e) {
+			var themeName = e.currentTarget.getAttribute("data-theme");
+			applyTheme(themeName);
+		});
+	});
 	document.getElementById("btn-bank").addEventListener("click", toggleBankView);
 	document
 		.getElementById("btn-realestate")
@@ -5596,13 +5603,27 @@ function setIntervalDropdown(val, text) {
 }
 
 // ==================== THEME ====================
-function toggleTheme() {
-	state.theme = state.theme === "dark" ? "light" : "dark";
-	document.body.classList.toggle("light");
-	var ts = document.getElementById("toggle-switch");
-	if (ts) ts.checked = state.theme === "light";
+function applyTheme(themeName) {
+	state.theme = themeName;
+	
+	// Remove all theme classes from body
+	document.body.classList.remove("light", "theme-retro", "theme-neon", "theme-terminal", "theme-bloomberg", "theme-sepia", "theme-ocean", "theme-solarized");
+	
+	// Apply new theme class if not dark
+	if (themeName === "light") document.body.classList.add("light");
+	else if (themeName !== "dark") document.body.classList.add("theme-" + themeName);
+
+	// Update active state on buttons
+	document.querySelectorAll(".theme-btn").forEach(function(btn) {
+		if (btn.getAttribute("data-theme") === themeName) {
+			btn.classList.add("active");
+		} else {
+			btn.classList.remove("active");
+		}
+	});
+
 	if (state.activeStock) renderChart(state.activeStock);
-	toast("Theme", state.theme === "light" ? "Light Mode" : "Dark Mode", "info");
+	toast("Theme Updated", "Switched to " + themeName + " mode", "info");
 }
 
 // ==================== VIEW SWITCHING ====================
