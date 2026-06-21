@@ -798,6 +798,110 @@
                 </div>
             </div>
         </div> <!-- End view-realestate -->
+
+        <!-- Settings View -->
+        <div id="view-settings" class="hidden">
+            <div class="bank-container">
+                <div class="sec-header" style="border-bottom:none; margin-bottom:10px; font-size:16px;">
+                    <div>
+                        <button class="btn-sm" style="margin-right:10px; background:var(--bg-2); border:1px solid var(--border); color:var(--text); padding:4px 10px; border-radius:4px; cursor:pointer;" onclick="document.getElementById('btn-settings').click()"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                        <span><i class="fa-solid fa-gear accent"></i> Terminal Settings</span>
+                        <span class="badge mono" style="font-size:10px;">SYSTEM</span>
+                    </div>
+                </div>
+                
+                <div class="bank-grid" style="grid-template-columns: 1fr 1fr; align-items: start;">
+                    
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <!-- Capital Settings -->
+                        <div class="bank-card bank-card-full">
+                            <div class="sec-header" style="margin: -20px -20px 20px -20px; padding: 0 20px; background: rgba(0,0,0,0.2);">
+                                <span><i class="fa-solid fa-wallet"></i> Capital & Reset</span>
+                            </div>
+                            <div class="settings-group">
+                                <label class="settings-label" for="settings-cash">Starting Capital</label>
+                                <div class="cash-input-row" style="margin-bottom: 10px;">
+                                    <span class="cash-prefix">₹</span>
+                                    <input type="number" id="settings-cash" class="fc mono" value="100000" min="10000" step="10000">
+                                </div>
+                                <div class="cash-presets">
+                                    <button class="cash-preset" data-v="50000">₹50K</button>
+                                    <button class="cash-preset" data-v="100000">₹1L</button>
+                                    <button class="cash-preset" data-v="500000">₹5L</button>
+                                    <button class="cash-preset" data-v="1000000">₹10L</button>
+                                    <button class="cash-preset" data-v="5000000">₹50L</button>
+                                    <button class="cash-preset" data-v="10000000">₹1Cr</button>
+                                </div>
+                            </div>
+                            <div class="settings-warning" style="margin-bottom: 15px;">
+                                <i class="fa-solid fa-triangle-exclamation"></i> Changing capital will reset all positions and start fresh.
+                            </div>
+                            <button class="ov-btn" id="btn-apply-settings" style="margin-bottom: 20px;"><i class="fa-solid fa-check"></i> Apply Capital Change</button>
+                            
+                            <hr style="border:none; border-top:1px solid var(--border); margin: 20px 0;">
+                            
+                            <label class="settings-label" style="color:var(--red);"><i class="fa-solid fa-skull"></i> Danger Zone</label>
+                            <p style="font-size: 12px; color:var(--text-dim); margin-bottom:10px;">This will permanently wipe all your saved history, real estate, and loans from your browser.</p>
+                            <button class="ov-btn" id="btn-wipe-data" style="background:var(--red);"><i class="fa-solid fa-trash"></i> Wipe All Game Data</button>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <!-- Simulation Settings -->
+                        <div class="bank-card bank-card-full">
+                            <div class="sec-header" style="margin: -20px -20px 20px -20px; padding: 0 20px; background: rgba(0,0,0,0.2);">
+                                <span><i class="fa-solid fa-sliders"></i> Simulation Parameters</span>
+                            </div>
+                            
+                            <div class="settings-group">
+                                <label class="settings-label">
+                                    <span><i class="fa-solid fa-gauge-high"></i> Simulation Speed</span>
+                                </label>
+                                <div class="segmented-control" style="width: 100%; margin-top: 5px;">
+                                    <button class="chart-type-btn sim-speed-btn" data-speed="1000" id="speed-realtime"><span>Real-time</span></button>
+                                    <button class="chart-type-btn sim-speed-btn active" data-speed="250" id="speed-fast"><span>Fast</span></button>
+                                    <button class="chart-type-btn sim-speed-btn" data-speed="50" id="speed-turbo"><span><i class="fa-solid fa-bolt"></i> Turbo</span></button>
+                                </div>
+                            </div>
+
+                            <div class="settings-group" style="margin-top: 20px;">
+                                <label class="settings-label" style="display:flex; justify-content:space-between;">
+                                    <span><i class="fa-solid fa-newspaper"></i> News Frequency</span>
+                                    <span id="news-freq-val" style="color:var(--accent); font-weight:bold;">4%</span>
+                                </label>
+                                <input type="range" id="settings-news-freq" class="custom-slider" min="1" max="15" step="1" value="4">
+                                <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim); margin-top:5px;">
+                                    <span>Quiet</span><span>Chaotic</span>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-group" style="margin-top: 20px;">
+                                <label class="settings-label" style="display:flex; justify-content:space-between;">
+                                    <span><i class="fa-solid fa-chart-line"></i> Market Volatility</span>
+                                    <span id="vol-val" style="color:var(--accent); font-weight:bold;">1.0x</span>
+                                </label>
+                                <input type="range" id="settings-volatility" class="custom-slider" min="0.5" max="3.0" step="0.1" value="1.0">
+                                <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim); margin-top:5px;">
+                                    <span>Stable</span><span>Insane</span>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-group" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <label class="settings-label" style="margin-bottom:0;"><i class="fa-solid fa-shield-halved"></i> Circuit Breakers</label>
+                                    <div style="font-size:11px; color:var(--text-dim); margin-top:4px;">Halt trading if price moves ±10% in a day</div>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settings-circuit-limits" checked>
+                                    <span class="ts-slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div> <!-- End view-settings -->
     </div> <!-- End app -->
 
     <!-- New Day Overlay -->
@@ -821,56 +925,6 @@
         </div>
     </div>
 
-    <!-- Settings Modal -->
-    <div class="overlay hidden" id="settings-overlay">
-        <div class="overlay-card settings-card">
-            <div class="ov-icon" style="background:var(--orange)"><i class="fa-solid fa-gear"></i></div>
-            <h2 class="ov-title">Settings</h2>
-            <p class="ov-sub">Configure your trading simulation</p>
-            <div class="settings-form">
-                <div class="settings-group">
-                    <label class="settings-label" for="settings-cash"><i class="fa-solid fa-wallet"></i> Starting Capital</label>
-                    <div class="cash-input-row">
-                        <span class="cash-prefix">₹</span>
-                        <input type="number" id="settings-cash" class="fc mono" value="100000" min="10000" step="10000">
-                    </div>
-                    <div class="cash-presets">
-                        <button class="cash-preset" data-v="50000">₹50K</button>
-                        <button class="cash-preset" data-v="100000">₹1L</button>
-                        <button class="cash-preset" data-v="500000">₹5L</button>
-                        <button class="cash-preset" data-v="1000000">₹10L</button>
-                        <button class="cash-preset" data-v="5000000">₹50L</button>
-                        <button class="cash-preset" data-v="10000000">₹1Cr</button>
-                    </div>
-                </div>
-                <div class="settings-group">
-                    <label class="settings-label" for="settings-news-freq"><i class="fa-solid fa-gauge-high"></i> News Frequency</label>
-                    <select class="fc" id="settings-news-freq">
-                        <option value="0.02">Low (2%)</option>
-                        <option value="0.04" selected>Normal (4%)</option>
-                        <option value="0.08">High (8%)</option>
-                        <option value="0.15">Breaking News (15%)</option>
-                    </select>
-                </div>
-                <div class="settings-group">
-                    <label class="settings-label" for="settings-volatility"><i class="fa-solid fa-chart-line"></i> Volatility</label>
-                    <select class="fc" id="settings-volatility">
-                        <option value="0.5">Low</option>
-                        <option value="1" selected>Normal</option>
-                        <option value="2">High</option>
-                        <option value="3">Extreme</option>
-                    </select>
-                </div>
-                <div class="settings-warning">
-                    <i class="fa-solid fa-triangle-exclamation"></i> Changing capital will reset all positions and start fresh.
-                </div>
-            </div>
-            <div class="settings-actions">
-                <button class="ov-btn" id="btn-apply-settings"><i class="fa-solid fa-check"></i> Apply Settings</button>
-                <button class="ov-btn-secondary" id="btn-close-settings">Cancel</button>
-            </div>
-        </div>
-    </div>
     <div id="toast-container" class="toast-box"></div>
     <script src="js/app.js?v=130"></script>
     <script src="js/analytics.js?v=8"></script>

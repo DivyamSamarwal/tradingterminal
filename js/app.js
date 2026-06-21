@@ -5006,22 +5006,40 @@ function setupListeners() {
 	initBankUI();
 	document
 		.getElementById("btn-settings")
-		.addEventListener("click", openSettings);
+		.addEventListener("click", toggleSettingsView);
 	document
 		.getElementById("btn-apply-settings")
 		.addEventListener("click", applySettings);
 	document
-		.getElementById("btn-close-settings")
-		.addEventListener("click", closeSettings);
-	document.getElementById("cash-stat").addEventListener("click", openSettings);
+		.getElementById("btn-wipe-data")
+		.addEventListener("click", wipeGameData);
+	document.getElementById("cash-stat").addEventListener("click", toggleSettingsView);
 	document
 		.getElementById("cash-stat")
 		.addEventListener("keydown", function (e) {
 			if (e.key === "Enter" || e.key === " ") {
 				e.preventDefault();
-				openSettings();
+				toggleSettingsView();
 			}
 		});
+
+	// Slider visual updates
+	document.getElementById("settings-news-freq").addEventListener("input", function (e) {
+		document.getElementById("news-freq-val").innerText = e.target.value + "%";
+	});
+	document.getElementById("settings-volatility").addEventListener("input", function (e) {
+		document.getElementById("vol-val").innerText = parseFloat(e.target.value).toFixed(1) + "x";
+	});
+
+	// Simulation Speed Setup
+	document.querySelectorAll(".sim-speed-btn").forEach(function(btn) {
+		btn.addEventListener("click", function(e) {
+			document.querySelectorAll(".sim-speed-btn").forEach(b => b.classList.remove("active"));
+			e.currentTarget.classList.add("active");
+			var ms = parseInt(e.currentTarget.getAttribute("data-speed"));
+			setSpeed(ms, document.getElementById("btn-play")); // keep top bar sync
+		});
+	});
 	document
 		.getElementById("btn-chart-line")
 		.addEventListener("click", function () {
@@ -5340,22 +5358,47 @@ function setupListeners() {
 }
 
 // ==================== SETTINGS / MODIFIABLE CASH ====================
-function openSettings() {
-	document.getElementById("settings-cash").value = INITIAL_MARGIN;
-	document.getElementById("settings-news-freq").value = NEWS_FREQ.toString();
-	document.getElementById("settings-volatility").value =
-		VOL_MULTIPLIER.toString();
-	document.getElementById("settings-overlay").classList.remove("hidden");
+function toggleSettingsView() {
+	var settingsView = document.getElementById("view-settings");
+	var termView = document.getElementById("view-terminal");
+	var btn = document.getElementById("btn-settings");
+
+	if (settingsView.classList.contains("hidden")) {
+		settingsView.classList.remove("hidden");
+		termView.classList.add("hidden");
+		document.getElementById("view-bank").classList.add("hidden");
+		document.getElementById("btn-bank").classList.remove("on");
+		document.getElementById("view-realestate").classList.add("hidden");
+		document.getElementById("btn-realestate").classList.remove("on");
+		btn.classList.add("on");
+
+		// Set initial values
+		document.getElementById("settings-cash").value = INITIAL_MARGIN;
+		document.getElementById("settings-news-freq").value = NEWS_FREQ.toString();
+		document.getElementById("news-freq-val").innerText = NEWS_FREQ + "%";
+		document.getElementById("settings-volatility").value = VOL_MULTIPLIER.toString();
+		document.getElementById("vol-val").innerText = VOL_MULTIPLIER.toFixed(1) + "x";
+	} else {
+		settingsView.classList.add("hidden");
+		termView.classList.remove("hidden");
+		btn.classList.remove("on");
+	}
 }
 
-function closeSettings() {
-	document.getElementById("settings-overlay").classList.add("hidden");
+function wipeGameData() {
+	if (confirm("Are you sure you want to permanently delete all game data? This cannot be undone!")) {
+		localStorage.clear();
+		location.reload();
+	}
 }
 
 function applySettings() {
 	var newCash = parseFloat(document.getElementById("settings-cash").value);
-	var newFreq = parseFloat(document.getElementById("settings-news-freq").value);
-	var newVol = parseFloat(document.getElementById("settings-volatility").value);
+	var newFreqStr = document.getElementById("settings-news-freq").value;
+	var newVolStr = document.getElementById("settings-volatility").value;
+	
+	var newFreq = parseFloat(newFreqStr) / 100; // slider goes 1 to 15
+	var newVol = parseFloat(newVolStr);
 
 	if (isNaN(newCash) || newCash < 10000) {
 		toast("Error", "Minimum capital is \u20b910,000", "error");
@@ -5374,6 +5417,12 @@ function applySettings() {
 
 	NEWS_FREQ = newFreq;
 	VOL_MULTIPLIER = newVol;
+	
+	// Set Circuit Limits based on checkbox
+	var limitsEnabled = document.getElementById("settings-circuit-limits").checked;
+	state.circuitLimits = limitsEnabled;
+
+	toast("Settings Updated", "Simulation parameters have been updated.", "success");
 
 	if (cashChanged) {
 		// Reset everything
@@ -5568,6 +5617,8 @@ function toggleBankView() {
 		termView.classList.add("hidden");
 		document.getElementById("view-realestate").classList.add("hidden");
 		document.getElementById("btn-realestate").classList.remove("on");
+		document.getElementById("view-settings").classList.add("hidden");
+		document.getElementById("btn-settings").classList.remove("on");
 		btn.classList.add("on"); // Highlight the button
 		updateBankUI();
 	} else {
@@ -5588,6 +5639,8 @@ function toggleRealEstateView() {
 		termView.classList.add("hidden");
 		document.getElementById("view-bank").classList.add("hidden");
 		document.getElementById("btn-bank").classList.remove("on");
+		document.getElementById("view-settings").classList.add("hidden");
+		document.getElementById("btn-settings").classList.remove("on");
 		btn.classList.add("on");
 		updateRealEstateUI();
 	} else {
@@ -5842,7 +5895,8 @@ function tickMinute() {
 		var isNoCircuit =
 			stock.market === "CRYPTO" ||
 			stock.market === "FX" ||
-			stock.market === "BOND";
+			stock.market === "BOND" ||
+			state.circuitLimits === false;
 		var limitMult = isNoCircuit ? 100.0 : CIRCUIT_LIMIT;
 		var upperCircuit = stock.open * (1 + limitMult);
 		var lowerCircuit = stock.open * (1 - limitMult);
