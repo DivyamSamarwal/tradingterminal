@@ -177,7 +177,7 @@ function generateIndexPreHistory(indexStock, constituentTickers) {
 	var startPrice = finalShapeVal > 0 ? indexStock.ltp / finalShapeVal : indexStock.ltp;
 
 	for (var t = 0; t < totalTicks; t++) {
-		history[t] = parseFloat((startPrice * shape[t]).toFixed(2));
+		history[t] = parseFloat((startPrice * shape[t]).toFixed(4));
 	}
 	return history;
 }
@@ -191,20 +191,43 @@ function buildPreOHLC(stock, period, maxCandles) {
 	// Only build as many candles as needed
 	var startTick = maxCandles ? Math.max(0, preLen - maxCandles * period) : 0;
 	var candles = [];
-	// Deterministic volume multiplier from ticker seed
-	var volBase = Math.floor(stock.vol * 8000000 + 100000);
+	// Expected volume for a candle of this period
+	var expectedCandleVol = Math.floor((stock.baseVolume / 390) * period);
 	for (var i = startTick; i < preLen; i += period) {
 		var slice = pre.slice(i, i + period);
 		if (!slice.length) break;
 		var c = slice[slice.length - 1],
 			o = slice[0];
 		var isBull = c >= o;
+		
+		var h = Math.max.apply(null, slice);
+		var l = Math.min.apply(null, slice);
+		
+		// Deterministic pseudo-randoms based on index and ticker so they scroll smoothly without flickering
+		var tickSeed = i + stock.ticker.charCodeAt(0);
+		var pRandWick1 = Math.abs(Math.sin(tickSeed * 12.9898)) % 1;
+		var pRandWick2 = Math.abs(Math.cos(tickSeed * 78.233)) % 1;
+		var pRandVol = Math.abs(Math.sin(tickSeed * 45.123)) % 1;
+		
+		// Add simulated intra-tick micro-volatility to generate realistic wicks
+		var wickBase = (stock.vol || 0.01) * c * 0.4;
+		h += pRandWick1 * wickBase;
+		l -= pRandWick2 * wickBase;
+		
+		// Ensure high and low properly bound open and close
+		if (o > c) { h = Math.max(h, o); l = Math.min(l, c); }
+		else { h = Math.max(h, c); l = Math.min(l, o); }
+		
+		// Format to match
+		h = parseFloat(h.toFixed(4));
+		l = parseFloat(l.toFixed(4));
+		
 		candles.push({
 			o: o,
-			h: Math.max.apply(null, slice),
-			l: Math.min.apply(null, slice),
+			h: h,
+			l: l,
 			c: c,
-			v: Math.floor(volBase * (isBull ? 0.9 : 1.2) * (0.6 + (i % 7) * 0.08)),
+			v: Math.floor(expectedCandleVol * (isBull ? 1.2 : 0.8) + pRandVol * (expectedCandleVol * 0.4)),
 		});
 	}
 	return candles;
@@ -5419,16 +5442,8 @@ function applySettings() {
 	var newFreq = parseFloat(newFreqStr) / 100; // slider goes 1 to 15
 	var newVol = parseFloat(newVolStr);
 
-	if (isNaN(newCash) || newCash < 10000) {
-		toast("Error", "Minimum capital is \u20b910,000", "error");
-		return;
-	}
-	if (newCash > 1000000000) {
-		toast(
-			"Error",
-			"Maximum starting capital is \u20b91,000,000,000 (100 Crores).",
-			"error",
-		);
+	if (isNaN(newCash) || newCash < 0) {
+		toast("Error", "Starting capital must be a positive number", "error");
 		return;
 	}
 
@@ -5616,6 +5631,13 @@ function setViewLength(label) {
 
 function setIntervalDropdown(val, text) {
 	state.candlePeriod = parseInt(val, 10);
+	
+	// Clear cached live candles to force accurate dynamic rebuild at new interval
+	marketStocks.forEach(function(s) {
+		s.ohlcHistory = [];
+		s.currentCandle = null;
+	});
+	
 	if (text) document.getElementById("interval-display").textContent = text;
 	if (state.activeStock) renderChart(state.activeStock);
 }
@@ -5969,6 +5991,9 @@ function tickMinute() {
 		}
 		var sectorBias = sectorFactors[stock.sector];
 
+		var tickHigh = stock._prevTick || price;
+		var tickLow = stock._prevTick || price;
+
 		// 3 micro-ticks for realism
 		for (var step = 0; step < microSteps; step++) {
 			var drift = (Math.random() - 0.502) * v * 1.4;
@@ -5981,34 +6006,45 @@ function tickMinute() {
 				drift + meanRevert + sectorBias * 0.4 + marketFactor * 0.3;
 			price = price * (1 + totalMove);
 			price = Math.max(0.0001, price);
+			if (price > tickHigh) tickHigh = price;
+			if (price < tickLow) tickLow = price;
+		}
 
-			if (price >= upperCircuit && stock.ticker !== "DALAL") {
-				price = upperCircuit;
-				if (step === microSteps - 1 && !stock.circuitHit) {
-					stock.circuitHit = "UC";
+		// Apply price
+		var pDec = stock.ltp < 10 ? 4 : 2;
+		stock.ltp = parseFloat(price.toFixed(pDec));
+		tickHigh = parseFloat(tickHigh.toFixed(pDec));
+		tickLow = parseFloat(tickLow.toFixed(pDec));
+
+		// Check circuit limits
+		if (!isNoCircuit) {
+			if (stock.ltp >= upperCircuit && stock.ticker !== "DALAL") {
+				stock.ltp = parseFloat(upperCircuit.toFixed(pDec));
+				if (stock.circuitHit !== "UPPER") {
+					stock.circuitHit = "UPPER";
 					toast(
 						"CIRCUIT",
 						stock.ticker + " hit upper circuit +" + CIRCUIT_LIMIT * 100 + "%!",
 						"success",
 					);
 				}
-				break;
-			} else if (price <= lowerCircuit && stock.ticker !== "DALAL") {
-				price = lowerCircuit;
-				if (step === microSteps - 1 && !stock.circuitHit) {
-					stock.circuitHit = "LC";
+			} else if (stock.ltp <= lowerCircuit && stock.ticker !== "DALAL") {
+				stock.ltp = parseFloat(lowerCircuit.toFixed(pDec));
+				if (stock.circuitHit !== "LOWER") {
+					stock.circuitHit = "LOWER";
 					toast(
 						"CIRCUIT",
 						stock.ticker + " hit lower circuit -" + CIRCUIT_LIMIT * 100 + "%!",
 						"error",
 					);
 				}
-				break;
+			} else {
+				stock.circuitHit = null;
 			}
+		} else {
+			stock.circuitHit = null; // Crypto/FX never freeze
 		}
 
-		var pDecimals = stock.ltp < 10 ? 4 : 2;
-		stock.ltp = parseFloat(price.toFixed(pDecimals));
 		stock.history.push(stock.ltp);
 		if (stock.history.length > state.historyLen) stock.history.shift();
 
@@ -6023,9 +6059,9 @@ function tickMinute() {
 			stock.volumeHistory.shift();
 		if (!stock.currentCandle) {
 			stock.currentCandle = {
-				o: stock.ltp,
-				h: stock.ltp,
-				l: stock.ltp,
+				o: stock._prevTick || stock.ltp,
+				h: Math.max(tickHigh, stock.ltp),
+				l: Math.min(tickLow, stock.ltp),
 				c: stock.ltp,
 				v: tickVol,
 				ticks: 1,
@@ -8338,15 +8374,38 @@ function buildCandleData(stock, totalNeeded) {
 		liveCandles = stock.ohlcHistory.slice(-totalNeeded);
 	} else {
 		var hist = stock.history;
+		var volHist = stock.volumeHistory || [];
 		for (var i = 0; i < hist.length; i += period) {
 			var sl = hist.slice(i, i + period);
+			var slV = volHist.slice(i, i + period);
 			if (!sl.length) break;
+			var sumV = 0;
+			for (var vi = 0; vi < slV.length; vi++) sumV += (slV[vi] || 0);
+			
+			var c = sl[sl.length - 1];
+			var o = sl[0];
+			var h = Math.max.apply(null, sl);
+			var l = Math.min.apply(null, sl);
+			if (sl.length === 1) {
+				var tickSeed = i + stock.ticker.charCodeAt(0);
+				var pRandWick1 = Math.abs(Math.sin(tickSeed * 12.9898)) % 1;
+				var pRandWick2 = Math.abs(Math.cos(tickSeed * 78.233)) % 1;
+				
+				var wickBase = (stock.vol || 0.01) * c * 0.4;
+				h += pRandWick1 * wickBase;
+				l -= pRandWick2 * wickBase;
+				if (o > c) { h = Math.max(h, o); l = Math.min(l, c); }
+				else { h = Math.max(h, c); l = Math.min(l, o); }
+				h = parseFloat(h.toFixed(4));
+				l = parseFloat(l.toFixed(4));
+			}
+			
 			liveCandles.push({
-				o: sl[0],
-				h: Math.max.apply(null, sl),
-				l: Math.min.apply(null, sl),
-				c: sl[sl.length - 1],
-				v: 0,
+				o: o,
+				h: h,
+				l: l,
+				c: c,
+				v: sumV,
 			});
 		}
 		liveCandles = liveCandles.slice(-totalNeeded);
@@ -10194,7 +10253,7 @@ function breakFixedDeposit(id) {
 		return s.ticker === "DALAL";
 	});
 	if (dalalStock) {
-		var dumpVal = (fd.principal / 100000) * 0.02;
+		var dumpVal = (fd.principal / 100000) * 0.00005; // 2.5x penalty compared to pump
 		dalalStock.ltp = parseFloat((dalalStock.ltp - dumpVal).toFixed(4));
 		dalalStock.ltp = Math.max(0.0001, dalalStock.ltp);
 	}
