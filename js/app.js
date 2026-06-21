@@ -6772,7 +6772,7 @@ function triggerNewsEvent() {
 		if (s.circuitHit) return; // skip frozen stocks
 		var newPrice = parseFloat((s.ltp * (1 + impact)).toFixed(2));
 		var isNoCircuit =
-			s.market === "CRYPTO" || s.market === "FX" || s.market === "BOND";
+			s.market === "CRYPTO" || s.market === "FX" || s.market === "BOND" || state.circuitLimits === false;
 		var limitMult = isNoCircuit ? 100.0 : CIRCUIT_LIMIT;
 		var upperCircuit = s.open * (1 + limitMult);
 		var lowerCircuit = s.open * (1 - limitMult);
