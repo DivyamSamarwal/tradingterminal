@@ -41,11 +41,11 @@ function renderAnalytics() {
 	// Build the grid (Notice the empty <span> tags with ID's for live data)
 	var fundHTML = `
         <div class="data-row"><span class="data-label">Market Cap</span><span class="data-value" id="an-market-cap">--</span></div>
-        <div class="data-row"><span class="data-label">P/E Ratio</span><span class="data-value">${peRatio}</span></div>
-        <div class="data-row"><span class="data-label">Dividend Yield</span><span class="data-value">${divYield}%</span></div>
-        <div class="data-row"><span class="data-label">52-Week High</span><span class="data-value">${fmtPrice(stock, parseFloat(high52))}</span></div>
-        <div class="data-row"><span class="data-label">52-Week Low</span><span class="data-value">${fmtPrice(stock, parseFloat(low52))}</span></div>
-        <div class="data-row"><span class="data-label">Next Earnings</span><span class="data-value">In ${nextEarnings} Days</span></div>
+        <div class="data-row"><span class="data-label">Total Turnover</span><span class="data-value" id="an-turnover">--</span></div>
+        <div class="data-row"><span class="data-label">Avg Daily Vol</span><span class="data-value" id="an-adv">--</span></div>
+        <div class="data-row"><span class="data-label">All-Time High</span><span class="data-value" id="an-ath">--</span></div>
+        <div class="data-row"><span class="data-label">All-Time Low</span><span class="data-value" id="an-atl">--</span></div>
+        <div class="data-row"><span class="data-label">Total Range</span><span class="data-value" id="an-volatility">--</span></div>
     `;
 	document.getElementById("analytics-fundamentals").innerHTML = fundHTML;
 
@@ -83,6 +83,7 @@ function updateAnalyticsLive() {
 	var stock = state.activeStock;
 	if (!stock) return;
 
+	var ticksPerDay = 375;
 	// Update Market Cap & Volume
 	var marketCap = stock.ltp * (stock._sharesOutstanding || 100000000);
 	var elCap = document.getElementById("an-market-cap");
@@ -91,10 +92,35 @@ function updateAnalyticsLive() {
 	var elVol = document.getElementById("an-volume");
 	if (elVol) elVol.textContent = formatLargeVolume(stock.volume);
 
-	// Calculate Returns
-	var ticksPerDay = 375;
-	var fullHistory = (stock.preHistory || []).concat(stock.history || []);
+	var turnover = stock.ltp * stock.volume;
+	var elTurnover = document.getElementById("an-turnover");
+	if (elTurnover) elTurnover.textContent = formatLargeCurrency(turnover, stock.currency);
 
+	var fullHistory = (stock.preHistory || []).concat(stock.history || []);
+	
+	if (fullHistory.length > 0) {
+		var ath = Math.max.apply(null, fullHistory);
+		var atl = Math.min.apply(null, fullHistory);
+		if (stock.ltp > ath) ath = stock.ltp;
+		if (stock.ltp < atl) atl = stock.ltp;
+
+		var elAth = document.getElementById("an-ath");
+		if (elAth) elAth.textContent = fmtPrice(stock, ath);
+		var elAtl = document.getElementById("an-atl");
+		if (elAtl) elAtl.textContent = fmtPrice(stock, atl);
+
+		var volRange = ((ath - atl) / atl * 100).toFixed(2) + "%";
+		var elVolat = document.getElementById("an-volatility");
+		if (elVolat) elVolat.textContent = volRange;
+
+
+		var totalDays = Math.max(1, fullHistory.length / ticksPerDay);
+		var adv = stock.volume / totalDays;
+		var elAdv = document.getElementById("an-adv");
+		if (elAdv) elAdv.textContent = formatLargeVolume(adv);
+	}
+
+	// Calculate Returns
 	var dayReturn = ((stock.ltp - stock.prevClose) / stock.prevClose) * 100;
 	var weekIndex = Math.max(0, fullHistory.length - 5 * ticksPerDay);
 	var weekPrice = fullHistory[weekIndex] || stock.base;
