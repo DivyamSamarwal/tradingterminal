@@ -8424,6 +8424,30 @@ function _applyChartData(stock, isLight) {
 		var rawSMA = calcSMA(lineSliceForIndicators, 20).slice(-lineSlice.length);
 		var rawEMA = calcEMA(lineSliceForIndicators, 20).slice(-lineSlice.length);
 
+		// Chart Virtualization (Decimation) to massively reduce Canvas draw lag
+		var MAX_DRAW_POINTS = 300;
+		if (lineSlice.length > MAX_DRAW_POINTS) {
+			var stepSize = Math.ceil(lineSlice.length / MAX_DRAW_POINTS);
+			var startIndex = fullHistory.length - lineSlice.length;
+			var dLine = [], dSma = [], dEma = [];
+			for (var i = 0; i < lineSlice.length; i++) {
+				if ((startIndex + i) % stepSize === 0) {
+					dLine.push(lineSlice[i]);
+					dSma.push(rawSMA[i]);
+					dEma.push(rawEMA[i]);
+				}
+			}
+			// Ensure the last real-time tick is always the terminal point on the chart
+			if ((startIndex + lineSlice.length - 1) % stepSize !== 0 && dLine.length > 0) {
+				dLine[dLine.length - 1] = lineSlice[lineSlice.length - 1];
+				dSma[dSma.length - 1] = rawSMA[rawSMA.length - 1];
+				dEma[dEma.length - 1] = rawEMA[rawEMA.length - 1];
+			}
+			lineSlice = dLine;
+			rawSMA = dSma;
+			rawEMA = dEma;
+		}
+
 		// % Change transform
 		if (isPct) {
 			lineSlice = lineSlice.map(function (p) {
@@ -8622,66 +8646,94 @@ function customTooltipHandler(context) {
 		var isPct = state.chartScale === "pct";
 		var cd = chart._ohlc;
 		var d = cd && cd[tooltip.dataPoints[0].dataIndex];
-		
-		if (!d) {
-			tooltipEl.style.opacity = 0;
-			return;
-		}
 
 		var fmt = isPct
 			? function (n) { return (n >= 0 ? "+" : "") + n.toFixed(2) + "%"; }
 			: function (n) { return fmtPrice(state.activeStock, n); };
 
-		var isBull = d.c >= d.o;
-		var bullBearClass = isBull ? "bull" : "bear";
-		var closeFmt = fmt(d.c);
-		var openFmt = fmt(d.o);
-		var highFmt = fmt(d.h);
-		var lowFmt = fmt(d.l);
-
-		var volStr = d.v ? formatVolume(d.v, state.activeStock ? state.activeStock.currency : "INR") : "0";
-
-		var period = state.candlePeriod || 375;
-		var totalLen = cd.length;
+		var timeStr = "";
 		var idx = tooltip.dataPoints[0].dataIndex;
-		var reverseIdx = totalLen - 1 - idx;
-		
+		var period = state.candlePeriod || 375;
 		var dTime = new Date();
-		// subtract (reverseIdx * period) minutes
-		dTime.setMinutes(dTime.getMinutes() - (reverseIdx * period));
-		var timeStr = dTime.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
 
-		var pctMove = ((d.c - d.o) / d.o) * 100;
-		var pctStr = (pctMove > 0 ? "+" : "") + pctMove.toFixed(2) + "%";
+		if (!d) {
+			// Line Chart Fallback
+			var val = tooltip.dataPoints[0].parsed.y;
+			if (val === undefined || val === null) {
+				tooltipEl.style.opacity = 0;
+				return;
+			}
+			
+			tooltipEl.style.minWidth = "140px";
+			
+			var totalLen = chart._lineData ? chart._lineData.length : tooltip.dataPoints.length;
+			var reverseIdx = totalLen - 1 - idx;
+			dTime.setMinutes(dTime.getMinutes() - (reverseIdx * period));
+			timeStr = dTime.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
 
-		tooltipEl.innerHTML = `
-			<div class="tooltip-header">
-				<span>${state.activeStock ? state.activeStock.ticker : ""}</span>
-				<span>${timeStr}</span>
-			</div>
-			<div class="tooltip-grid">
-				<div class="tooltip-row"><span class="tooltip-label">O</span> <span class="tooltip-val">${openFmt}</span></div>
-				<div class="tooltip-row"><span class="tooltip-label">H</span> <span class="tooltip-val" style="color:var(--green)">${highFmt}</span></div>
-				<div class="tooltip-row"><span class="tooltip-label">C</span> <span class="tooltip-val ${bullBearClass}">${closeFmt}</span></div>
-				<div class="tooltip-row"><span class="tooltip-label">L</span> <span class="tooltip-val" style="color:var(--red)">${lowFmt}</span></div>
-			</div>
-			<div class="tooltip-footer">
-				<span class="tooltip-label">Vol: <span style="color:var(--text)">${volStr}</span></span>
-				<span class="tooltip-pct ${bullBearClass}">${pctStr}</span>
-			</div>
-		`;
+			tooltipEl.innerHTML = `
+				<div class="tooltip-header">
+					<span>${state.activeStock ? state.activeStock.ticker : ""}</span>
+					<span>${timeStr}</span>
+				</div>
+				<div class="tooltip-grid" style="display:flex; justify-content:space-between; padding-top: 6px;">
+					<span class="tooltip-label">Price</span>
+					<span class="tooltip-val" style="color:var(--text); font-size: 14px; font-weight: 600;">${fmt(val)}</span>
+				</div>
+			`;
+		} else {
+			tooltipEl.style.minWidth = ""; // use css default
+			var isBull = d.c >= d.o;
+			var bullBearClass = isBull ? "bull" : "bear";
+			var closeFmt = fmt(d.c);
+			var openFmt = fmt(d.o);
+			var highFmt = fmt(d.h);
+			var lowFmt = fmt(d.l);
+
+			var volStr = d.v ? formatVolume(d.v, state.activeStock ? state.activeStock.currency : "INR") : "0";
+
+			var totalLen = cd.length;
+			var reverseIdx = totalLen - 1 - idx;
+			
+			// subtract (reverseIdx * period) minutes
+			dTime.setMinutes(dTime.getMinutes() - (reverseIdx * period));
+			timeStr = dTime.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+
+			var pctMove = ((d.c - d.o) / d.o) * 100;
+			var pctStr = (pctMove > 0 ? "+" : "") + pctMove.toFixed(2) + "%";
+
+			tooltipEl.innerHTML = `
+				<div class="tooltip-header">
+					<span>${state.activeStock ? state.activeStock.ticker : ""}</span>
+					<span>${timeStr}</span>
+				</div>
+				<div class="tooltip-grid">
+					<div class="tooltip-row"><span class="tooltip-label">O</span> <span class="tooltip-val">${openFmt}</span></div>
+					<div class="tooltip-row"><span class="tooltip-label">H</span> <span class="tooltip-val" style="color:var(--green)">${highFmt}</span></div>
+					<div class="tooltip-row"><span class="tooltip-label">C</span> <span class="tooltip-val ${bullBearClass}">${closeFmt}</span></div>
+					<div class="tooltip-row"><span class="tooltip-label">L</span> <span class="tooltip-val" style="color:var(--red)">${lowFmt}</span></div>
+				</div>
+				<div class="tooltip-footer">
+					<span class="tooltip-label">Vol: <span style="color:var(--text)">${volStr}</span></span>
+					<span class="tooltip-pct ${bullBearClass}">${pctStr}</span>
+				</div>
+			`;
+		}
 	}
 
 	var position = context.chart.canvas.getBoundingClientRect();
 	tooltipEl.style.opacity = 1;
 	tooltipEl.style.left = position.left + window.pageXOffset + tooltip.caretX + 'px';
 	
+	// Shift tooltip slightly to the side to keep the exact data point visible
+	var shiftX = tooltip.caretX > chart.width * 0.7 ? 'calc(-100% - 15px)' : '15px';
+	
 	// Better positioning: if too close to top edge, push down
 	var topPos = position.top + window.pageYOffset + tooltip.caretY;
 	if (topPos - 130 < window.pageYOffset) {
-		tooltipEl.style.transform = 'translate(-50%, 20px)';
+		tooltipEl.style.transform = 'translate(' + shiftX + ', 20px)';
 	} else {
-		tooltipEl.style.transform = 'translate(-50%, -110%)';
+		tooltipEl.style.transform = 'translate(' + shiftX + ', -110%)';
 	}
 	tooltipEl.style.top = topPos + 'px';
 }
