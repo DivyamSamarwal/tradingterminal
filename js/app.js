@@ -4961,7 +4961,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	initMarket();
 	setupListeners();
 	renderAll();
-	renderFxRates();
+	// renderFxRates(); // Undefined function causing ReferenceError
 	startClock();
 	
 	// Initialize UI theme state
@@ -5806,532 +5806,459 @@ function isMarketOpen(stock, t) {
 }
 
 function tickMinute() {
-	state.time++;
+	try {
+		state.time++;
 
-	var t = state.time;
-	if (t === 555) {
-		pushMarketAnnouncement("Indian Market (NSE) is now OPEN", "NSE", true);
-		// First reset all non-index INR equities
-		marketStocks.forEach(function (s) {
-			if (
-				s.ticker !== "DALAL" &&
-				s.currency === "INR" &&
-				!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
-			)
-				resetMarketStock(s);
-		});
-		// Then reset concurrent indices based on their constituents' new opens
-		marketStocks.forEach(function (indexStock) {
-			var constituents = INDEX_CONSTITUENTS[indexStock.ticker];
-			if (!constituents || indexStock.currency !== "INR") return;
-			indexStock.prevClose = indexStock.ltp;
-			// Compute a market-cap-weighted open from constituent opens
-			var totalPrevCap = 0, totalNewCap = 0;
-			constituents.forEach(function(tk) {
-				var comp = stockMap[tk];
-				if (comp) {
-					var shares = comp.shares || 100000000;
-					totalPrevCap += comp.prevClose * shares;
-					totalNewCap  += comp.ltp * shares;
-				}
+		var t = state.time;
+		if (t === 555) {
+			pushMarketAnnouncement("Indian Market (NSE) is now OPEN", "NSE", true);
+			// First reset all non-index INR equities
+			marketStocks.forEach(function (s) {
+				if (
+					s.ticker !== "DALAL" &&
+					s.currency === "INR" &&
+					!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
+				)
+					resetMarketStock(s);
 			});
-			var overnightReturn = totalPrevCap > 0 ? (totalNewCap - totalPrevCap) / totalPrevCap : 0;
-			indexStock.ltp   = parseFloat((indexStock.ltp * (1 + overnightReturn)).toFixed(2));
-			indexStock.open  = indexStock.ltp;
-			indexStock.base  = indexStock.ltp;
-			indexStock._prevTick = indexStock.ltp;
-			indexStock.volume = 0;
-			indexStock.circuitHit = null;
-			indexStock.history = [indexStock.ltp];
-			indexStock.volumeHistory = [0];
-			indexStock.ohlcHistory = [];
-			indexStock.currentCandle = null;
-		});
-	}
-	if (t === 930)
-		pushMarketAnnouncement("Indian Market (NSE) has CLOSED", "NSE", false);
-
-	if (t === 1140) {
-		pushMarketAnnouncement("US Markets (NASDAQ) are now OPEN", "NASDAQ", true);
-		marketStocks.forEach(function (s) {
-			if (
-				s.currency === "USD" &&
-				!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
-			)
-				resetMarketStock(s);
-		});
-		resetConcurrentIndexGroup("USD");
-	}
-	if (t === 90)
-		pushMarketAnnouncement("US Markets (NASDAQ) have CLOSED", "NASDAQ", false);
-
-	if (t === 420) {
-		pushMarketAnnouncement("Chinese Market (SSE) is now OPEN", "SSE", true);
-		marketStocks.forEach(function (s) {
-			if (
-				s.currency === "CNY" &&
-				!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
-			)
-				resetMarketStock(s);
-		});
-		resetConcurrentIndexGroup("CNY");
-	}
-	if (t === 750)
-		pushMarketAnnouncement("Chinese Market (SSE) has CLOSED", "SSE", false);
-
-	if (t === 330) {
-		pushMarketAnnouncement("Japanese Market (TSE) is now OPEN", "TSE", true);
-		marketStocks.forEach(function (s) {
-			if (
-				s.currency === "JPY" &&
-				!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
-			)
-				resetMarketStock(s);
-		});
-		resetConcurrentIndexGroup("JPY");
-	}
-	if (t === 690)
-		pushMarketAnnouncement("Japanese Market (TSE) has CLOSED", "TSE", false);
-
-	if (t === 405) {
-		pushMarketAnnouncement("Hong Kong Market (HKEX) is now OPEN", "HKEX", true);
-		marketStocks.forEach(function (s) {
-			if (
-				s.currency === "HKD" &&
-				!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
-			)
-				resetMarketStock(s);
-		});
-		resetConcurrentIndexGroup("HKD");
-	}
-	if (t === 810)
-		pushMarketAnnouncement("Hong Kong Market (HKEX) has CLOSED", "HKEX", false);
-
-	if (t === 810) {
-		pushMarketAnnouncement("European Markets are now OPEN", "GLOBAL", true);
-		marketStocks.forEach(function (s) {
-			if (
-				!["INR", "USD", "CNY", "JPY", "HKD"].includes(s.currency) &&
-				!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
-			)
-				resetMarketStock(s);
-		});
-		resetConcurrentIndexGroup("EUR");
-		resetConcurrentIndexGroup("GBP");
-	}
-	if (t === 1320)
-		pushMarketAnnouncement("European Markets have CLOSED", "GLOBAL", false);
-
-	if (state.time > END_TIME) {
-		state.time = END_TIME;
-		state.isRunning = false;
-		state.marketOpen = false;
-		clearInterval(marketInterval);
-		document.querySelectorAll(".ctrl-btn").forEach(function (b) {
-			if (b.id !== "btn-theme" && b.id !== "btn-settings")
-				b.classList.remove("on");
-		});
-		document.getElementById("btn-pause").classList.add("on");
-		showDayEndOverlay();
-		renderAll();
-		return;
-	}
-
-	// Price simulation: 3 micro-steps per tick for smooth, realistic movement
-	var totalChange = 0;
-	var microSteps = 3;
-	// Shared market factor (correlation / sector rotation)
-	var marketFactor = (Math.random() - 0.5) * 0.004 * VOL_MULTIPLIER;
-	var sectorFactors = {};
-
-	marketStocks.forEach(function (stock) {
-		stock._prevTick = stock.ltp; // save for flash animation
-		if (!isMarketOpen(stock, state.time)) return; // Skip closed markets
-		if (stock.circuitHit) return;
-
-		// If it's a perfectly concurrent index, SKIP the random walk and update it later
-		if (INDEX_CONSTITUENTS[stock.ticker]) return;
-
-		var v = stock.vol * VOL_MULTIPLIER;
-		var isNoCircuit =
-			stock.market === "CRYPTO" ||
-			stock.market === "FX" ||
-			stock.market === "BOND" ||
-			state.circuitLimits === false;
-		var limitMult = isNoCircuit ? 100.0 : CIRCUIT_LIMIT;
-		var upperCircuit = stock.open * (1 + limitMult);
-		var lowerCircuit = stock.open * (1 - limitMult);
-		var price = stock.ltp;
-
-		// Sector factor (each sector moves together slightly)
-		if (!sectorFactors[stock.sector]) {
-			sectorFactors[stock.sector] =
-				(Math.random() - 0.5) * 0.006 * VOL_MULTIPLIER;
-		}
-		var sectorBias = sectorFactors[stock.sector];
-
-		var tickHigh = stock._prevTick || price;
-		var tickLow = stock._prevTick || price;
-
-		// 3 micro-ticks for realism
-		for (var step = 0; step < microSteps; step++) {
-			var drift = (Math.random() - 0.502) * v * 1.4;
-			var meanRevert =
-				stock.ticker === "DALAL"
-					? 0
-					: ((stock.base - price) / stock.base) * 0.0008;
-			// Combine: stock drift + sector bias + broad market
-			var totalMove =
-				drift + meanRevert + sectorBias * 0.4 + marketFactor * 0.3;
-			price = price * (1 + totalMove);
-			price = Math.max(0.0001, price);
-			if (price > tickHigh) tickHigh = price;
-			if (price < tickLow) tickLow = price;
-		}
-
-		// Apply price
-		var pDec = stock.ltp < 10 ? 4 : 2;
-		stock.ltp = parseFloat(price.toFixed(pDec));
-		tickHigh = parseFloat(tickHigh.toFixed(pDec));
-		tickLow = parseFloat(tickLow.toFixed(pDec));
-
-		// Check circuit limits
-		if (!isNoCircuit) {
-			if (stock.ltp >= upperCircuit && stock.ticker !== "DALAL") {
-				stock.ltp = parseFloat(upperCircuit.toFixed(pDec));
-				if (stock.circuitHit !== "UC") {
-					stock.circuitHit = "UC";
-					toast(
-						"CIRCUIT",
-						stock.ticker + " hit upper circuit +" + CIRCUIT_LIMIT * 100 + "%!",
-						"success",
-					);
-				}
-			} else if (stock.ltp <= lowerCircuit && stock.ticker !== "DALAL") {
-				stock.ltp = parseFloat(lowerCircuit.toFixed(pDec));
-				if (stock.circuitHit !== "LC") {
-					stock.circuitHit = "LC";
-					toast(
-						"CIRCUIT",
-						stock.ticker + " hit lower circuit -" + CIRCUIT_LIMIT * 100 + "%!",
-						"error",
-					);
-				}
-			} else {
-				stock.circuitHit = null;
-			}
-		} else {
-			stock.circuitHit = null; // Crypto/FX never freeze
-		}
-
-		stock.history.push(stock.ltp);
-		if (stock.history.length > state.historyLen) stock.history.shift();
-
-		// OHLCV candle aggregation
-		var avgTickVol = Math.floor(stock.baseVolume / 390); // 390 minutes in a standard trading day
-		var volFluctuation = 0.5 + Math.random(); // 0.5x to 1.5x variance
-		var tickVol = Math.floor(avgTickVol * volFluctuation);
-		if (tickVol < 1) tickVol = 1;
-
-		stock.volumeHistory.push(tickVol);
-		if (stock.volumeHistory.length > state.historyLen)
-			stock.volumeHistory.shift();
-		if (!stock.currentCandle) {
-			stock.currentCandle = {
-				o: stock._prevTick || stock.ltp,
-				h: Math.max(tickHigh, stock.ltp),
-				l: Math.min(tickLow, stock.ltp),
-				c: stock.ltp,
-				v: tickVol,
-				ticks: 1,
-			};
-		} else {
-			if (stock.ltp > stock.currentCandle.h) stock.currentCandle.h = stock.ltp;
-			if (stock.ltp < stock.currentCandle.l) stock.currentCandle.l = stock.ltp;
-			stock.currentCandle.c = stock.ltp;
-			stock.currentCandle.v += tickVol;
-			stock.currentCandle.ticks++;
-			if (stock.currentCandle.ticks >= state.candlePeriod) {
-				stock.ohlcHistory.push({
-					o: stock.currentCandle.o,
-					h: stock.currentCandle.h,
-					l: stock.currentCandle.l,
-					c: stock.currentCandle.c,
-					v: stock.currentCandle.v,
+			// Then reset concurrent indices based on their constituents' new opens
+			marketStocks.forEach(function (indexStock) {
+				var constituents = INDEX_CONSTITUENTS[indexStock.ticker];
+				if (!constituents || indexStock.currency !== "INR") return;
+				indexStock.prevClose = indexStock.ltp;
+				// Compute a market-cap-weighted open from constituent opens
+				var totalPrevCap = 0, totalNewCap = 0;
+				constituents.forEach(function(tk) {
+					var comp = stockMap[tk];
+					if (comp) {
+						var shares = comp.shares || 100000000;
+						totalPrevCap += comp.prevClose * shares;
+						totalNewCap  += comp.ltp * shares;
+					}
 				});
-				if (stock.ohlcHistory.length > 2000) stock.ohlcHistory.shift();
-				stock.currentCandle = null;
-			}
-		}
-
-		// Volume simulation (realistic ranges based on true asset liquidity)
-		stock.volume += tickVol;
-		stock.available_liquidity = tickVol * 1.5; // Minute volume + a bit of ambient depth
-		stock.bidAskSpread = stock.ltp * (Math.random() * 0.001 + 0.0001); // 0.01% to 0.1% spread
-	});
-
-	// --- 2. Update Concurrent Indices ---
-	marketStocks.forEach(function (indexStock) {
-		var constituents = INDEX_CONSTITUENTS[indexStock.ticker];
-		if (!constituents) return;
-		if (!isMarketOpen(indexStock, state.time)) return;
-		
-		indexStock._prevTick = indexStock.ltp;
-		
-		var prevTotalCap = 0;
-		var currentTotalCap = 0;
-		var tickVolSum = 0;
-		
-		constituents.forEach(function(tk) {
-			var comp = stockMap[tk];
-			if (comp) {
-				var shares = comp.shares || 100000000;
-				prevTotalCap += comp._prevTick * shares;
-				currentTotalCap += comp.ltp * shares;
-				tickVolSum += (comp.volumeHistory[comp.volumeHistory.length - 1] || 0);
-			}
-		});
-		
-		var weightedReturn = prevTotalCap > 0 ? (currentTotalCap - prevTotalCap) / prevTotalCap : 0;
-		indexStock.ltp = parseFloat((indexStock.ltp * (1 + weightedReturn)).toFixed(2));
-		
-		indexStock.history.push(indexStock.ltp);
-		if (indexStock.history.length > state.historyLen) indexStock.history.shift();
-		
-		var tickVol = Math.max(1, Math.floor(tickVolSum * 0.1)); // Index volume is a fraction of total constituent volume
-		indexStock.volumeHistory.push(tickVol);
-		if (indexStock.volumeHistory.length > state.historyLen)
-			indexStock.volumeHistory.shift();
-		indexStock.volume += tickVol;
-		
-		if (!indexStock.currentCandle) {
-			indexStock.currentCandle = {
-				o: indexStock.ltp, h: indexStock.ltp, l: indexStock.ltp, c: indexStock.ltp, v: tickVol, ticks: 1
-			};
-		} else {
-			if (indexStock.ltp > indexStock.currentCandle.h) indexStock.currentCandle.h = indexStock.ltp;
-			if (indexStock.ltp < indexStock.currentCandle.l) indexStock.currentCandle.l = indexStock.ltp;
-			indexStock.currentCandle.c = indexStock.ltp;
-			indexStock.currentCandle.v += tickVol;
-			indexStock.currentCandle.ticks++;
-			if (indexStock.currentCandle.ticks >= state.candlePeriod) {
-				indexStock.ohlcHistory.push({
-					o: indexStock.currentCandle.o, h: indexStock.currentCandle.h, l: indexStock.currentCandle.l, c: indexStock.currentCandle.c, v: indexStock.currentCandle.v
-				});
-				if (indexStock.ohlcHistory.length > 2000) indexStock.ohlcHistory.shift();
+				var overnightReturn = totalPrevCap > 0 ? (totalNewCap - totalPrevCap) / totalPrevCap : 0;
+				indexStock.ltp   = parseFloat((indexStock.ltp * (1 + overnightReturn)).toFixed(2));
+				indexStock.open  = indexStock.ltp;
+				indexStock.base  = indexStock.ltp;
+				indexStock._prevTick = indexStock.ltp;
+				indexStock.volume = 0;
+				indexStock.circuitHit = null;
+				indexStock.history = [indexStock.ltp];
+				indexStock.volumeHistory = [0];
+				indexStock.ohlcHistory = [];
 				indexStock.currentCandle = null;
-			}
+			});
 		}
-	});
+		if (t === 930)
+			pushMarketAnnouncement("Indian Market (NSE) has CLOSED", "NSE", false);
 
-	// --- Legacy redundant UI variables (preserved for backward compatibility if needed) ---
-	var legacyNifty = stockMap["NIFTY 50"];
-	var legacySensex = stockMap["SENSEX"];
-	if (legacyNifty) state.niftyValue = legacyNifty.ltp;
-	if (legacySensex) state.sensexValue = legacySensex.ltp;
-	state.niftyHistory.push(state.niftyValue);
-	if (state.niftyHistory.length > state.historyLen) state.niftyHistory.shift();
+		if (t === 1140) {
+			pushMarketAnnouncement("US Markets (NASDAQ) are now OPEN", "NASDAQ", true);
+			marketStocks.forEach(function (s) {
+				if (
+					s.currency === "USD" &&
+					!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
+				)
+					resetMarketStock(s);
+			});
+			resetConcurrentIndexGroup("USD");
+		}
+		if (t === 90)
+			pushMarketAnnouncement("US Markets (NASDAQ) have CLOSED", "NASDAQ", false);
 
-	// Market sentiment (-100 to +100)
-	var gainers = marketStocks.filter(function (s) {
-		return s.ltp >= s.open;
-	}).length;
-	state.sentiment = Math.round((gainers / marketStocks.length - 0.5) * 200);
+		if (t === 420) {
+			pushMarketAnnouncement("Chinese Market (SSE) is now OPEN", "SSE", true);
+			marketStocks.forEach(function (s) {
+				if (
+					s.currency === "CNY" &&
+					!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
+				)
+					resetMarketStock(s);
+			});
+			resetConcurrentIndexGroup("CNY");
+		}
+		if (t === 750)
+			pushMarketAnnouncement("Chinese Market (SSE) has CLOSED", "SSE", false);
 
-	// SL / Target auto-trigger
-	Object.keys(state.slTargets).forEach(function (ticker) {
-		var st = state.slTargets[ticker];
-		if (!st) return;
-		var pos = state.positions[ticker];
-		if (!pos) {
-			delete state.slTargets[ticker];
+		if (t === 330) {
+			pushMarketAnnouncement("Japanese Market (TSE) is now OPEN", "TSE", true);
+			marketStocks.forEach(function (s) {
+				if (
+					s.currency === "JPY" &&
+					!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
+				)
+					resetMarketStock(s);
+			});
+			resetConcurrentIndexGroup("JPY");
+		}
+		if (t === 690)
+			pushMarketAnnouncement("Japanese Market (TSE) has CLOSED", "TSE", false);
+
+		if (t === 405) {
+			pushMarketAnnouncement("Hong Kong Market (HKEX) is now OPEN", "HKEX", true);
+			marketStocks.forEach(function (s) {
+				if (
+					s.currency === "HKD" &&
+					!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
+				)
+					resetMarketStock(s);
+			});
+			resetConcurrentIndexGroup("HKD");
+		}
+		if (t === 810)
+			pushMarketAnnouncement("Hong Kong Market (HKEX) has CLOSED", "HKEX", false);
+
+		if (t === 810) {
+			pushMarketAnnouncement("European Markets are now OPEN", "GLOBAL", true);
+			marketStocks.forEach(function (s) {
+				if (
+					!["INR", "USD", "CNY", "JPY", "HKD"].includes(s.currency) &&
+					!["CRYPTO", "COMM", "FX", "BOND", "INDEX"].includes(s.market)
+				)
+					resetMarketStock(s);
+			});
+			resetConcurrentIndexGroup("EUR");
+			resetConcurrentIndexGroup("GBP");
+		}
+		if (t === 1320)
+			pushMarketAnnouncement("European Markets have CLOSED", "GLOBAL", false);
+
+		if (state.time > END_TIME) {
+			state.time = END_TIME;
+			state.isRunning = false;
+			state.marketOpen = false;
+			clearInterval(marketInterval);
+			document.querySelectorAll(".ctrl-btn").forEach(function (b) {
+				if (b.id !== "btn-theme" && b.id !== "btn-settings")
+					b.classList.remove("on");
+			});
+			document.getElementById("btn-pause").classList.add("on");
+			showDayEndOverlay();
+			renderAll();
 			return;
 		}
-		var stock = stockMap[ticker];
-		if (!stock) return;
-		var isLong = pos.qty > 0;
-		if (st.sl && isLong && stock.ltp <= st.sl) {
-			toast(
-				"\u26d4 SL Hit",
-				ticker + " stop loss triggered @ \u20b9" + stock.ltp.toFixed(2),
-				"error",
-			);
-			closeEquityPosition(ticker, true);
-			delete state.slTargets[ticker];
-		} else if (st.sl && !isLong && stock.ltp >= st.sl) {
-			toast(
-				"\u26d4 SL Hit",
-				ticker + " stop loss triggered @ \u20b9" + stock.ltp.toFixed(2),
-				"error",
-			);
-			closeEquityPosition(ticker, true);
-			delete state.slTargets[ticker];
-		} else if (st.target && isLong && stock.ltp >= st.target) {
-			toast(
-				"\u2705 Target Hit",
-				ticker + " target reached @ \u20b9" + stock.ltp.toFixed(2),
-				"success",
-			);
-			closeEquityPosition(ticker, true);
-			delete state.slTargets[ticker];
-		} else if (st.target && !isLong && stock.ltp <= st.target) {
-			toast(
-				"\u2705 Target Hit",
-				ticker + " target reached @ \u20b9" + stock.ltp.toFixed(2),
-				"success",
-			);
-			closeEquityPosition(ticker, true);
-			delete state.slTargets[ticker];
-		}
-	});
 
-	// Forex Sync
-	if (stockMap["USDINR"]) EXCHANGE_RATES.USD = stockMap["USDINR"].ltp;
-	if (stockMap["CNYINR"]) EXCHANGE_RATES.CNY = stockMap["CNYINR"].ltp;
-	if (stockMap["JPYINR"]) EXCHANGE_RATES.JPY = stockMap["JPYINR"].ltp;
+		// Price simulation: 3 micro-steps per tick for smooth, realistic movement
+		var totalChange = 0;
+		var microSteps = 3;
+		// Shared market factor (correlation / sector rotation)
+		var marketFactor = (Math.random() - 0.5) * 0.004 * VOL_MULTIPLIER;
+		var sectorFactors = {};
 
-	// Margin Check Loop
-	if (state.margin < 0) {
-		if (state.marginCallThrottle <= 0) {
-			toast(
-				"MARGIN CALL",
-				"Your cash balance is below zero (\u20b9" +
-					state.margin.toFixed(2) +
-					")! Square off some positions to avoid forced liquidation.",
-				"error",
-			);
-			state.marginCallThrottle = 15; // throttle warning toast
-		} else {
-			state.marginCallThrottle--;
-		}
-	} else {
-		state.marginCallThrottle = 0;
-	}
+		marketStocks.forEach(function (stock) {
+			stock._prevTick = stock.ltp; // save for flash animation
+			if (!isMarketOpen(stock, state.time)) return; // Skip closed markets
+			if (stock.circuitHit) return;
 
-	// Forced Liquidation Check (1% of starting capital OR portfolio completely wiped out)
-	var portVal = calcPortfolioValue();
-	var hasOpenPositions =
-		Object.keys(state.positions).length > 0 ||
-		Object.keys(state.optionsPositions).length > 0;
-	if (portVal <= INITIAL_MARGIN * 0.01 && hasOpenPositions) {
-		liquidateAllForced();
-	}
+			// If it's a perfectly concurrent index, SKIP the random walk and update it later
+			if (INDEX_CONSTITUENTS[stock.ticker]) return;
 
-	// Pending Order Matching
-	if (state.pendingOrders && state.pendingOrders.length > 0) {
-		var remainingPending = [];
-		state.pendingOrders.forEach(function (order) {
-			var stock = stockMap[order.ticker];
-			if (!stock) return;
-			if (!isMarketOpen(stock, state.time)) {
-				remainingPending.push(order);
-				return;
+			var v = stock.vol * VOL_MULTIPLIER;
+			var isNoCircuit =
+				stock.market === "CRYPTO" ||
+				stock.market === "FX" ||
+				stock.market === "BOND" ||
+				state.circuitLimits === false;
+			var limitMult = isNoCircuit ? 100.0 : CIRCUIT_LIMIT;
+			var upperCircuit = stock.open * (1 + limitMult);
+			var lowerCircuit = stock.open * (1 - limitMult);
+			var price = stock.ltp;
+
+			// Sector factor (each sector moves together slightly)
+			if (!sectorFactors[stock.sector]) {
+				sectorFactors[stock.sector] =
+					(Math.random() - 0.5) * 0.006 * VOL_MULTIPLIER;
 			}
-			var ltp = stock.ltp;
+			var sectorBias = sectorFactors[stock.sector];
 
-			if (order.orderType === "MARKET") {
-				var avail = stock.available_liquidity || 0;
-				if (avail > 0) {
-					var fillQty = Math.min(order.qty, avail);
-					var spread = stock.bidAskSpread || 0;
-					var executionPrice =
-						order.side === "BUY"
-							? stock.ltp + spread
-							: Math.max(0.0001, stock.ltp - spread);
-					var pDecimals = stock.ltp < 10 ? 4 : 2;
-					executionPrice = parseFloat(executionPrice.toFixed(pDecimals));
+			var tickHigh = stock._prevTick || price;
+			var tickLow = stock._prevTick || price;
 
-					if (processEquityTrade(stock, order.side, fillQty, executionPrice)) {
-						stock.available_liquidity -= fillQty;
-						order.qty -= fillQty;
+			// 3 micro-ticks for realism — piped through the Hydra anti-bot engine
+			// (replaces old 0.502-biased drift; sector/market bias added as a trend hint)
+			var hydraXP = (typeof TraderProfile !== 'undefined') ? TraderProfile.xp : 0;
+			var intraTheta = sectorBias * 0.4 + marketFactor * 0.3; // sector+market as trend
+			for (var step = 0; step < microSteps; step++) {
+				var meanRevert =
+					stock.ticker === "DALAL"
+						? 0
+						: ((stock.base - price) / stock.base) * 0.0008;
+				// Hydra provides the stochastic move; add deterministic biases after
+				price = HydraEngine.getTick(stock, price, intraTheta + meanRevert, hydraXP);
+				price = Math.max(0.0001, price);
+				if (price > tickHigh) tickHigh = price;
+				if (price < tickLow) tickLow = price;
+			}
 
-						if (order.qty > 0) {
-							remainingPending.push(order);
-						} else {
-							toast(
-								"Order Completed",
-								"Market order fully filled: " + order.side + " " + order.ticker,
-								"success",
-							);
-						}
-					} else {
+			// Apply price
+			var pDec = stock.ltp < 10 ? 4 : 2;
+			stock.ltp = parseFloat(price.toFixed(pDec));
+			tickHigh = parseFloat(tickHigh.toFixed(pDec));
+			tickLow = parseFloat(tickLow.toFixed(pDec));
+
+			// Check circuit limits
+			if (!isNoCircuit) {
+				if (stock.ltp >= upperCircuit && stock.ticker !== "DALAL") {
+					stock.ltp = parseFloat(upperCircuit.toFixed(pDec));
+					if (stock.circuitHit !== "UC") {
+						stock.circuitHit = "UC";
 						toast(
-							"Order Cancelled",
-							"Market order cancelled (Insufficient Margin): " +
-								order.side +
-								" " +
-								order.qty +
-								" " +
-								order.ticker,
+							"CIRCUIT",
+							stock.ticker + " hit upper circuit +" + CIRCUIT_LIMIT * 100 + "%!",
+							"success",
+						);
+					}
+				} else if (stock.ltp <= lowerCircuit && stock.ticker !== "DALAL") {
+					stock.ltp = parseFloat(lowerCircuit.toFixed(pDec));
+					if (stock.circuitHit !== "LC") {
+						stock.circuitHit = "LC";
+						toast(
+							"CIRCUIT",
+							stock.ticker + " hit lower circuit -" + CIRCUIT_LIMIT * 100 + "%!",
 							"error",
 						);
 					}
 				} else {
-					remainingPending.push(order);
-				}
-				return;
-			}
-
-			var triggered = false;
-			if (order.orderType === "STOP") {
-				if (order.side === "BUY" || order.side === "COVER") {
-					if (ltp >= order.limitPrice) triggered = true;
-				} else if (order.side === "SELL" || order.side === "SHORT") {
-					if (ltp <= order.limitPrice) triggered = true;
+					stock.circuitHit = null;
 				}
 			} else {
-				// LIMIT
-				if (order.side === "BUY" || order.side === "COVER") {
-					if (ltp <= order.limitPrice) triggered = true;
-				} else if (order.side === "SELL" || order.side === "SHORT") {
-					if (ltp >= order.limitPrice) triggered = true;
+				stock.circuitHit = null; // Crypto/FX never freeze
+			}
+
+			stock.history.push(stock.ltp);
+			if (stock.history.length > state.historyLen) stock.history.shift();
+
+			// OHLCV candle aggregation
+			var avgTickVol = Math.floor(stock.baseVolume / 390); // 390 minutes in a standard trading day
+			var volFluctuation = 0.5 + Math.random(); // 0.5x to 1.5x variance
+			var tickVol = Math.floor(avgTickVol * volFluctuation);
+			if (tickVol < 1) tickVol = 1;
+
+			stock.volumeHistory.push(tickVol);
+			if (stock.volumeHistory.length > state.historyLen)
+				stock.volumeHistory.shift();
+			if (!stock.currentCandle) {
+				stock.currentCandle = {
+					o: stock._prevTick || stock.ltp,
+					h: Math.max(tickHigh, stock.ltp),
+					l: Math.min(tickLow, stock.ltp),
+					c: stock.ltp,
+					v: tickVol,
+					ticks: 1,
+				};
+			} else {
+				if (stock.ltp > stock.currentCandle.h) stock.currentCandle.h = stock.ltp;
+				if (stock.ltp < stock.currentCandle.l) stock.currentCandle.l = stock.ltp;
+				stock.currentCandle.c = stock.ltp;
+				stock.currentCandle.v += tickVol;
+				stock.currentCandle.ticks++;
+				if (stock.currentCandle.ticks >= state.candlePeriod) {
+					stock.ohlcHistory.push({
+						o: stock.currentCandle.o,
+						h: stock.currentCandle.h,
+						l: stock.currentCandle.l,
+						c: stock.currentCandle.c,
+						v: stock.currentCandle.v,
+					});
+					if (stock.ohlcHistory.length > 2000) stock.ohlcHistory.shift();
+					stock.currentCandle = null;
 				}
 			}
 
-			if (triggered) {
-				// Block execution on circuit hit
-				if (
-					stock.circuitHit === "UC" &&
-					(order.side === "BUY" || order.side === "COVER")
-				) {
+			// Volume simulation (realistic ranges based on true asset liquidity)
+			stock.volume += tickVol;
+			stock.available_liquidity = tickVol * 1.5; // Minute volume + a bit of ambient depth
+			stock.bidAskSpread = stock.ltp * (Math.random() * 0.001 + 0.0001); // 0.01% to 0.1% spread
+		});
+
+		// --- 2. Update Concurrent Indices ---
+		marketStocks.forEach(function (indexStock) {
+			var constituents = INDEX_CONSTITUENTS[indexStock.ticker];
+			if (!constituents) return;
+			if (!isMarketOpen(indexStock, state.time)) return;
+			
+			indexStock._prevTick = indexStock.ltp;
+			
+			var prevTotalCap = 0;
+			var currentTotalCap = 0;
+			var tickVolSum = 0;
+			
+			constituents.forEach(function(tk) {
+				var comp = stockMap[tk];
+				if (comp) {
+					var shares = comp.shares || 100000000;
+					prevTotalCap += comp._prevTick * shares;
+					currentTotalCap += comp.ltp * shares;
+					tickVolSum += (comp.volumeHistory[comp.volumeHistory.length - 1] || 0);
+				}
+			});
+			
+			var weightedReturn = prevTotalCap > 0 ? (currentTotalCap - prevTotalCap) / prevTotalCap : 0;
+			indexStock.ltp = parseFloat((indexStock.ltp * (1 + weightedReturn)).toFixed(2));
+			
+			indexStock.history.push(indexStock.ltp);
+			if (indexStock.history.length > state.historyLen) indexStock.history.shift();
+			
+			var tickVol = Math.max(1, Math.floor(tickVolSum * 0.1)); // Index volume is a fraction of total constituent volume
+			indexStock.volumeHistory.push(tickVol);
+			if (indexStock.volumeHistory.length > state.historyLen)
+				indexStock.volumeHistory.shift();
+			indexStock.volume += tickVol;
+			
+			if (!indexStock.currentCandle) {
+				indexStock.currentCandle = {
+					o: indexStock.ltp, h: indexStock.ltp, l: indexStock.ltp, c: indexStock.ltp, v: tickVol, ticks: 1
+				};
+			} else {
+				if (indexStock.ltp > indexStock.currentCandle.h) indexStock.currentCandle.h = indexStock.ltp;
+				if (indexStock.ltp < indexStock.currentCandle.l) indexStock.currentCandle.l = indexStock.ltp;
+				indexStock.currentCandle.c = indexStock.ltp;
+				indexStock.currentCandle.v += tickVol;
+				indexStock.currentCandle.ticks++;
+				if (indexStock.currentCandle.ticks >= state.candlePeriod) {
+					indexStock.ohlcHistory.push({
+						o: indexStock.currentCandle.o, h: indexStock.currentCandle.h, l: indexStock.currentCandle.l, c: indexStock.currentCandle.c, v: indexStock.currentCandle.v
+					});
+					if (indexStock.ohlcHistory.length > 2000) indexStock.ohlcHistory.shift();
+					indexStock.currentCandle = null;
+				}
+			}
+		});
+
+		// --- Legacy redundant UI variables (preserved for backward compatibility if needed) ---
+		var legacyNifty = stockMap["NIFTY 50"];
+		var legacySensex = stockMap["SENSEX"];
+		if (legacyNifty) state.niftyValue = legacyNifty.ltp;
+		if (legacySensex) state.sensexValue = legacySensex.ltp;
+		state.niftyHistory.push(state.niftyValue);
+		if (state.niftyHistory.length > state.historyLen) state.niftyHistory.shift();
+
+		// Market sentiment (-100 to +100)
+		var gainers = marketStocks.filter(function (s) {
+			return s.ltp >= s.open;
+		}).length;
+		state.sentiment = Math.round((gainers / marketStocks.length - 0.5) * 200);
+
+		// SL / Target auto-trigger
+		Object.keys(state.slTargets).forEach(function (ticker) {
+			var st = state.slTargets[ticker];
+			if (!st) return;
+			var pos = state.positions[ticker];
+			if (!pos) {
+				delete state.slTargets[ticker];
+				return;
+			}
+			var stock = stockMap[ticker];
+			if (!stock) return;
+			var isLong = pos.qty > 0;
+			if (st.sl && isLong && stock.ltp <= st.sl) {
+				toast(
+					"\u26d4 SL Hit",
+					ticker + " stop loss triggered @ \u20b9" + stock.ltp.toFixed(2),
+					"error",
+				);
+				closeEquityPosition(ticker, true, true); // _isAutoClose = true → Discipline Bonus XP
+				delete state.slTargets[ticker];
+			} else if (st.sl && !isLong && stock.ltp >= st.sl) {
+				toast(
+					"\u26d4 SL Hit",
+					ticker + " stop loss triggered @ \u20b9" + stock.ltp.toFixed(2),
+					"error",
+				);
+				closeEquityPosition(ticker, true, true); // _isAutoClose = true → Discipline Bonus XP
+				delete state.slTargets[ticker];
+			} else if (st.target && isLong && stock.ltp >= st.target) {
+				toast(
+					"\u2705 Target Hit",
+					ticker + " target reached @ \u20b9" + stock.ltp.toFixed(2),
+					"success",
+				);
+				closeEquityPosition(ticker, true, true); // _isAutoClose = true → Discipline Bonus XP
+				delete state.slTargets[ticker];
+			} else if (st.target && !isLong && stock.ltp <= st.target) {
+				toast(
+					"\u2705 Target Hit",
+					ticker + " target reached @ \u20b9" + stock.ltp.toFixed(2),
+					"success",
+				);
+				closeEquityPosition(ticker, true, true); // _isAutoClose = true → Discipline Bonus XP
+				delete state.slTargets[ticker];
+			}
+		});
+
+		// Forex Sync
+		if (stockMap["USDINR"]) EXCHANGE_RATES.USD = stockMap["USDINR"].ltp;
+		if (stockMap["CNYINR"]) EXCHANGE_RATES.CNY = stockMap["CNYINR"].ltp;
+		if (stockMap["JPYINR"]) EXCHANGE_RATES.JPY = stockMap["JPYINR"].ltp;
+
+		// Margin Check Loop
+		if (state.margin < 0) {
+			if (state.marginCallThrottle <= 0) {
+				toast(
+					"MARGIN CALL",
+					"Your cash balance is below zero (\u20b9" +
+						state.margin.toFixed(2) +
+						")! Square off some positions to avoid forced liquidation.",
+					"error",
+				);
+				state.marginCallThrottle = 15; // throttle warning toast
+			} else {
+				state.marginCallThrottle--;
+			}
+		} else {
+			state.marginCallThrottle = 0;
+		}
+
+		// Forced Liquidation Check (1% of starting capital OR portfolio completely wiped out)
+		var portVal = calcPortfolioValue();
+		var hasOpenPositions =
+			Object.keys(state.positions).length > 0 ||
+			Object.keys(state.optionsPositions).length > 0;
+		if (portVal <= INITIAL_MARGIN * 0.01 && hasOpenPositions) {
+			liquidateAllForced();
+		}
+
+		// Pending Order Matching
+		if (state.pendingOrders && state.pendingOrders.length > 0) {
+			var remainingPending = [];
+			state.pendingOrders.forEach(function (order) {
+				var stock = stockMap[order.ticker];
+				if (!stock) return;
+				if (!isMarketOpen(stock, state.time)) {
 					remainingPending.push(order);
-				} else if (
-					stock.circuitHit === "LC" &&
-					(order.side === "SELL" || order.side === "SHORT")
-				) {
-					remainingPending.push(order);
-				} else {
+					return;
+				}
+				var ltp = stock.ltp;
+
+				if (order.orderType === "MARKET") {
 					var avail = stock.available_liquidity || 0;
 					if (avail > 0) {
 						var fillQty = Math.min(order.qty, avail);
-						var fillPrice = stock.ltp;
+						var spread = stock.bidAskSpread || 0;
+						var executionPrice =
+							order.side === "BUY"
+								? stock.ltp + spread
+								: Math.max(0.0001, stock.ltp - spread);
+						var pDecimals = stock.ltp < 10 ? 4 : 2;
+						executionPrice = parseFloat(executionPrice.toFixed(pDecimals));
 
-						if (processEquityTrade(stock, order.side, fillQty, fillPrice)) {
+						if (processEquityTrade(stock, order.side, fillQty, executionPrice)) {
 							stock.available_liquidity -= fillQty;
 							order.qty -= fillQty;
 
-							var oName = order.orderType === "STOP" ? "STOP" : "Limit";
 							if (order.qty > 0) {
 								remainingPending.push(order);
 							} else {
 								toast(
-									"Order Executed",
-									oName +
-										" order fully filled: " +
-										order.side +
-										" " +
-										order.ticker +
-										" @ " +
-										fillPrice.toFixed(2),
+									"Order Completed",
+									"Market order fully filled: " + order.side + " " + order.ticker,
 									"success",
 								);
 							}
 						} else {
-							var oName = order.orderType === "STOP" ? "STOP" : "Limit";
 							toast(
 								"Order Cancelled",
-								oName +
-									" order cancelled (Insufficient Margin): " +
+								"Market order cancelled (Insufficient Margin): " +
 									order.side +
 									" " +
 									order.qty +
@@ -6343,18 +6270,96 @@ function tickMinute() {
 					} else {
 						remainingPending.push(order);
 					}
+					return;
 				}
-			} else {
-				remainingPending.push(order);
-			}
-		});
-		state.pendingOrders = remainingPending;
+
+				var triggered = false;
+				if (order.orderType === "STOP") {
+					if (order.side === "BUY" || order.side === "COVER") {
+						if (ltp >= order.limitPrice) triggered = true;
+					} else if (order.side === "SELL" || order.side === "SHORT") {
+						if (ltp <= order.limitPrice) triggered = true;
+					}
+				} else {
+					// LIMIT
+					if (order.side === "BUY" || order.side === "COVER") {
+						if (ltp <= order.limitPrice) triggered = true;
+					} else if (order.side === "SELL" || order.side === "SHORT") {
+						if (ltp >= order.limitPrice) triggered = true;
+					}
+				}
+
+				if (triggered) {
+					// Block execution on circuit hit
+					if (
+						stock.circuitHit === "UC" &&
+						(order.side === "BUY" || order.side === "COVER")
+					) {
+						remainingPending.push(order);
+					} else if (
+						stock.circuitHit === "LC" &&
+						(order.side === "SELL" || order.side === "SHORT")
+					) {
+						remainingPending.push(order);
+					} else {
+						var avail = stock.available_liquidity || 0;
+						if (avail > 0) {
+							var fillQty = Math.min(order.qty, avail);
+							var fillPrice = stock.ltp;
+
+							if (processEquityTrade(stock, order.side, fillQty, fillPrice)) {
+								stock.available_liquidity -= fillQty;
+								order.qty -= fillQty;
+
+								var oName = order.orderType === "STOP" ? "STOP" : "Limit";
+								if (order.qty > 0) {
+									remainingPending.push(order);
+								} else {
+									toast(
+										"Order Executed",
+										oName +
+											" order fully filled: " +
+											order.side +
+											" " +
+											order.ticker +
+											" @ " +
+											fillPrice.toFixed(2),
+										"success",
+									);
+								}
+							} else {
+								var oName = order.orderType === "STOP" ? "STOP" : "Limit";
+								toast(
+									"Order Cancelled",
+									oName +
+										" order cancelled (Insufficient Margin): " +
+										order.side +
+										" " +
+										order.qty +
+										" " +
+										order.ticker,
+									"error",
+								);
+							}
+						} else {
+							remainingPending.push(order);
+						}
+					}
+				} else {
+					remainingPending.push(order);
+				}
+			});
+			state.pendingOrders = remainingPending;
+		}
+
+		// News events
+		if (Math.random() < NEWS_FREQ) triggerNewsEvent();
+
+		renderAll();
+	} catch (e) {
+		document.body.innerHTML += "<div style='color:red; font-size: 20px; position: fixed; top: 0; left: 0; z-index: 9999; background: white; padding: 20px; max-width: 100vw; word-wrap: break-word;'><strong>TICK ERROR:</strong> " + e.message + "<br><pre>" + e.stack + "</pre></div>";
+		throw e;
 	}
-
-	// News events
-	if (Math.random() < NEWS_FREQ) triggerNewsEvent();
-
-	renderAll();
 }
 
 // ==================== NEW DAY ====================
@@ -7149,6 +7154,14 @@ function processEquityTrade(stock, side, qty, price) {
 					")",
 				"success",
 			];
+			
+			// Award XP for covering short
+			if (typeof awardTradeXP === 'function' && pos.avgPrice > 0) {
+				var pnlFraction = (pos.avgPrice - price) / pos.avgPrice;
+				var durationSec = currentPos.openTimeMs ? (Date.now() - currentPos.openTimeMs) / 1000 : 0;
+				var xpGained = awardTradeXP(pnlFraction, durationSec, false);
+				if (xpGained > 0 && typeof renderXPBadge === 'function') renderXPBadge();
+			}
 		} else {
 			if (nextMargin < costINR) {
 				toast("Error", "Insufficient margin for BUY", "error");
@@ -7217,6 +7230,15 @@ function processEquityTrade(stock, side, qty, price) {
 					"success",
 				];
 			}
+			
+			// Award XP for selling long position
+			if (typeof awardTradeXP === 'function' && currentPos.avgPrice > 0) {
+				var pnlFraction = (price - currentPos.avgPrice) / currentPos.avgPrice;
+				var durationSec = currentPos.openTimeMs ? (Date.now() - currentPos.openTimeMs) / 1000 : 0;
+				var xpGained = awardTradeXP(pnlFraction, durationSec, false);
+				if (xpGained > 0 && typeof renderXPBadge === 'function') renderXPBadge();
+			}
+			
 			if (pos.qty === 0) pos.avgPrice = 0;
 		} else {
 			var shortMargin2 = price * qty * 0.2; // native
@@ -7278,6 +7300,14 @@ function processEquityTrade(stock, side, qty, price) {
 	if (pos.qty === 0) {
 		delete state.positions[stock.ticker];
 	} else {
+		// Stamp wall-clock open time for XP duration calculation on close
+		if (!state.positions[stock.ticker] || state.positions[stock.ticker].qty === 0) {
+			pos.openTimeMs = Date.now();
+		} else {
+			// Preserve existing openTime on position add (average-in)
+			pos.openTimeMs = (state.positions[stock.ticker] && state.positions[stock.ticker].openTimeMs)
+				|| Date.now();
+		}
 		state.positions[stock.ticker] = pos;
 	}
 
@@ -7569,6 +7599,7 @@ function executeOptionTrade(side) {
 				lots: 0,
 				avgPremium: 0,
 				lotSize: lotSize,
+				openTimeMs: Date.now(),
 			};
 		}
 		var oldTotal = pos.lots * pos.lotSize * pos.avgPremium;
@@ -7610,6 +7641,14 @@ function executeOptionTrade(side) {
 		}
 		state.margin += costINR - brokerage; // convert proceeds to INR minus brokerage
 		state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
+		
+		if (typeof awardTradeXP === 'function' && pos2.avgPremium > 0) {
+			var pnlFraction = (premium - pos2.avgPremium) / pos2.avgPremium;
+			var durationSec = pos2.openTimeMs ? (Date.now() - pos2.openTimeMs) / 1000 : 0;
+			var xpGained = awardTradeXP(pnlFraction, durationSec, false);
+			if (xpGained > 0 && typeof renderXPBadge === 'function') renderXPBadge();
+		}
+		
 		pos2.lots -= lots;
 		if (pos2.lots === 0) delete state.optionsPositions[optionId];
 		toast(
@@ -9138,7 +9177,7 @@ function renderPositionCard(stock) {
 }
 
 // ==================== CLOSE POSITION HELPERS ====================
-function closeEquityPosition(ticker, forceInstant) {
+function closeEquityPosition(ticker, forceInstant, _isAutoClose) {
 	var pos = state.positions[ticker];
 	var stock = stockMap[ticker];
 	if (!pos || !stock) return;
@@ -9154,6 +9193,16 @@ function closeEquityPosition(ticker, forceInstant) {
 			? (pos.avgPrice - price) * absQty
 			: (price - pos.avgPrice) * absQty; // native
 		var pnlINR = pnl * fxRate;
+
+		// ── PILLAR 1: Award XP when a forced-close trade completes ────────
+		if (typeof awardTradeXP === 'function' && pos.avgPrice > 0) {
+			var pnlFraction = (price - pos.avgPrice) / pos.avgPrice;
+			if (isShort) pnlFraction = -pnlFraction;
+			var durationSec = pos.openTimeMs ? (Date.now() - pos.openTimeMs) / 1000 : 0;
+			var xpGained = awardTradeXP(pnlFraction, durationSec, !!_isAutoClose);
+			if (xpGained > 0 && typeof renderXPBadge === 'function') renderXPBadge();
+		}
+		// ─────────────────────────────────────────────────────────────────
 
 		if (isShort) {
 			state.margin += (pos.avgPrice * absQty * 0.2 + pnl) * fxRate;
@@ -9254,6 +9303,13 @@ function closeOptionPosition(id, silent) {
 	var pnlNative = (curPrem - pos.avgPremium) * totalQty;
 	var pnlINR = pnlNative * fxRate;
 	state.margin += curPrem * totalQty * fxRate; // convert proceeds to INR
+	
+	if (typeof awardTradeXP === 'function' && pos.avgPremium > 0) {
+		var pnlFraction = (curPrem - pos.avgPremium) / pos.avgPremium;
+		var durationSec = pos.openTimeMs ? (Date.now() - pos.openTimeMs) / 1000 : 0;
+		var xpGained = awardTradeXP(pnlFraction, durationSec, true);
+		if (xpGained > 0 && typeof renderXPBadge === 'function') renderXPBadge();
+	}
 
 	state.tradeHistory.unshift({
 		time: formatTime(state.time),
@@ -11142,3 +11198,221 @@ function toggleAnalyticsView() {
         });
     }
 })();
+
+// ====================================================================================
+// PILLAR 3: EUROPEAN BLACK-SCHOLES CHAIN — Throttled viewport-aware refresh (2,500ms)
+// ====================================================================================
+
+/**
+ * Pure BSM pricer.  Mirrors calcGreeks() but uses the stock's live implied
+ * volatility (vol * VOL_MULTIPLIER) rather than the hardcoded 0.25 sigma.
+ *
+ * @param {number} S     - Spot price
+ * @param {number} K     - Strike price
+ * @param {number} T     - Time in years
+ * @param {number} r     - Risk-free rate (e.g. 0.05)
+ * @param {number} sigma - IV (e.g. 0.25)
+ * @param {string} type  - 'CALL' | 'PUT'
+ * @returns {number} Option fair value
+ */
+function priceEuropeanOption(S, K, T, r, sigma, type) {
+	T = Math.max(T, 0.001);
+	var d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+	var d2 = d1 - sigma * Math.sqrt(T);
+
+	if (type === 'CALL') {
+		return S * normalCDF(d1) - K * Math.exp(-r * T) * normalCDF(d2);
+	}
+	return K * Math.exp(-r * T) * normalCDF(-d2) - S * normalCDF(-d1);
+}
+
+/**
+ * Abramowitz & Stegun approximation for the standard Normal CDF.
+ * Max error: 7.5e-8.  No external libraries needed.
+ */
+function normalCDF(x) {
+	var sign = x < 0 ? -1 : 1;
+	var xAbs = Math.abs(x) / Math.SQRT2;
+	// A&S coefficients 7.1.26
+	var t   = 1.0 / (1.0 + 0.3275911 * xAbs);
+	var erf = 1.0 - (((( 1.061405429  * t
+	                    - 1.453152027) * t
+	                    + 1.421413741) * t
+	                    - 0.284496736) * t
+	                    + 0.254829592) * t * Math.exp(-xAbs * xAbs);
+	return 0.5 * (1.0 + sign * erf);
+}
+
+/**
+ * Implied Volatility getter: live stock vol scaled by the global multiplier.
+ * Respects window.VOL_MULTIPLIER if the user has adjusted it in Settings.
+ */
+function getIV(stock) {
+	return stock.vol * (window.VOL_MULTIPLIER || 1.0);
+}
+
+/**
+ * renderEuropeanChain: reprice the BSM chain for the currently active stock
+ * but ONLY for <tr> rows that are inside the user's visible viewport.
+ * Runs on a 2,500ms throttle — not every 1,000ms tick — to keep the main
+ * thread free for chart rendering.
+ */
+function renderEuropeanChain() {
+	// Level gate: only Level 2+ users can see European options chain
+	if (typeof TraderProfile === 'undefined' || TraderProfile.level < 2) return;
+
+	var stock = state && state.activeStock;
+	if (!stock) return;
+
+	// Only run when the options form/chain is actually visible
+	var optionsForm = document.getElementById('options-form');
+	if (!optionsForm || optionsForm.classList.contains('hidden')) return;
+
+	var S     = stock.ltp;
+	var sigma = getIV(stock);
+	var r     = 0.05;
+	var days  = (typeof getExpiryDays === 'function' ? getExpiryDays() : 20)
+	          - (typeof getDayFraction === 'function' ? getDayFraction() : 0);
+	var T     = Math.max(0.001, days) / 252.0;
+
+	// Viewport-aware: only update rows whose <tr> bounding rect is visible
+	var bsmRows = document.querySelectorAll('[data-bsm-strike]');
+	if (!bsmRows.length) return;
+
+	bsmRows.forEach(function (row) {
+		var rect = row.getBoundingClientRect();
+		// Skip rows that are scrolled out of view
+		if (rect.bottom < 0 || rect.top > window.innerHeight) return;
+
+		var K        = parseFloat(row.getAttribute('data-bsm-strike'));
+		var callEl   = row.querySelector('.bsm-call-price');
+		var putEl    = row.querySelector('.bsm-put-price');
+		if (!callEl && !putEl) return;
+
+		var callPx = priceEuropeanOption(S, K, T, r, sigma, 'CALL');
+		var putPx  = priceEuropeanOption(S, K, T, r, sigma, 'PUT');
+
+		if (callEl) callEl.textContent = callPx.toFixed(2);
+		if (putEl)  putEl.textContent  = putPx.toFixed(2);
+	});
+}
+
+// Boot the 2,500ms European chain refresh interval once the DOM is ready.
+// Uses a simple guard so multiple calls to this block don't stack intervals.
+(function initEuropeanChainInterval() {
+	if (window._europeanChainInterval) clearInterval(window._europeanChainInterval);
+	window._europeanChainInterval = setInterval(renderEuropeanChain, 2500);
+}());
+
+
+// ====================================================================================
+// PILLAR 4: AMERICAN CRR TREE — Dedicated Web Worker (off main thread)
+// ====================================================================================
+
+/**
+ * _americanPricerWorker: singleton Web Worker running pricerWorker.js.
+ * All American option price updates flow through postMessage/onmessage
+ * so the main thread never blocks during O(N²) tree traversal.
+ */
+(function initAmericanPricerWorker() {
+	// Web Workers require a real HTTP server (not file://).
+	// Guard gracefully for local file:// opens.
+	if (typeof Worker === 'undefined') return;
+
+	try {
+		window._americanPricerWorker = new Worker('js/pricerWorker.js');
+	} catch (e) {
+		console.warn('[Hydra] CRR Worker could not be instantiated:', e.message);
+		return;
+	}
+
+	/**
+	 * Receive CRR results from the worker and update the American options
+	 * section of the UI asynchronously — this callback runs on the main
+	 * thread but the heavy computation already finished off-thread.
+	 */
+	window._americanPricerWorker.onmessage = function (e) {
+		// Level gate: only Level 3+ users trade American options
+		if (typeof TraderProfile === 'undefined' || TraderProfile.level < 3) return;
+
+		var data = e.data;
+		// Update CRR call/put price cells if they exist in the DOM
+		var callEl = document.getElementById('american-call-price');
+		var putEl  = document.getElementById('american-put-price');
+		var callDeltaEl = document.getElementById('american-call-delta');
+		var putDeltaEl  = document.getElementById('american-put-delta');
+		var callGammaEl = document.getElementById('american-call-gamma');
+		var putGammaEl  = document.getElementById('american-put-gamma');
+
+		if (callEl) callEl.textContent = (data.callPrice || 0).toFixed(4);
+		if (putEl)  putEl.textContent  = (data.putPrice  || 0).toFixed(4);
+		if (callDeltaEl) callDeltaEl.textContent = (data.callDelta || 0).toFixed(4);
+		if (putDeltaEl)  putDeltaEl.textContent  = (data.putDelta  || 0).toFixed(4);
+		if (callGammaEl) callGammaEl.textContent = (data.callGamma || 0).toFixed(5);
+		if (putGammaEl)  putGammaEl.textContent  = (data.putGamma  || 0).toFixed(5);
+
+		// Also update any [data-crr-strike] rows in the American chain
+		var crrRows = document.querySelectorAll('[data-crr-strike]');
+		crrRows.forEach(function (row) {
+			var K = parseFloat(row.getAttribute('data-crr-strike'));
+			if (Math.abs(K - (data._K || 0)) < 0.0001) {
+				var callCell = row.querySelector('.crr-call-price');
+				var putCell  = row.querySelector('.crr-put-price');
+				if (callCell) callCell.textContent = (data.callPrice || 0).toFixed(4);
+				if (putCell)  putCell.textContent  = (data.putPrice  || 0).toFixed(4);
+			}
+		});
+	};
+
+	window._americanPricerWorker.onerror = function (err) {
+		console.error('[Hydra] CRR Worker error:', err.message);
+	};
+
+	/**
+	 * dispatchAmericanPriceRequest: called when the underlying ticks or
+	 * the user changes the selected American option strike.
+	 * Throttled to avoid flooding the worker — at most once per 2,500ms.
+	 */
+	var _lastWorkerDispatch = 0;
+	window.dispatchAmericanPriceRequest = function (stock, K, daysToExpiry) {
+		if (typeof TraderProfile === 'undefined' || TraderProfile.level < 3) return;
+		if (!window._americanPricerWorker) return;
+
+		var now = Date.now();
+		if (now - _lastWorkerDispatch < 2500) return; // throttle
+		_lastWorkerDispatch = now;
+
+		var S     = stock.ltp;
+		var sigma = (typeof getIV === 'function') ? getIV(stock) : (stock.vol || 0.25);
+		var r     = 0.05;
+		var days  = (daysToExpiry !== undefined ? daysToExpiry : 20)
+		          - ((typeof getDayFraction === 'function') ? getDayFraction() : 0);
+		var T     = Math.max(0, days) / 252.0;
+
+		window._americanPricerWorker.postMessage({ S: S, K: K, T: T, r: r, sigma: sigma, _K: K });
+	};
+
+	// Hook into the existing tick loop: every time tickMinute fires,
+	// dispatch a worker update if an American option strike is selected and
+	// the user is Level 3.
+	var _origTickMinute = typeof tickMinute === 'function' ? tickMinute : null;
+	// We patch via a wrapper defined after app.js bootstraps.
+	// The listener below fires after each market tick event if needed.
+	window.addEventListener('marketTick', function () {
+		if (typeof TraderProfile === 'undefined' || TraderProfile.level < 3) return;
+		var stock = state && state.activeStock;
+		if (!stock) return;
+		var strikeEl = document.getElementById('strike-price');
+		if (!strikeEl || !strikeEl.value) return;
+		var K = parseFloat(strikeEl.value);
+		if (isNaN(K)) return;
+		var expiryDays = (typeof getExpiryDays === 'function') ? getExpiryDays() : 20;
+		window.dispatchAmericanPriceRequest(stock, K, expiryDays);
+	});
+}());
+
+// Expose XP badge render on initial load (badge may not exist until CSS loads)
+window.addEventListener('DOMContentLoaded', function () {
+	if (typeof renderXPBadge === 'function') renderXPBadge();
+});
+

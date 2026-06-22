@@ -3,6 +3,150 @@
  * Relies on global `state`, `marketStocks`, and `Chart` objects from app.js
  */
 
+// ==================== PILLAR 1: GAMIFIED XP PROGRESSION ENGINE ====================
+
+/**
+ * Global Trader Profile — tracks XP, level, and unlocked derivative tiers.
+ *
+ * Level Tiers:
+ *   Level 1 (0–999 XP)   : Spot trading only
+ *   Level 2 (1,000+ XP)  : Unlocks European options
+ *   Level 3 (4,000+ XP)  : Unlocks American options
+ */
+var TraderProfile = {
+    xp: 0,
+    level: 1,
+    unlockedDerivatives: ['SPOT']
+};
+
+/**
+ * XP thresholds and the derivative tiers they unlock.
+ * Ordered ascending so we can walk them in a single pass.
+ */
+var XP_THRESHOLDS = [
+    { xp: 1000, level: 2, derivatives: ['SPOT', 'EUROPEAN'] },
+    { xp: 4000, level: 3, derivatives: ['SPOT', 'EUROPEAN', 'AMERICAN'] }
+];
+
+/**
+ * Award XP on trade close.  Call this from closeEquityPosition() or wherever
+ * a trade is definitively closed.
+ *
+ * @param {number}  pnlPercentage       - Realised PnL as a fraction (e.g. 0.10 = +10%)
+ * @param {number}  tradeDurationSeconds - How long the position was open (wall-clock seconds)
+ * @param {boolean} wasAutoClosed        - true if closed by SL/TP trigger, not manual click
+ */
+function awardTradeXP(pnlPercentage, tradeDurationSeconds, wasAutoClosed) {
+    // ── Anti-Spam Gate ─────────────────────────────────────────────────────
+    if (tradeDurationSeconds < 10) return 0;
+
+    // ── Base execution XP ─────────────────────────────────────────────────
+    var xpEarned = 15;
+
+    // ── PnL Modifier: pnlPercentage is a fraction; *100 → percent, *250 → XP
+    // e.g. +10% gain → +10 * 250 = 2500... divide pnl% / 100 for the fraction
+    // Spec: PnL_Percentage * 250 where Percentage = the number (e.g. 10 for +10%)
+    var pnlPercent = pnlPercentage * 100; // Convert fraction to percentage points
+    xpEarned += pnlPercent * 250;
+
+    // ── Discipline Bonus: closed via SL/TP instead of manual panic ────────
+    if (wasAutoClosed) {
+        xpEarned += 20;
+    }
+
+    // ── Floor: no trade can award fewer than +5 XP ────────────────────────
+    if (xpEarned < 5) xpEarned = 5;
+
+    // ── Apply XP and check for level-ups ─────────────────────────────────
+    TraderProfile.xp += xpEarned;
+    _checkLevelUp();
+
+    return xpEarned;
+}
+
+/**
+ * Internal: walk the XP_THRESHOLDS table and fire onLevelUp events
+ * whenever a threshold is crossed.  Safe to call on every XP award.
+ */
+function _checkLevelUp() {
+    for (var i = 0; i < XP_THRESHOLDS.length; i++) {
+        var tier = XP_THRESHOLDS[i];
+        if (TraderProfile.xp >= tier.xp && TraderProfile.level < tier.level) {
+            TraderProfile.level = tier.level;
+            TraderProfile.unlockedDerivatives = tier.derivatives.slice();
+            window.dispatchEvent(
+                new CustomEvent('onLevelUp', { detail: tier.level })
+            );
+            _showLevelUpToast(tier.level, tier.derivatives);
+        }
+    }
+}
+
+/**
+ * Visual feedback when a level-up fires.
+ * Uses the existing `toast()` helper from app.js if available.
+ */
+function _showLevelUpToast(newLevel, derivatives) {
+    var tierName = newLevel === 2 ? 'European Options' : 'American Options';
+    var msg = '🎉 Level ' + newLevel + ' reached! Unlocked: ' + tierName;
+    if (typeof toast === 'function') {
+        toast('Level Up! ▲ Tier ' + newLevel, msg, 'success');
+    } else {
+        console.info('[TraderProfile]', msg);
+    }
+}
+
+/**
+ * Render the XP/level HUD badge in the toolbar.
+ * Call this after every awardTradeXP() and on initial page load.
+ */
+function renderXPBadge() {
+    var el = document.getElementById('xp-badge');
+    if (!el) return;
+
+    var nextThreshold = null;
+    for (var i = 0; i < XP_THRESHOLDS.length; i++) {
+        if (TraderProfile.xp < XP_THRESHOLDS[i].xp) {
+            nextThreshold = XP_THRESHOLDS[i].xp;
+            break;
+        }
+    }
+
+    var progress = 0;
+    var prevThreshold = 0;
+    if (TraderProfile.level === 1) {
+        prevThreshold = 0;
+        nextThreshold = nextThreshold || 1000;
+    } else if (TraderProfile.level === 2) {
+        prevThreshold = 1000;
+        nextThreshold = nextThreshold || 4000;
+    } else {
+        prevThreshold = 4000;
+        nextThreshold = null;
+    }
+
+    if (nextThreshold !== null) {
+        progress = Math.min(100, ((TraderProfile.xp - prevThreshold) / (nextThreshold - prevThreshold)) * 100);
+    } else {
+        progress = 100;
+    }
+
+    var tierLabels = { 1: 'Spot', 2: 'European', 3: 'American' };
+    var tierLabel  = tierLabels[TraderProfile.level] || 'Max';
+
+    el.innerHTML =
+        '<span class="xp-level">Tier ' + TraderProfile.level + ' · ' + tierLabel + '</span>' +
+        '<span class="xp-value">' + Math.floor(TraderProfile.xp) + ' XP</span>' +
+        '<div class="xp-bar-track"><div class="xp-bar-fill" style="width:' + progress.toFixed(1) + '%"></div></div>';
+}
+
+// ── Wire level-up event to re-render badge ────────────────────────────────
+window.addEventListener('onLevelUp', function () {
+    renderXPBadge();
+});
+
+// ==================== END PILLAR 1 ====================
+
 var analyticsChartInstance = null;
 var currentAnalyticsTicker = null; // Track to prevent unnecessary chart rebuilds
 

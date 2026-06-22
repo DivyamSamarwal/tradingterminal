@@ -324,6 +324,61 @@ body {
 .ctrl-btn.on { background: var(--accent); color: #fff; }
 .ctrl-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
 
+/* ========== XP BADGE (Pillar 1 — Trader Progression HUD) ========== */
+.xp-badge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 5px 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    min-width: 110px;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+}
+.xp-badge-wrap:hover { border-color: var(--accent); }
+.xp-badge-wrap::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(41,98,255,0.06) 0%, transparent 70%);
+    pointer-events: none;
+}
+.xp-level {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent);
+    line-height: 1;
+}
+.xp-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.xp-bar-track {
+    width: 100%;
+    height: 3px;
+    background: var(--bg-3);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-top: 1px;
+}
+.xp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent) 0%, #6eb4ff 100%);
+    border-radius: 99px;
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 6px rgba(41, 98, 255, 0.6);
+}
+
 
 /* ========== MAIN GRID ========== */
 .main-grid {
@@ -2069,7 +2124,6 @@ body.light .nmb-fx, body.theme-sepia .nmb-fx     { color: #0097a7; }
         min-width: 0;
         width: 100%;
     }
-    }
 }
 
 /* ========== PREMIUM ADDITIONS ========== */
@@ -2743,98 +2797,6 @@ body.light .dropdown-option:hover, body.theme-sepia .dropdown-option:hover {
   background: var(--red-dim);
   color: var(--red);
 }
-
- / *   = = = = = = = = = = = = = = = = = = = =   C U S T O M   S E T T I N G S   U I   = = = = = = = = = = = = = = = = = = = =   * / 
- . c u s t o m - s l i d e r   { 
-         - w e b k i t - a p p e a r a n c e :   n o n e ; 
-         w i d t h :   1 0 0 % ; 
-         h e i g h t :   6 p x ; 
-         b o r d e r - r a d i u s :   3 p x ; 
-         b a c k g r o u n d :   v a r ( - - b g - 3 ) ; 
-         o u t l i n e :   n o n e ; 
-         m a r g i n :   1 0 p x   0 ; 
- } 
- . c u s t o m - s l i d e r : : - w e b k i t - s l i d e r - t h u m b   { 
-         - w e b k i t - a p p e a r a n c e :   n o n e ; 
-         a p p e a r a n c e :   n o n e ; 
-         w i d t h :   1 8 p x ; 
-         h e i g h t :   1 8 p x ; 
-         b o r d e r - r a d i u s :   5 0 % ; 
-         b a c k g r o u n d :   v a r ( - - a c c e n t ) ; 
-         c u r s o r :   p o i n t e r ; 
-         b o x - s h a d o w :   0   0   5 p x   r g b a ( 0 , 0 , 0 , 0 . 2 ) ; 
-         t r a n s i t i o n :   t r a n s f o r m   0 . 1 s ; 
- } 
- . c u s t o m - s l i d e r : : - w e b k i t - s l i d e r - t h u m b : h o v e r   { 
-         t r a n s f o r m :   s c a l e ( 1 . 2 ) ; 
- } 
- 
- . t o g g l e - s w i t c h   { 
-         p o s i t i o n :   r e l a t i v e ; 
-         d i s p l a y :   i n l i n e - b l o c k ; 
-         w i d t h :   4 4 p x ; 
-         h e i g h t :   2 4 p x ; 
- } 
- . t o g g l e - s w i t c h   i n p u t   { 
-         o p a c i t y :   0 ; 
-         w i d t h :   0 ; 
-         h e i g h t :   0 ; 
- } 
- . t s - s l i d e r   { 
-         p o s i t i o n :   a b s o l u t e ; 
-         c u r s o r :   p o i n t e r ; 
-         t o p :   0 ; 
-         l e f t :   0 ; 
-         r i g h t :   0 ; 
-         b o t t o m :   0 ; 
-         b a c k g r o u n d - c o l o r :   v a r ( - - b g - 3 ) ; 
-         t r a n s i t i o n :   . 3 s ; 
-         b o r d e r - r a d i u s :   2 4 p x ; 
- } 
- . t s - s l i d e r : b e f o r e   { 
-         p o s i t i o n :   a b s o l u t e ; 
-         c o n t e n t :   \  
- \ ; 
-         h e i g h t :   1 8 p x ; 
-         w i d t h :   1 8 p x ; 
-         l e f t :   3 p x ; 
-         b o t t o m :   3 p x ; 
-         b a c k g r o u n d - c o l o r :   w h i t e ; 
-         t r a n s i t i o n :   . 3 s ; 
-         b o r d e r - r a d i u s :   5 0 % ; 
-         b o x - s h a d o w :   0   1 p x   3 p x   r g b a ( 0 , 0 , 0 , 0 . 3 ) ; 
- } 
- i n p u t : c h e c k e d   +   . t s - s l i d e r   { 
-         b a c k g r o u n d - c o l o r :   v a r ( - - g r e e n ) ; 
- } 
- i n p u t : c h e c k e d   +   . t s - s l i d e r : b e f o r e   { 
-         t r a n s f o r m :   t r a n s l a t e X ( 2 0 p x ) ; 
- } 
-  
- 
- . t h e m e - b t n   { 
-         p a d d i n g :   8 p x   1 2 p x ; 
-         b a c k g r o u n d :   v a r ( - - b g - 2 ) ; 
-         b o r d e r :   1 p x   s o l i d   v a r ( - - b o r d e r ) ; 
-         c o l o r :   v a r ( - - t e x t ) ; 
-         b o r d e r - r a d i u s :   v a r ( - - r a d i u s ) ; 
-         c u r s o r :   p o i n t e r ; 
-         f o n t - s i z e :   1 3 p x ; 
-         t r a n s i t i o n :   a l l   0 . 2 s ; 
-         t e x t - a l i g n :   c e n t e r ; 
- } 
- . t h e m e - b t n : h o v e r   { 
-         b a c k g r o u n d :   v a r ( - - b g - 3 ) ; 
-         b o r d e r - c o l o r :   v a r ( - - b o r d e r - l i g h t ) ; 
- } 
- . t h e m e - b t n . a c t i v e   { 
-         b a c k g r o u n d :   v a r ( - - a c c e n t ) ; 
-         c o l o r :   w h i t e ; 
-         b o r d e r - c o l o r :   v a r ( - - a c c e n t ) ; 
-         b o x - s h a d o w :   0   0   1 0 p x   r g b a ( 0 , 0 , 0 , 0 . 2 ) ; 
- } 
-  
- 
 
 /* ==================== CUSTOM SETTINGS UI ==================== */
 .custom-slider {
