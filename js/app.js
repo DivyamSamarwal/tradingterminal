@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Dalal Street Terminal v3
  * 25 Stocks, 80+ News Events, Modifiable Cash, Circuit Limits,
  * NIFTY Index, Trade History, Market Sentiment, Volume Simulation
@@ -24,36 +24,6 @@ var EXCHANGE_RATES = {
 	AUD: 54.2,
 	CAD: 61.3,
 	CHF: 102.4,
-	"SPX500": [
-		"AAPL", "MSFT", "NVDA", "TSLA", "META", "GOOGL", "AMZN", "NFLX", "ADBE", "AVGO", "COIN", "MU"
-	],
-	"NDX100": [
-		"AAPL", "MSFT", "NVDA", "META", "GOOGL", "AMZN", "NFLX", "ADBE", "AVGO", "MU"
-	],
-	"DJIA": [
-		"AAPL", "MSFT", "AMZN"
-	],
-	"NIKKEI225": [
-		"TOYOTA", "SONY", "HONDA", "NINTNDO", "DAIKIN", "CANON7751", "NISSAN", "HITACHI", "MITSUI", "NIDEC"
-	],
-	"SHCOMP": [
-		"MOUTAI", "CMBANK", "PINGAN", "PETROCH", "BYD", "CATL", "LONGI", "SAIC", "CITICS", "SINOPEC", "AGBANK", "ZTE"
-	],
-	"HSI": [
-		"TENCENT", "BABA", "MEITUAN", "AIA", "HSBC_HK", "XIAOMI"
-	],
-	"FTSE100": [
-		"AZN", "SHEL", "HSBA"
-	],
-	"DAX": [
-		"SAP", "SIEMENS"
-	],
-	"CAC40": [
-		"LVMH", "LOREAL"
-	],
-	"STOXX600": [
-		"LVMH", "ASML", "SAP", "SIEMENS", "LOREAL", "AZN", "SHEL", "HSBA"
-	]
 };
 
 var VIEW_LENGTHS = [
@@ -744,45 +714,6 @@ var INDEX_CONSTITUENTS = {
 		"PFC", "RECLTD"
 	],
 	// â”€â”€ USA (USD) â”€â”€
-	"SPX500": [
-		"AAPL", "MSFT", "NVDA", "TSLA", "META", "GOOGL", "AMZN", "NFLX",
-		"AMD", "ADBE", "AVGO", "COIN", "PLTR", "MU"
-	],
-	"NDX100": [
-		"AAPL", "MSFT", "NVDA", "META", "GOOGL", "AMZN", "NFLX",
-		"AMD", "ADBE", "AVGO", "PLTR", "MU"
-	],
-	"DJIA": [
-		"AAPL", "MSFT", "AMZN", "NVDA", "GOOGL", "META"
-	],
-	// â”€â”€ Japan (JPY) â”€â”€
-	"NIKKEI225": [
-		"TOYOTA", "SONY", "SOFTBNK", "HONDA", "NINTNDO", "MUFG", "FASTRET",
-		"KEYENCE", "DAIKIN", "CANON7751", "NISSAN", "PANASONIC", "HITACHI", "MITSUI", "NIDEC"
-	],
-	// â”€â”€ China (CNY) â”€â”€
-	"SHCOMP": [
-		"MOUTAI", "ICBC", "CMBANK", "PINGAN", "PETROCH", "BYD", "CATL",
-		"LONGI", "SAIC", "CITICS", "SINOPEC", "AGBANK", "CHINALIFE", "ZTE", "BAOSTEEL"
-	],
-	// â”€â”€ Hong Kong (HKD) â”€â”€
-	"HSI": [
-		"TENCENT", "BABA", "MEITUAN", "AIA", "HSBC_HK", "XIAOMI"
-	],
-	// â”€â”€ UK (GBP) â”€â”€
-	"FTSE100": [
-		"AZN", "SHEL", "HSBA"
-	],
-	// â”€â”€ Europe EUR â”€â”€
-	"DAX": [
-		"SAP", "SIEMENS", "ASML"
-	],
-	"CAC40": [
-		"LVMH", "LOREAL", "ASML"
-	],
-	"STOXX600": [
-		"LVMH", "ASML", "SAP", "SIEMENS", "LOREAL", "AZN", "SHEL", "HSBA"
-	]
 };
 
 // O(1) ticker â†’ stock reference map
@@ -8400,7 +8331,7 @@ function buildCandleData(stock, totalNeeded) {
 	});
 }
 
-// Fast in-place data mutator — never destroys the chart instance
+// Fast in-place data mutator ï¿½ never destroys the chart instance
 function _applyChartData(stock, isLight) {
 	var ds = chartInstance.data.datasets[0];
 	var scX = chartInstance.options.scales.x;
@@ -11129,3 +11060,4 @@ function toggleAnalyticsView() {
         });
     }
 })();
+
