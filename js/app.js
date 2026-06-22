@@ -72,7 +72,7 @@ var INTERVALS = [
 ];
 
 // ==================== PRE-HISTORY GENERATOR ====================
-// Generates 66 days × 375 ticks of realistic price history using a seeded LCG PRNG
+// Generates 66 days Ã— 375 ticks of realistic price history using a seeded LCG PRNG
 // so each stock always gets the same deterministic pattern on every simulation reset.
 function generatePreHistory(stock, days) {
 	days = days || 66;
@@ -94,7 +94,7 @@ function generatePreHistory(stock, days) {
 		return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v2);
 	}
 
-	// Starting price ~22 days ago: random ±15% variance from current ltp
+	// Starting price ~22 days ago: random Â±15% variance from current ltp
 	var targetEnd = stock.ltp;
 	var overallReturn = (rng() * 2 - 1) * 0.15;
 	var price = targetEnd / (1 + overallReturn);
@@ -105,7 +105,7 @@ function generatePreHistory(stock, days) {
 	var idx = 0;
 
 	for (var d = 0; d < days; d++) {
-		// Overnight gap (±0.8%)
+		// Overnight gap (Â±0.8%)
 		if (d > 0) {
 			price *= 1 + randn() * 0.004;
 		}
@@ -378,7 +378,7 @@ function mkStock(ticker, name, ltp, vol, sector, market, currency, shares) {
 }
 
 var marketStocks = [
-	// ── Bonds / Fixed Income (Yields) ──
+	// â”€â”€ Bonds / Fixed Income (Yields) â”€â”€
 	mkStock("US10Y", "US 10-Year Yield", 4.25, 0.0005, "Bond", "BOND", "USD"),
 	mkStock("US02Y", "US 2-Year Yield", 4.6, 0.0006, "Bond", "BOND", "USD"),
 	mkStock("IN10Y", "India 10-Year Yield", 7.1, 0.0004, "Bond", "BOND", "INR"),
@@ -397,7 +397,7 @@ var marketStocks = [
 	),
 	mkStock("CA10Y", "Canada 10-Year Yield", 3.55, 0.0005, "Bond", "BOND", "CAD"),
 	mkStock("CH10Y", "Swiss 10-Year Yield", 0.7, 0.0008, "Bond", "BOND", "CHF"),
-	// ── Indices ──
+	// â”€â”€ Indices â”€â”€
 	mkStock("NIFTY 50", "Nifty 50 Index", 22500, 0.0008, "Index", "INDEX", "INR"),
 	mkStock("SENSEX", "BSE Sensex", 74500, 0.0008, "Index", "INDEX", "INR"),
 	mkStock(
@@ -444,7 +444,7 @@ var marketStocks = [
 	),
 	mkStock("CAC40", "CAC 40", 8100, 0.001, "Index", "INDEX", "EUR"),
 	mkStock("STOXX600", "STOXX Europe 600", 510, 0.0008, "Index", "INDEX", "EUR"),
-	// ── Banking & Finance ──  (prices: Feb 28, 2026)
+	// â”€â”€ Banking & Finance â”€â”€  (prices: Feb 28, 2026)
 	mkStock("HDFCBANK", "HDFC Bank Ltd", 1755, 0.002, "Banking", "NSE", "INR", 7590000000),
 	mkStock("SBIN", "State Bank of India", 715, 0.003, "Banking", "NSE", "INR", 8920000000),
 	mkStock("ICICIBANK", "ICICI Bank", 1275, 0.0022, "Banking", "NSE", "INR", 7020000000),
@@ -467,44 +467,44 @@ var marketStocks = [
 	mkStock("PFC", "Power Finance Corp", 450, 0.0035, "Finance", "NSE", "INR", 3300000000),
 	mkStock("RECLTD", "REC Ltd", 510, 0.0035, "Finance", "NSE", "INR", 2630000000),
 	mkStock("DALAL", "Dalal Street Inc.", 10000, 0.0015, "Financials", "NSE", "INR", 1000000000),
-	// ── IT ──
+	// â”€â”€ IT â”€â”€
 	mkStock("TCS", "Tata Consultancy Services", 3560, 0.0014, "IT", "NSE", "INR", 3650000000),
 	mkStock("INFY", "Infosys Ltd", 1870, 0.0025, "IT", "NSE", "INR", 4140000000),
 	mkStock("HCLTECH", "HCL Technologies", 1720, 0.002, "IT", "NSE", "INR", 2710000000),
 	mkStock("WIPRO", "Wipro Ltd", 295, 0.0026, "IT", "NSE", "INR", 5220000000),
 	mkStock("TECHM", "Tech Mahindra Ltd", 1685, 0.0022, "IT", "NSE", "INR", 970000000),
 	mkStock("LTIM", "LTIMindtree Ltd", 5150, 0.002, "IT", "NSE", "INR", 290000000),
-	// ── Energy & Conglomerate ──
+	// â”€â”€ Energy & Conglomerate â”€â”€
 	mkStock("RELIANCE", "Reliance Industries", 1225, 0.0018, "Energy", "NSE", "INR", 6760000000),
 	mkStock("ONGC", "Oil & Natural Gas Corp", 235, 0.0025, "Energy", "NSE", "INR", 12580000000),
 	mkStock("BPCL", "Bharat Petroleum Corp", 265, 0.0028, "Energy", "NSE", "INR", 4330000000),
-	// ── Power ──
+	// â”€â”€ Power â”€â”€
 	mkStock("NTPC", "NTPC Ltd", 320, 0.0018, "Power", "NSE", "INR", 9690000000),
 	mkStock("POWERGRID", "Power Grid Corporation", 305, 0.0015, "Power", "NSE", "INR", 9300000000),
-	// ── Infra ──
+	// â”€â”€ Infra â”€â”€
 	mkStock("ADANIENT", "Adani Enterprises", 2185, 0.004, "Infra", "NSE", "INR", 1140000000),
 	mkStock("ADANIPORTS", "Adani Ports", 1350, 0.0035, "Infra", "NSE", "INR", 2160000000),
 	mkStock("LT", "Larsen & Toubro", 3255, 0.0016, "Infra", "NSE", "INR", 1370000000),
 	mkStock("BEL", "Bharat Electronics Ltd", 255, 0.003, "Infra", "NSE", "INR", 7300000000),
-	// ── Auto ──
+	// â”€â”€ Auto â”€â”€
 	mkStock("TATAMOTORS", "Tata Motors Ltd", 665, 0.0035, "Auto", "NSE", "INR", 3320000000),
 	mkStock("MARUTI", "Maruti Suzuki India", 11800, 0.0016, "Auto", "NSE", "INR", 314000000),
 	mkStock("MM", "Mahindra & Mahindra", 2855, 0.0022, "Auto", "NSE", "INR", 1240000000),
 	mkStock("EICHERMOT", "Eicher Motors Ltd", 5035, 0.0018, "Auto", "NSE", "INR", 270000000),
 	mkStock("BAJAJ-AUTO", "Bajaj Auto Ltd", 9500, 0.002, "Auto", "NSE", "INR", 280000000),
 	mkStock("HEROMOTOCO", "Hero MotoCorp", 4800, 0.002, "Auto", "NSE", "INR", 200000000),
-	// ── Pharma ──
+	// â”€â”€ Pharma â”€â”€
 	mkStock("SUNPHARMA", "Sun Pharma Industries", 1745, 0.0018, "Pharma", "NSE", "INR", 2390000000),
 	mkStock("CIPLA", "Cipla Ltd", 1555, 0.002, "Pharma", "NSE", "INR", 800000000),
 	mkStock("DRREDDY", "Dr Reddy's Laboratories", 1165, 0.0022, "Pharma", "NSE", "INR", 166000000),
 	mkStock("DIVISLAB", "Divi's Laboratories", 4200, 0.0025, "Pharma", "NSE", "INR", 260000000),
 	mkStock("APOLLOHOSP", "Apollo Hospitals", 6200, 0.002, "Pharma", "NSE", "INR", 140000000),
-	// ── Metals & Mining ──
+	// â”€â”€ Metals & Mining â”€â”€
 	mkStock("TATASTEEL", "Tata Steel Ltd", 140, 0.0038, "Metal", "NSE", "INR", 12400000000),
 	mkStock("JSWSTEEL", "JSW Steel Ltd", 930, 0.0032, "Metal", "NSE", "INR", 2440000000),
 	mkStock("COALINDIA", "Coal India Ltd", 355, 0.0022, "Metal", "NSE", "INR", 6160000000),
 	mkStock("HINDALCO", "Hindalco Industries", 650, 0.003, "Metal", "NSE", "INR", 2240000000),
-	// ── FMCG & Consumer ──
+	// â”€â”€ FMCG & Consumer â”€â”€
 	mkStock("ITC", "ITC Ltd", 415, 0.001, "FMCG", "NSE", "INR", 12400000000),
 	mkStock("HINDUNILVR", "Hindustan Unilever", 2290, 0.0012, "FMCG", "NSE", "INR", 2350000000),
 	mkStock("BRITANNIA", "Britannia Industries", 4755, 0.0016, "FMCG", "NSE", "INR", 240000000),
@@ -513,16 +513,16 @@ var marketStocks = [
 	mkStock("ASIANPAINT", "Asian Paints", 2950, 0.0016, "Consumer", "NSE", "INR", 950000000),
 	mkStock("TITAN", "Titan Company Ltd", 3155, 0.0018, "Consumer", "NSE", "INR", 880000000),
 	mkStock("TRENT", "Trent Ltd", 4300, 0.003, "Consumer", "NSE", "INR", 350000000),
-	// ── Telecom ──
+	// â”€â”€ Telecom â”€â”€
 	mkStock("BHARTIARTL", "Bharti Airtel", 1730, 0.002, "Telecom", "NSE", "INR", 5660000000),
-	// ── Cement ──
+	// â”€â”€ Cement â”€â”€
 	mkStock("ULTRACEMCO", "UltraTech Cement Ltd", 10300, 0.0016, "Cement", "NSE", "INR", 280000000),
 	mkStock("GRASIM", "Grasim Industries", 2300, 0.002, "Cement", "NSE", "INR", 680000000),
-	// ── New Age Tech ──
+	// â”€â”€ New Age Tech â”€â”€
 	mkStock("ZOMATO", "Zomato Ltd", 235, 0.005, "Tech", "NSE", "INR", 8800000000),
 	mkStock("PAYTM", "One97 Communications", 855, 0.006, "Tech", "NSE", "INR", 630000000),
 	mkStock("IRCTC", "IRCTC Ltd", 775, 0.003, "Tech", "NSE", "INR", 800000000),
-	// ── NASDAQ ──  (USD prices, post-split adjusted, Feb 2026)
+	// â”€â”€ NASDAQ â”€â”€  (USD prices, post-split adjusted, Feb 2026)
 	mkStock("AAPL", "Apple Inc.", 264, 0.0018, "Tech", "NASDAQ", "USD", 15400000000),
 	mkStock("MSFT", "Microsoft Corp.", 393, 0.0016, "Tech", "NASDAQ", "USD", 7400000000),
 		mkStock("NVDA", "NVIDIA Corp.", 177, 0.004, "Semicon", "NASDAQ", "USD", 24500000000), // post 10:1 split Jun'24
@@ -537,7 +537,7 @@ var marketStocks = [
 	mkStock("COIN", "Coinbase Global", 176, 0.007, "Crypto", "NASDAQ", "USD", 240000000),
 	mkStock("PLTR", "Palantir Technologies", 137, 0.006, "AI/Data", "NASDAQ", "USD", 2130000000),
 	mkStock("MU", "Micron Technology", 412, 0.004, "Semicon", "NASDAQ", "USD", 1100000000),
-	// ── SSE (Shanghai) ──  (CNY)
+	// â”€â”€ SSE (Shanghai) â”€â”€  (CNY)
 	mkStock("MOUTAI", "Kweichow Moutai", 1535, 0.0018, "Liquor", "SSE", "CNY", 1256000000),
 	mkStock(
 		"ICBC",
@@ -577,7 +577,7 @@ var marketStocks = [
 		"SSE",
 		"CNY",
 	),
-	// ── TSE (Japan) ──  (JPY)
+	// â”€â”€ TSE (Japan) â”€â”€  (JPY)
 	mkStock("TOYOTA", "Toyota Motor Corp.", 2755, 0.0018, "Auto", "TSE", "JPY", 13500000000),
 	mkStock("SONY", "Sony Group Corp.", 2850, 0.0025, "Consumer", "TSE", "JPY", 126000000),
 	mkStock(
@@ -633,7 +633,7 @@ var marketStocks = [
 	mkStock("HITACHI", "Hitachi Ltd.", 13500, 0.002, "Industrial", "TSE", "JPY", 930000000),
 	mkStock("MITSUI", "Mitsui & Co.", 7200, 0.0025, "Trading", "TSE", "JPY", 1500000000),
 	mkStock("NIDEC", "Nidec Corp.", 6800, 0.003, "Components", "TSE", "JPY", 570000000),
-	// ── European (EU) ── (EUR / GBP)
+	// â”€â”€ European (EU) â”€â”€ (EUR / GBP)
 	mkStock("LVMH", "LVMH Moet Hennessy", 780, 0.002, "Luxury", "EU", "EUR", 500000000),
 	mkStock("ASML", "ASML Holding N.V.", 850, 0.0025, "Tech", "EU", "EUR", 390000000),
 	mkStock("SAP", "SAP SE", 160, 0.0022, "Tech", "EU", "EUR", 1200000000),
@@ -642,7 +642,7 @@ var marketStocks = [
 	mkStock("AZN", "AstraZeneca PLC", 10500, 0.0022, "Pharma", "EU", "GBP", 1550000000),
 	mkStock("SHEL", "Shell PLC", 2650, 0.002, "Energy", "EU", "GBP", 6300000000),
 	mkStock("HSBA", "HSBC Holdings", 630, 0.0025, "Banking", "EU", "GBP", 19000000000),
-	// ── Commodities ──  (USD)
+	// â”€â”€ Commodities â”€â”€  (USD)
 	mkStock("GOLD", "Gold (USD/oz)", 5248, 0.0012, "Precious", "COMM", "USD"),
 	mkStock("SILVER", "Silver (USD/oz)", 93, 0.0025, "Precious", "COMM", "USD"),
 	mkStock(
@@ -683,7 +683,7 @@ var marketStocks = [
 	mkStock("POWER", "Electricity (USD/MWh)", 45.0, 0.003, "Energy", "COMM", "USD"),
 	mkStock("CARBON", "Carbon Credits (EUR/ton)", 65.0, 0.0025, "Energy", "COMM", "EUR"),
 	mkStock("URANIUM", "Uranium (USD/lb)", 90.0, 0.0015, "Energy", "COMM", "USD"),
-	// ── Forex (FX) ──
+	// â”€â”€ Forex (FX) â”€â”€
 	mkStock("USDINR", "US Dollar / INR", 83.50, 0.001, "Currency", "FX", "INR"),
 	mkStock("EURINR", "Euro / INR", 90.00, 0.0015, "Currency", "FX", "INR"),
 	mkStock("GBPINR", "British Pound / INR", 105.00, 0.002, "Currency", "FX", "INR"),
@@ -693,7 +693,7 @@ var marketStocks = [
 	mkStock("EURUSD", "Euro / US Dollar", 1.08, 0.001, "Currency", "FX", "USD"),
 	mkStock("GBPUSD", "Pound / US Dollar", 1.25, 0.0012, "Currency", "FX", "USD"),
 	mkStock("USDJPY", "US Dollar / Yen", 151.8, 0.0015, "Currency", "FX", "JPY"),
-	// ── Crypto ──  (USD)
+	// â”€â”€ Crypto â”€â”€  (USD)
 	mkStock("BTC", "Bitcoin", 65000, 0.012, "Crypto", "CRYPTO", "USD"),
 	mkStock("ETH", "Ethereum", 3500, 0.015, "Crypto", "CRYPTO", "USD"),
 	mkStock("SOL", "Solana", 145, 0.025, "Crypto", "CRYPTO", "USD"),
@@ -714,9 +714,9 @@ var marketStocks = [
 	mkStock("XIAOMI", "Xiaomi Corp", 18, 0.004, "Tech", "HKEX", "HKD", 25000000000),
 ];
 
-// ── Index Constituents ──
+// â”€â”€ Index Constituents â”€â”€
 var INDEX_CONSTITUENTS = {
-	// ── India ──
+	// â”€â”€ India â”€â”€
 	"NIFTY 50": [
 		"HDFCBANK", "SBIN", "ICICIBANK", "KOTAKBANK", "AXISBANK", "INDUSINDBK",
 		"BAJFINANCE", "BAJAJFINSV", "HDFCLIFE", "SBILIFE", "TCS", "INFY",
@@ -743,7 +743,7 @@ var INDEX_CONSTITUENTS = {
 		"BAJAJFINSV", "HDFCLIFE", "SBILIFE", "CHOLAFIN", "MUTHOOTFIN", "SHRIRAMFIN",
 		"PFC", "RECLTD"
 	],
-	// ── USA (USD) ──
+	// â”€â”€ USA (USD) â”€â”€
 	"SPX500": [
 		"AAPL", "MSFT", "NVDA", "TSLA", "META", "GOOGL", "AMZN", "NFLX",
 		"AMD", "ADBE", "AVGO", "COIN", "PLTR", "MU"
@@ -755,25 +755,25 @@ var INDEX_CONSTITUENTS = {
 	"DJIA": [
 		"AAPL", "MSFT", "AMZN", "NVDA", "GOOGL", "META"
 	],
-	// ── Japan (JPY) ──
+	// â”€â”€ Japan (JPY) â”€â”€
 	"NIKKEI225": [
 		"TOYOTA", "SONY", "SOFTBNK", "HONDA", "NINTNDO", "MUFG", "FASTRET",
 		"KEYENCE", "DAIKIN", "CANON7751", "NISSAN", "PANASONIC", "HITACHI", "MITSUI", "NIDEC"
 	],
-	// ── China (CNY) ──
+	// â”€â”€ China (CNY) â”€â”€
 	"SHCOMP": [
 		"MOUTAI", "ICBC", "CMBANK", "PINGAN", "PETROCH", "BYD", "CATL",
 		"LONGI", "SAIC", "CITICS", "SINOPEC", "AGBANK", "CHINALIFE", "ZTE", "BAOSTEEL"
 	],
-	// ── Hong Kong (HKD) ──
+	// â”€â”€ Hong Kong (HKD) â”€â”€
 	"HSI": [
 		"TENCENT", "BABA", "MEITUAN", "AIA", "HSBC_HK", "XIAOMI"
 	],
-	// ── UK (GBP) ──
+	// â”€â”€ UK (GBP) â”€â”€
 	"FTSE100": [
 		"AZN", "SHEL", "HSBA"
 	],
-	// ── Europe EUR ──
+	// â”€â”€ Europe EUR â”€â”€
 	"DAX": [
 		"SAP", "SIEMENS", "ASML"
 	],
@@ -785,7 +785,7 @@ var INDEX_CONSTITUENTS = {
 	]
 };
 
-// O(1) ticker → stock reference map
+// O(1) ticker â†’ stock reference map
 var stockMap = {};
 (function () {
 	marketStocks.forEach(function (s) {
@@ -1911,7 +1911,7 @@ var newsEvents = [
 		target: "DRREDDY",
 	},
 	{
-		text: "Dr Reddy's specialty formulations revenue surpasses ₹3,000 Cr milestone.",
+		text: "Dr Reddy's specialty formulations revenue surpasses â‚¹3,000 Cr milestone.",
 		impact: 0.022,
 		target: "DRREDDY",
 	},
@@ -1943,7 +1943,7 @@ var newsEvents = [
 		target: "NESTLEIND",
 	},
 	{
-		text: "Tata Consumer Products expands into snacks category. ₹500 Cr investment.",
+		text: "Tata Consumer Products expands into snacks category. â‚¹500 Cr investment.",
 		impact: 0.025,
 		target: "TATACONSUM",
 	},
@@ -1997,7 +1997,7 @@ var newsEvents = [
 		target: "ULTRACEMCO",
 	},
 	{
-		text: "UltraTech Q3 results: EBITDA/ton at ₹1,380. Best in 6 quarters.",
+		text: "UltraTech Q3 results: EBITDA/ton at â‚¹1,380. Best in 6 quarters.",
 		impact: 0.028,
 		target: "ULTRACEMCO",
 	},
@@ -2007,7 +2007,7 @@ var newsEvents = [
 		target: "CEMENT",
 	},
 	{
-		text: "Cement prices rise ₹20/bag pan-India. Volume growth intact.",
+		text: "Cement prices rise â‚¹20/bag pan-India. Volume growth intact.",
 		impact: 0.022,
 		target: "CEMENT",
 	},
@@ -2019,12 +2019,12 @@ var newsEvents = [
 
 	// ---- CONSUMER (NEW) ----
 	{
-		text: "Titan Company: jewelry segment revenue crosses ₹10,000 Cr in Q3.",
+		text: "Titan Company: jewelry segment revenue crosses â‚¹10,000 Cr in Q3.",
 		impact: 0.025,
 		target: "TITAN",
 	},
 	{
-		text: "Titan Tanishq reaches ₹50,000 Cr retail target 2 years ahead of plan.",
+		text: "Titan Tanishq reaches â‚¹50,000 Cr retail target 2 years ahead of plan.",
 		impact: 0.03,
 		target: "TITAN",
 	},
@@ -2063,7 +2063,7 @@ var newsEvents = [
 
 	// ---- IT (NEW) ----
 	{
-		text: "Tech Mahindra Network Services wins ₹3,500 Cr telecom deal. Largest in 5 yrs.",
+		text: "Tech Mahindra Network Services wins â‚¹3,500 Cr telecom deal. Largest in 5 yrs.",
 		impact: 0.03,
 		target: "TECHM",
 	},
@@ -2095,22 +2095,22 @@ var newsEvents = [
 
 	// ---- DEFENSE (NEW) ----
 	{
-		text: "BEL wins ₹8,000 Cr radar contract from Indian Army. Largest ever order.",
+		text: "BEL wins â‚¹8,000 Cr radar contract from Indian Army. Largest ever order.",
 		impact: 0.04,
 		target: "DEFENSE",
 	},
 	{
-		text: "BEL Akash missile system export order to friendly nation. ₹5,000 Cr deal.",
+		text: "BEL Akash missile system export order to friendly nation. â‚¹5,000 Cr deal.",
 		impact: 0.035,
 		target: "DEFENSE",
 	},
 	{
-		text: "India defense budget raised to ₹7.5L Cr. PSU defense stocks rally.",
+		text: "India defense budget raised to â‚¹7.5L Cr. PSU defense stocks rally.",
 		impact: 0.025,
 		target: "DEFENSE",
 	},
 	{
-		text: "BEL order book crosses ₹75,000 Cr. Execution pace accelerating.",
+		text: "BEL order book crosses â‚¹75,000 Cr. Execution pace accelerating.",
 		impact: 0.022,
 		target: "DEFENSE",
 	},
@@ -2159,7 +2159,7 @@ var newsEvents = [
 		target: "ALL",
 	},
 	{
-		text: "Union Budget: ₹11L Cr capex planned. Infrastructure and defense boost.",
+		text: "Union Budget: â‚¹11L Cr capex planned. Infrastructure and defense boost.",
 		impact: 0.018,
 		target: "ALL",
 	},
@@ -2174,7 +2174,7 @@ var newsEvents = [
 		target: "ALL",
 	},
 	{
-		text: "India manufacturing PMI at 58.9 — highest in 16 years. Industrial boom.",
+		text: "India manufacturing PMI at 58.9 â€” highest in 16 years. Industrial boom.",
 		impact: 0.018,
 		target: "ALL",
 	},
@@ -2189,7 +2189,7 @@ var newsEvents = [
 		target: "ALL",
 	},
 	{
-		text: "FII buying resumes: ₹12,000 Cr net inflows in single week.",
+		text: "FII buying resumes: â‚¹12,000 Cr net inflows in single week.",
 		impact: 0.018,
 		target: "ALL",
 	},
@@ -2871,7 +2871,7 @@ var newsEvents = [
 		market: "FX",
 	},
 
-	// ---- NASDAQ — AMD ----
+	// ---- NASDAQ â€” AMD ----
 	{
 		text: "AMD MI300X AI accelerator ships to 12 new hyperscaler clients. Data center revenue doubles.",
 		impact: 0.04,
@@ -2897,7 +2897,7 @@ var newsEvents = [
 		market: "NASDAQ",
 	},
 
-	// ---- NASDAQ — ADBE ----
+	// ---- NASDAQ â€” ADBE ----
 	{
 		text: "Adobe Firefly AI generated 9 billion images. Creatives enterprise subscriptions up 28%.",
 		impact: 0.03,
@@ -2923,7 +2923,7 @@ var newsEvents = [
 		market: "NASDAQ",
 	},
 
-	// ---- NASDAQ — AVGO ----
+	// ---- NASDAQ â€” AVGO ----
 	{
 		text: "Broadcom custom AI ASIC revenue surges: hyperscaler AI pods driving $10B opportunity.",
 		impact: 0.04,
@@ -2949,7 +2949,7 @@ var newsEvents = [
 		market: "NASDAQ",
 	},
 
-	// ---- NASDAQ — COIN ----
+	// ---- NASDAQ â€” COIN ----
 	{
 		text: "Coinbase approved for crypto futures trading in 3 new countries. Regulatory win.",
 		impact: 0.045,
@@ -2981,7 +2981,7 @@ var newsEvents = [
 		market: "NASDAQ",
 	},
 
-	// ---- NASDAQ — PLTR ----
+	// ---- NASDAQ â€” PLTR ----
 	{
 		text: "Palantir wins $1.5B US Army AI decision-making platform contract. Largest ever.",
 		impact: 0.055,
@@ -3007,7 +3007,7 @@ var newsEvents = [
 		market: "NASDAQ",
 	},
 
-	// ---- NASDAQ — MU ----
+	// ---- NASDAQ â€” MU ----
 	{
 		text: "Micron HBM3E memory wins NVIDIA H200 design. AI memory revenue to triple.",
 		impact: 0.045,
@@ -3113,7 +3113,7 @@ var newsEvents = [
 		target: "BAOSTEEL",
 		market: "SSE",
 	},
-	// ---- SSE — BYD ----
+	// ---- SSE â€” BYD ----
 	{
 		text: "BYD monthly EV sales hit 500,000 units for first time. Global No.1 title defended.",
 		impact: 0.04,
@@ -3139,7 +3139,7 @@ var newsEvents = [
 		market: "SSE",
 	},
 
-	// ---- SSE — CATL ----
+	// ---- SSE â€” CATL ----
 	{
 		text: "CATL solid-state battery mass production announced for 2027. Revolution ahead.",
 		impact: 0.045,
@@ -3147,7 +3147,7 @@ var newsEvents = [
 		market: "SSE",
 	},
 	{
-		text: "CATL signs €8B battery supply deal with BMW and Mercedes. European dominance.",
+		text: "CATL signs â‚¬8B battery supply deal with BMW and Mercedes. European dominance.",
 		impact: 0.035,
 		target: "CATL",
 		market: "SSE",
@@ -3165,7 +3165,7 @@ var newsEvents = [
 		market: "SSE",
 	},
 
-	// ---- SSE — LONGI ----
+	// ---- SSE â€” LONGI ----
 	{
 		text: "LONGi breaks solar efficiency world record at 33.9%. Revolutionary milestone.",
 		impact: 0.04,
@@ -3185,7 +3185,7 @@ var newsEvents = [
 		market: "SSE",
 	},
 
-	// ---- SSE — SAIC ----
+	// ---- SSE â€” SAIC ----
 	{
 		text: "SAIC IM Motors launches L4 autonomous EV. Robotaxi permit in 5 Chinese cities.",
 		impact: 0.03,
@@ -3205,7 +3205,7 @@ var newsEvents = [
 		market: "SSE",
 	},
 
-	// ---- SSE — CITICS ----
+	// ---- SSE â€” CITICS ----
 	{
 		text: "CITIC Securities IPO pipeline at 5-year high. Capital markets activity booming.",
 		impact: 0.025,
@@ -3263,7 +3263,7 @@ var newsEvents = [
 		market: "SSE",
 	},
 
-	// ---- TSE — MUFG ----
+	// ---- TSE â€” MUFG ----
 	{
 		text: "MUFG benefits from BOJ rate hike: net interest income rises CNY 800B YoY.",
 		impact: 0.03,
@@ -3283,7 +3283,7 @@ var newsEvents = [
 		market: "TSE",
 	},
 
-	// ---- TSE — FASTRET (Uniqlo) ----
+	// ---- TSE â€” FASTRET (Uniqlo) ----
 	{
 		text: "Fast Retailing Uniqlo India opens 50th store. Asia revenue contribution hits 40%.",
 		impact: 0.025,
@@ -3309,7 +3309,7 @@ var newsEvents = [
 		market: "TSE",
 	},
 
-	// ---- TSE — KEYENCE ----
+	// ---- TSE â€” KEYENCE ----
 	{
 		text: "Keyence factory automation sensors see record orders from EV gigafactories.",
 		impact: 0.035,
@@ -3329,7 +3329,7 @@ var newsEvents = [
 		market: "TSE",
 	},
 
-	// ---- TSE — DAIKIN ----
+	// ---- TSE â€” DAIKIN ----
 	{
 		text: "Daikin India air conditioner sales up 35% on record heat wave. Market share 30%.",
 		impact: 0.03,
@@ -3349,7 +3349,7 @@ var newsEvents = [
 		market: "TSE",
 	},
 
-	// ---- TSE — CANON ----
+	// ---- TSE â€” CANON ----
 	{
 		text: "Canon medical imaging division wins 1,000-unit CT scanner order from US hospitals.",
 		impact: 0.025,
@@ -3420,7 +3420,7 @@ var newsEvents = [
 		market: "TSE",
 	},
 	{
-		text: "Japan PM announces ¥50 trillion economic package. Domestic demand stocks rally.",
+		text: "Japan PM announces Â¥50 trillion economic package. Domestic demand stocks rally.",
 		impact: 0.025,
 		target: "ALL_TSE",
 		market: "TSE",
@@ -4132,7 +4132,7 @@ var newsEvents = [
 		market: "EU",
 	},
 	{
-		text: "Siemens mobility division wins €3B high-speed rail contract.",
+		text: "Siemens mobility division wins â‚¬3B high-speed rail contract.",
 		impact: 0.028,
 		target: "SIEMENS",
 		market: "EU",
@@ -4851,7 +4851,7 @@ var candlestickPlugin = {
 		var chartArea = chart.chartArea;
 		if (!chartArea) return;
 
-		// ── Volume histogram (bottom 18% of chart) ──
+		// â”€â”€ Volume histogram (bottom 18% of chart) â”€â”€
 		if (volumes && volumes.length) {
 			var volAreaH = (chartArea.bottom - chartArea.top) * 0.18;
 			var volBottom = chartArea.bottom;
@@ -5536,7 +5536,7 @@ function setChartScale(scale) {
 	});
 	var btn = document.getElementById("btn-scale-" + scale);
 	if (btn) btn.classList.add("active");
-	// Log ↔ Linear axis type switch requires chart rebuild
+	// Log â†” Linear axis type switch requires chart rebuild
 	if (wasLog !== willLog && chartInstance) {
 		chartInstance.destroy();
 		chartInstance = null;
@@ -6634,7 +6634,7 @@ function startNewDay() {
 	if (legSensex) { state.sensexValue = legSensex.ltp; state.sensexBase = legSensex.ltp; }
 	state.niftyHistory = Array(state.historyLen).fill(state.niftyValue);
 	state.sentiment = 0;
-	// Note: slTargets are intentionally NOT cleared — user SL/Targets persist across days
+	// Note: slTargets are intentionally NOT cleared â€” user SL/Targets persist across days
 
 	document.getElementById("day-counter").textContent = "Day " + state.day;
 	state.newsCount = 0;
@@ -6749,7 +6749,7 @@ function pushMarketAnnouncement(text, market, isOpen) {
 		formatTime(state.time) +
 		"</span>" +
 		marketBadge +
-		'<span class="news-text">🔔 ' +
+		'<span class="news-text">ðŸ”” ' +
 		text +
 		"</span>";
 	container.prepend(el);
@@ -7683,7 +7683,7 @@ function renderAll() {
 }
 
 
-// Watchlist DOM row cache — built once per filter change, updated in-place every tick
+// Watchlist DOM row cache â€” built once per filter change, updated in-place every tick
 var _wlCache = {};
 var _wlLastOrder = "";
 
@@ -7942,7 +7942,7 @@ function renderWatchlist() {
 		_wlLastOrder = orderKey;
 	}
 
-	// In-place value updates every tick — only touches DOM when value actually changed
+	// In-place value updates every tick â€” only touches DOM when value actually changed
 	var maxVol = 300000;
 	filtered.forEach(function (s) {
 		var c = _wlCache[s.ticker];
@@ -8047,7 +8047,7 @@ function renderActiveStock() {
 		badge.style.color = open ? "#00e676" : "#ff4b4b";
 	}
 	document.getElementById("active-name").textContent =
-		stock.name + " · " + stock.sector + " [" + stock.market + "]";
+		stock.name + " Â· " + stock.sector + " [" + stock.market + "]";
 	document.getElementById("order-symbol").textContent = stock.ticker;
 
 	var dayChg = stock.ltp - stock.open;
@@ -8350,53 +8350,46 @@ function buildCandleData(stock, totalNeeded) {
 
 	// -- Live OHLCV candles (from this session) --
 	var liveCandles = [];
-	if (stock.ohlcHistory && stock.ohlcHistory.length > 0) {
-		liveCandles = stock.ohlcHistory.slice(-totalNeeded);
-		if (stock.currentCandle) { liveCandles.push(stock.currentCandle); }
-		liveCandles = liveCandles.slice(-totalNeeded);
-	} else {
-		var hist = stock.history;
-		var volHist = stock.volumeHistory || [];
-		for (var i = 0; i < hist.length; i += period) {
-			var sl = hist.slice(i, i + period);
-			var slV = volHist.slice(i, i + period);
-			if (!sl.length) break;
-			var sumV = 0;
-			for (var vi = 0; vi < slV.length; vi++) sumV += (slV[vi] || 0);
+	var hist = stock.history;
+	var volHist = stock.volumeHistory || [];
+	var histLen = hist.length;
+	
+	for (var i = 0; i < histLen; i += period) {
+		var sl = hist.slice(i, i + period);
+		var slV = volHist.slice(i, i + period);
+		if (!sl.length) break;
+		var sumV = 0;
+		for (var vi = 0; vi < slV.length; vi++) sumV += (slV[vi] || 0);
+		
+		var c = sl[sl.length - 1];
+		var o = sl[0];
+		var h = Math.max.apply(null, sl);
+		var l = Math.min.apply(null, sl);
+		
+		var isLastSlice = (i + period >= histLen);
+		
+		if (isLastSlice && stock.currentCandle) {
+			h = Math.max(h, stock.currentCandle.h);
+			l = Math.min(l, stock.currentCandle.l);
+			o = stock.currentCandle.o;
+			sumV = stock.currentCandle.v;
+		} else if (sl.length === 1) {
+			var tickSeed = i + stock.ticker.charCodeAt(0);
+			var pRandWick1 = Math.abs(Math.sin(tickSeed * 12.9898)) % 1;
+			var pRandWick2 = Math.abs(Math.cos(tickSeed * 78.233)) % 1;
 			
-			var c = sl[sl.length - 1];
-			var o = sl[0];
-			var h = Math.max.apply(null, sl);
-			var l = Math.min.apply(null, sl);
-			
-			if (sl.length === 1 && stock.currentCandle && i === hist.length - 1) {
-				// Use the actual current live candle high/low, do not inject fake wicks!
-				h = stock.currentCandle.h;
-				l = stock.currentCandle.l;
-			} else if (sl.length === 1) {
-				var tickSeed = i + stock.ticker.charCodeAt(0);
-				var pRandWick1 = Math.abs(Math.sin(tickSeed * 12.9898)) % 1;
-				var pRandWick2 = Math.abs(Math.cos(tickSeed * 78.233)) % 1;
-				
-				var wickBase = (stock.vol || 0.01) * c * 0.4;
-				h += pRandWick1 * wickBase;
-				l -= pRandWick2 * wickBase;
-				if (o > c) { h = Math.max(h, o); l = Math.min(l, c); }
-				else { h = Math.max(h, c); l = Math.min(l, o); }
-				h = parseFloat(h.toFixed(4));
-				l = parseFloat(l.toFixed(4));
-			}
-			
-			liveCandles.push({
-				o: o,
-				h: h,
-				l: l,
-				c: c,
-				v: sumV,
-			});
+			var wickBase = (stock.vol || 0.01) * c * 0.4;
+			h += pRandWick1 * wickBase;
+			l -= pRandWick2 * wickBase;
+			if (o > c) { h = Math.max(h, o); l = Math.min(l, c); }
+			else { h = Math.max(h, c); l = Math.min(l, o); }
+			h = parseFloat(h.toFixed(4));
+			l = parseFloat(l.toFixed(4));
 		}
-		liveCandles = liveCandles.slice(-totalNeeded);
+		
+		liveCandles.push({ o: o, h: h, l: l, c: c, v: sumV });
 	}
+	liveCandles = liveCandles.slice(-totalNeeded);
 
 	// -- Pre-history candles to fill remaining slots --
 	var preCount = totalNeeded - liveCandles.length;
@@ -8427,22 +8420,21 @@ function _applyChartData(stock, isLight) {
 			1000,
 			Math.ceil(state.viewLen / state.candlePeriod) + 2,
 		);
-		var ohlcData = buildCandleData(stock, baseTotal);
-		var ohlcDataForIndicators = buildCandleData(stock, baseTotal + 20); // extra 20 for indicators
+		// Build once with extra 20 candles for indicator warm-up, then slice for display
+		var ohlcDataFull = buildCandleData(stock, baseTotal + 20);
+		var ohlcData = ohlcDataFull.slice(-baseTotal).map(function(c, i) {
+			return { x: i, o: c.o, h: c.h, l: c.l, c: c.c, v: c.v };
+		});
 		firstPrice = ohlcData.length > 0 ? ohlcData[0].o || 1 : 1;
 
-		var closePrices = ohlcDataForIndicators.map(function (c) {
+		var closePrices = ohlcDataFull.map(function (c) {
 			return c.c;
 		});
 		var rawSMA = calcSMA(closePrices, 20).slice(-ohlcData.length);
 		var rawEMA = calcEMA(closePrices, 20).slice(-ohlcData.length);
 
-		var allH = ohlcData.map(function (d) {
-			return d.h;
-		});
-		var allL = ohlcData.map(function (d) {
-			return d.l;
-		});
+		var allH = ohlcData.map(function (d) { return d.h; });
+		var allL = ohlcData.map(function (d) { return d.l; });
 		var yMax = allH.length ? Math.max.apply(null, allH) : 0;
 		var yMin = allL.length ? Math.min.apply(null, allL) : 0;
 		var yRange = yMax - yMin || yMin * 0.01 || 1;
@@ -8462,56 +8454,43 @@ function _applyChartData(stock, isLight) {
 					v: d.v,
 				};
 			});
-			var allHp = ohlcData.map(function (d) {
-				return d.h;
-			});
-			var allLp = ohlcData.map(function (d) {
-				return d.l;
-			});
+			var allHp = ohlcData.map(function (d) { return d.h; });
+			var allLp = ohlcData.map(function (d) { return d.l; });
 			yMax = allHp.length ? Math.max.apply(null, allHp) : 0;
 			yMin = allLp.length ? Math.min.apply(null, allLp) : 0;
 			yRange = yMax - yMin || 1;
 			yPad = yRange * 0.06;
 			yBottomPad = yRange * 0.22;
 
-			smaData = rawSMA.map(function (v) {
-				return v === null ? null : ((v - baseC) / baseC) * 100;
-			});
-			emaData = rawEMA.map(function (v) {
-				return v === null ? null : ((v - baseC) / baseC) * 100;
-			});
+			smaData = rawSMA.map(function (v) { return v === null ? null : ((v - baseC) / baseC) * 100; });
+			emaData = rawEMA.map(function (v) { return v === null ? null : ((v - baseC) / baseC) * 100; });
 		} else {
 			smaData = rawSMA;
 			emaData = rawEMA;
 		}
 
-		chartInstance.data.labels = ohlcData.map(function (_, i) {
-			return i;
-		});
-		ds.data = ohlcData.map(function (d) {
-			return d.c;
-		});
+		chartInstance.data.labels = ohlcData.map(function (_, i) { return i; });
+		ds.data = ohlcData.map(function (d) { return d.c; });
 		ds.borderColor = "transparent";
 		ds.backgroundColor = "transparent";
 		ds.fill = false;
 		ds.tension = 0;
 		ds.pointHoverRadius = 0;
 		chartInstance._ohlc = ohlcData;
-		chartInstance._volumes = ohlcData.map(function (d) {
-			return d.v || 0;
-		});
+		chartInstance._volumes = ohlcData.map(function (d) { return d.v || 0; });
 		
 		var times = [];
 		ohlcData.forEach(function (_, i) {
 			var reverseIdx = ohlcData.length - 1 - i;
+			// Each candle covers candlePeriod minutes; walk back from current time
 			var pointTime = state.time - (reverseIdx * (state.candlePeriod || 375));
 			var pointDay = state.day;
 			while (pointTime < 0) {
-				pointTime += 1440;
+				pointTime += 375; // one trading session = 375 ticks
 				pointDay--;
 			}
-			var dayLabel = pointDay < 1 ? "Pre-Day " + Math.abs(pointDay - 1) : "Day " + pointDay;
-			times.push(dayLabel + ", " + formatTime(pointTime));
+			var dayLabel = pointDay < 1 ? "Day -" + Math.abs(pointDay - 1) : "Day " + pointDay;
+			times.push(dayLabel + ", " + formatTime(pointTime % 375));
 		});
 		chartInstance._times = times;
 
@@ -8519,10 +8498,11 @@ function _applyChartData(stock, isLight) {
 			scY.min = undefined;
 			scY.max = undefined;
 		} else {
-			scY.min = yMin - yBottomPad;
+			// Never let Y-axis minimum go below 0 for price charts (stocks can't be negative)
+			var rawYMin = yMin - yBottomPad;
+			scY.min = isPct ? rawYMin : Math.max(0, rawYMin);
 			scY.max = yMax + yPad;
 		}
-
 		var ds2c = chartInstance.data.datasets[1];
 		if (stock.prevClose && ohlcData.length) {
 			var pc = isPct ? 0 : stock.prevClose; // 0% = prev close baseline in pct mode
@@ -8573,7 +8553,7 @@ function _applyChartData(stock, isLight) {
 			},
 		};
 	} else {
-		// ── Line chart ──
+		// â”€â”€ Line chart â”€â”€
 		// Merge preHistory + live history for full-depth view
 		var fullHistory =
 			stock.preHistory && stock.preHistory.length
@@ -8716,7 +8696,7 @@ function _applyChartData(stock, isLight) {
 		};
 	}
 
-	// ── Update Position Cost, SL, Target Lines ──
+	// â”€â”€ Update Position Cost, SL, Target Lines â”€â”€
 	var dsAvg = chartInstance.data.datasets[2];
 	var pos = state.positions[stock.ticker];
 	if (pos && dataLen) {
@@ -8753,7 +8733,7 @@ function _applyChartData(stock, isLight) {
 		dsTgt.hidden = true;
 	}
 
-	// ── Update SMA & EMA Indicators ──
+	// â”€â”€ Update SMA & EMA Indicators â”€â”€
 	var dsSMA = chartInstance.data.datasets[5];
 	if (state.showSMA && dataLen) {
 		dsSMA.data = smaData;
@@ -8920,7 +8900,7 @@ function renderChart(stock) {
 	var currentFont = fontMap[state.font] || "Outfit";
 	var needsLog = state.chartScale === "log";
 
-	// Destroy chart if Y-axis type needs to change (log ↔ linear)
+	// Destroy chart if Y-axis type needs to change (log â†” linear)
 	if (chartInstance) {
 		var curLog = chartInstance._isLogAxis || false;
 		if (curLog !== needsLog) {
@@ -8929,7 +8909,7 @@ function renderChart(stock) {
 		}
 	}
 
-	// Fast path — chart already exists, just mutate data in-place
+	// Fast path â€” chart already exists, just mutate data in-place
 	if (chartInstance) {
 		_applyChartData(stock, isLight);
 		return;
@@ -9165,6 +9145,10 @@ function closeEquityPosition(ticker, forceInstant) {
 		} else {
 			state.margin += price * absQty * fxRate;
 		}
+		
+		var brokerage = price * absQty * fxRate * 0.001;
+		state.margin -= brokerage;
+		state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
 
 		state.tradeHistory.unshift({
 			time: formatTime(state.time),
@@ -9710,7 +9694,7 @@ function exportTradeHistoryCSV() {
 		'"Time","Day","Symbol","Side","Type","Qty","Price (Native)","Value (INR)"',
 	];
 
-	// Trade rows – oldest first (tradeHistory is stored newest-first)
+	// Trade rows â€“ oldest first (tradeHistory is stored newest-first)
 	var history = state.tradeHistory.slice().reverse();
 	history.forEach(function (trade) {
 		rows.push(
@@ -9727,7 +9711,7 @@ function exportTradeHistoryCSV() {
 		);
 	});
 
-	// ── Portfolio Summary ──
+	// â”€â”€ Portfolio Summary â”€â”€
 	rows.push("");
 	rows.push('"=== PORTFOLIO SUMMARY ==="');
 	rows.push('"Starting Capital (INR)",' + INITIAL_MARGIN.toFixed(2));
@@ -10085,7 +10069,7 @@ function updateLoanQuote() {
 		var dailyEmi = totalRepayment / days;
 		document.getElementById("loan-emi").textContent = fmtCur(dailyEmi);
 	} else {
-		document.getElementById("loan-emi").textContent = "₹ 0.00";
+		document.getElementById("loan-emi").textContent = "â‚¹ 0.00";
 	}
 }
 
@@ -10115,7 +10099,7 @@ function takeLoan() {
 	}
 
 	if (amt < 1000) {
-		toast("Loan Rejected", "Minimum loan amount is ₹ 1,000.", "error");
+		toast("Loan Rejected", "Minimum loan amount is â‚¹ 1,000.", "error");
 		return;
 	}
 	if (state.cibilScore < 500) {
@@ -10146,7 +10130,7 @@ function takeLoan() {
 	state.cibilScore = Math.max(300, state.cibilScore - 5); // small hit for applying
 	toast(
 		"Loan Approved",
-		"₹ " +
+		"â‚¹ " +
 			amt.toLocaleString("en-IN") +
 			" disbursed to your account. CIBIL score hit.",
 		"success",
@@ -10173,7 +10157,7 @@ function updateFdQuote() {
 		var interest = ((amt * (rate / 100)) / 365) * days;
 		document.getElementById("fd-maturity").textContent = fmtCur(amt + interest);
 	} else {
-		document.getElementById("fd-maturity").textContent = "₹ 0.00";
+		document.getElementById("fd-maturity").textContent = "â‚¹ 0.00";
 	}
 }
 
@@ -10182,7 +10166,7 @@ function openFixedDeposit() {
 	var days = parseInt(document.getElementById("fd-term").value) || 7;
 
 	if (amt < 1000) {
-		toast("FD Rejected", "Minimum deposit is ₹ 1,000.", "error");
+		toast("FD Rejected", "Minimum deposit is â‚¹ 1,000.", "error");
 		return;
 	}
 	if (state.margin < amt) {
@@ -10216,7 +10200,7 @@ function openFixedDeposit() {
 
 	toast(
 		"FD Created",
-		"₹ " + amt.toLocaleString("en-IN") + " locked for " + days + " days.",
+		"â‚¹ " + amt.toLocaleString("en-IN") + " locked for " + days + " days.",
 		"success",
 	);
 
