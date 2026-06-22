@@ -6020,8 +6020,8 @@ function tickMinute() {
 		if (!isNoCircuit) {
 			if (stock.ltp >= upperCircuit && stock.ticker !== "DALAL") {
 				stock.ltp = parseFloat(upperCircuit.toFixed(pDec));
-				if (stock.circuitHit !== "UPPER") {
-					stock.circuitHit = "UPPER";
+				if (stock.circuitHit !== "UC") {
+					stock.circuitHit = "UC";
 					toast(
 						"CIRCUIT",
 						stock.ticker + " hit upper circuit +" + CIRCUIT_LIMIT * 100 + "%!",
@@ -6030,8 +6030,8 @@ function tickMinute() {
 				}
 			} else if (stock.ltp <= lowerCircuit && stock.ticker !== "DALAL") {
 				stock.ltp = parseFloat(lowerCircuit.toFixed(pDec));
-				if (stock.circuitHit !== "LOWER") {
-					stock.circuitHit = "LOWER";
+				if (stock.circuitHit !== "LC") {
+					stock.circuitHit = "LC";
 					toast(
 						"CIRCUIT",
 						stock.ticker + " hit lower circuit -" + CIRCUIT_LIMIT * 100 + "%!",
@@ -6080,7 +6080,7 @@ function tickMinute() {
 					c: stock.currentCandle.c,
 					v: stock.currentCandle.v,
 				});
-				if (stock.ohlcHistory.length > 120) stock.ohlcHistory.shift();
+				if (stock.ohlcHistory.length > 2000) stock.ohlcHistory.shift();
 				stock.currentCandle = null;
 			}
 		}
@@ -6121,7 +6121,8 @@ function tickMinute() {
 		
 		var tickVol = Math.max(1, Math.floor(tickVolSum * 0.1)); // Index volume is a fraction of total constituent volume
 		indexStock.volumeHistory.push(tickVol);
-		if (indexStock.volumeHistory.length > state.historyLen) indexStock.volumeHistory.shift();
+		if (indexStock.volumeHistory.length > state.historyLen)
+			indexStock.volumeHistory.shift();
 		indexStock.volume += tickVol;
 		
 		if (!indexStock.currentCandle) {
@@ -6138,7 +6139,7 @@ function tickMinute() {
 				indexStock.ohlcHistory.push({
 					o: indexStock.currentCandle.o, h: indexStock.currentCandle.h, l: indexStock.currentCandle.l, c: indexStock.currentCandle.c, v: indexStock.currentCandle.v
 				});
-				if (indexStock.ohlcHistory.length > 120) indexStock.ohlcHistory.shift();
+				if (indexStock.ohlcHistory.length > 2000) indexStock.ohlcHistory.shift();
 				indexStock.currentCandle = null;
 			}
 		}
@@ -8372,6 +8373,8 @@ function buildCandleData(stock, totalNeeded) {
 	var liveCandles = [];
 	if (stock.ohlcHistory && stock.ohlcHistory.length > 0) {
 		liveCandles = stock.ohlcHistory.slice(-totalNeeded);
+		if (stock.currentCandle) { liveCandles.push(stock.currentCandle); }
+		liveCandles = liveCandles.slice(-totalNeeded);
 	} else {
 		var hist = stock.history;
 		var volHist = stock.volumeHistory || [];
@@ -11098,3 +11101,65 @@ function toggleAnalyticsView() {
 		btn.classList.remove("active");
 	}
 }
+// ==================== MOBILE RESPONSIVENESS LOGIC ====================
+(function initMobileUI() {
+    var mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    var sidebarLeft = document.querySelector('.watchlist-panel');
+    var mobileBuyBtn = document.getElementById('mobile-buy-btn');
+    var mobileSellBtn = document.getElementById('mobile-sell-btn');
+    var sidebarRight = document.querySelector('.order-panel');
+    var orderTypeSelect = document.getElementById('order-type');
+    var orderQtyInput = document.getElementById('order-qty');
+
+    // Toggle Left Sidebar (Watchlist)
+    if (mobileMenuBtn && sidebarLeft) {
+        mobileMenuBtn.addEventListener('click', function() {
+            sidebarLeft.classList.toggle('mobile-open');
+        });
+    }
+
+    // Close Left Sidebar when a stock is clicked in the watchlist
+    var wlBody = document.getElementById('watchlist');
+    if (wlBody && sidebarLeft) {
+        wlBody.addEventListener('click', function(e) {
+            if (e.target.closest('.wl-row')) {
+                sidebarLeft.classList.remove('mobile-open');
+            }
+        });
+    }
+
+    // Toggle Right Sidebar (Order Entry) via Buy Button
+    if (mobileBuyBtn && sidebarRight) {
+        mobileBuyBtn.addEventListener('click', function() {
+            sidebarRight.classList.add('sheet-open');
+            document.querySelectorAll('.order-action-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-order-buy').classList.add('active');
+            orderQtyInput && orderQtyInput.focus();
+        });
+    }
+
+    // Toggle Right Sidebar (Order Entry) via Sell Button
+    if (mobileSellBtn && sidebarRight) {
+        mobileSellBtn.addEventListener('click', function() {
+            sidebarRight.classList.add('sheet-open');
+            document.querySelectorAll('.order-action-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-order-sell').classList.add('active');
+            orderQtyInput && orderQtyInput.focus();
+        });
+    }
+
+    // Close Right Sidebar (Order Entry) if clicking outside or on a close button
+    // (We'll add a simple click outside listener on the app container)
+    var appBody = document.querySelector('.app');
+    if (appBody && sidebarRight) {
+        appBody.addEventListener('click', function(e) {
+            // Close order sheet if clicking outside of it, but not if clicking the buy/sell buttons
+            if (sidebarRight.classList.contains('sheet-open') && 
+                !sidebarRight.contains(e.target) && 
+                !e.target.closest('#mobile-buy-btn') && 
+                !e.target.closest('#mobile-sell-btn')) {
+                sidebarRight.classList.remove('sheet-open');
+            }
+        });
+    }
+})();

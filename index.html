@@ -7,12 +7,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=999">
+    <link rel="stylesheet" href="css/styles.css?v=1003">
     <style>
         #custom-tooltip {
             position: absolute;
-            background: rgba(18, 18, 26, 0.85);
-            border: 1px solid rgba(255,255,255,0.08);
+            background: var(--bg-1);
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 10px;
             pointer-events: none;
@@ -23,21 +23,15 @@
             font-size: 13px;
             min-width: 220px;
             backdrop-filter: blur(10px);
-        }
-        body.light #custom-tooltip {
-            background: rgba(255, 255, 255, 0.85);
-            border: 1px solid rgba(0,0,0,0.05);
+            color: var(--text-bright);
         }
         .tooltip-header {
             display: flex;
             justify-content: space-between;
             margin-bottom: 6px;
             font-weight: 600;
-            border-bottom: 1px dashed rgba(255,255,255,0.1);
+            border-bottom: 1px dashed var(--border);
             padding-bottom: 6px;
-        }
-        body.light .tooltip-header {
-            border-bottom: 1px dashed rgba(0,0,0,0.1);
         }
         .tooltip-grid {
             display: grid;
@@ -50,7 +44,7 @@
             justify-content: space-between;
         }
         .tooltip-label {
-            color: #7A7C8C;
+            color: var(--text-dim);
         }
         .tooltip-val {
             font-weight: 500;
@@ -58,12 +52,9 @@
         .tooltip-footer {
             margin-top: 6px;
             padding-top: 6px;
-            border-top: 1px dashed rgba(255,255,255,0.1);
+            border-top: 1px dashed var(--border);
             display: flex;
             justify-content: space-between;
-        }
-        body.light .tooltip-footer {
-            border-top: 1px dashed rgba(0,0,0,0.1);
         }
         .tooltip-pct {
             border-radius: 4px;
@@ -78,6 +69,9 @@
     <div class="app">
         <!-- Top Bar -->
         <header class="topbar">
+            <button class="mobile-menu-btn" id="mobile-menu-btn" title="Toggle Watchlist">
+                <i class="fa-solid fa-bars"></i>
+            </button>
             <button class="topbar-brand gradient-button">
                 <i class="fa-solid fa-bolt gradient-text" style="font-size:14px; margin-right:4px;"></i>
                 <span class="gradient-text">Dalal Street Terminal</span>
@@ -929,6 +923,12 @@
                 </div>
             </div>
         </div> <!-- End view-settings -->
+        
+        <!-- Mobile Bottom Action Bar (hidden on desktop) -->
+        <div class="mobile-action-bar">
+            <button class="mobile-action-btn action-buy" id="mobile-buy-btn">BUY</button>
+            <button class="mobile-action-btn action-sell" id="mobile-sell-btn">SELL</button>
+        </div>
     </div> <!-- End app -->
 
     <!-- New Day Overlay -->
@@ -953,7 +953,7 @@
     </div>
 
     <div id="toast-container" class="toast-box"></div>
-    <script src="js/app.js?v=130"></script>
+    <script src="js/app.js?v=135"></script>
     <script src="js/analytics.js?v=8"></script>
 </body>
 </html>
