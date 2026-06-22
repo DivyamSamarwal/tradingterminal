@@ -4575,9 +4575,9 @@ var state = {
 	sentiment: 0, // -100 to +100
 	chartType: "line",
 	chartScale: "linear", // 'linear' | 'log' | 'pct'
-	timeframe: "1H",
-	viewLen: 60,
-	candlePeriod: 10,
+	timeframe: "1D",
+	viewLen: 375,
+	candlePeriod: 5,
 	slTargets: {}, // { ticker: { sl: num|null, target: num|null } }
 	wlMarketFilter: "ALL", // watchlist market filter
 	newsMarketFilter: "ALL", // news feed market filter
@@ -5367,36 +5367,6 @@ function setupListeners() {
 	document
 		.getElementById("btn-toggle-analytics")
 		.addEventListener("click", toggleAnalyticsView);
-
-	// // Drag-to-scroll for the chart topbar tools
-	// var slider = document.querySelector(".ct-chart-type");
-	// var isDown = false;
-	// var startX;
-	// var scrollLeft;
-
-	// if (slider) {
-	// 	slider.addEventListener("mousedown", function (e) {
-	// 		isDown = true;
-	// 		slider.style.cursor = "grabbing";
-	// 		startX = e.pageX - slider.offsetLeft;
-	// 		scrollLeft = slider.scrollLeft;
-	// 	});
-	// 	slider.addEventListener("mouseleave", function () {
-	// 		isDown = false;
-	// 		slider.style.cursor = "default";
-	// 	});
-	// 	slider.addEventListener("mouseup", function () {
-	// 		isDown = false;
-	// 		slider.style.cursor = "default";
-	// 	});
-	// 	slider.addEventListener("mousemove", function (e) {
-	// 		if (!isDown) return;
-	// 		e.preventDefault();
-	// 		var x = e.pageX - slider.offsetLeft;
-	// 		var walk = (x - startX) * 1.5; // Scroll speed multiplier
-	// 		slider.scrollLeft = scrollLeft - walk;
-	// 	});
-	// }
 }
 
 // ==================== SETTINGS / MODIFIABLE CASH ====================
@@ -5596,12 +5566,21 @@ function setViewLength(label) {
 	var customDropdown = document.getElementById("custom-interval-dropdown");
 	if (customDropdown) {
 		var maxInterval = 1875;
-		if (label === "1D") maxInterval = 60; // max 1H
-		else if (label === "1W") maxInterval = 375; // max 1D
+		var minInterval = 0;
+		if (label === "1D") {
+			maxInterval = 60; // max 1H
+			minInterval = 0;
+		} else if (label === "1W") {
+			maxInterval = 375; // max 1D
+			minInterval = 30; // disable 5m, 15m
+		} else if (label === "1M") {
+			maxInterval = 1875; // max 1W
+			minInterval = 60; // disable 5m, 15m, 30m
+		}
 
 		document.querySelectorAll(".dropdown-option").forEach(function(opt) {
 			var val = parseInt(opt.dataset.value, 10);
-			if (val > maxInterval) {
+			if (val > maxInterval || val < minInterval) {
 				opt.classList.add("disabled");
 				// If currently selected interval is now disabled, fallback to autoInterval
 				if (state.candlePeriod === val) state.candlePeriod = autoInterval;
@@ -5611,7 +5590,7 @@ function setViewLength(label) {
 		});
 
 		// Ensure we don't automatically override a valid user interval
-		if (state.candlePeriod > maxInterval || state.candlePeriod === autoInterval) {
+		if (state.candlePeriod > maxInterval || state.candlePeriod < minInterval || state.candlePeriod === autoInterval) {
 			state.candlePeriod = autoInterval;
 		}
 		

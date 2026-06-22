@@ -198,22 +198,22 @@
                     <canvas id="main-chart" role="img" aria-label="Price chart for the selected instrument"></canvas>
                     <div class="chart-time-selector">
                         <div class="chart-view-lengths">
-                            <button class="tf-btn" id="tf-1D">1D</button>
+                            <button class="tf-btn active" id="tf-1D">1D</button>
                             <button class="tf-btn" id="tf-1W">1W</button>
-                            <button class="tf-btn active" id="tf-1M">1M</button>
+                            <button class="tf-btn" id="tf-1M">1M</button>
                         </div>
                         <div class="chart-interval-selector custom-dropdown" id="custom-interval-dropdown">
                             <span class="dropdown-label">Interval:</span>
                             <div class="dropdown-selected" id="chart-interval-selected">
-                                <span id="interval-display">1d</span>
+                                <span id="interval-display">5m</span>
                                 <i class="fa-solid fa-chevron-down" style="font-size: 8px; margin-left: 4px;"></i>
                             </div>
                             <div class="dropdown-options" id="chart-interval-options">
-                                <div class="dropdown-option" data-value="5">5m</div>
+                                <div class="dropdown-option active" data-value="5">5m</div>
                                 <div class="dropdown-option" data-value="15">15m</div>
                                 <div class="dropdown-option" data-value="30">30m</div>
                                 <div class="dropdown-option" data-value="60">1h</div>
-                                <div class="dropdown-option active" data-value="375">1d</div>
+                                <div class="dropdown-option" data-value="375">1d</div>
                                 <div class="dropdown-option" data-value="1875">1w</div>
                             </div>
                         </div>
@@ -953,7 +953,7 @@
     </div>
 
     <div id="toast-container" class="toast-box"></div>
-    <script src="js/app.js?v=135"></script>
+    <script src="js/app.js?v=136"></script>
     <script src="js/analytics.js?v=8"></script>
 </body>
 </html>
