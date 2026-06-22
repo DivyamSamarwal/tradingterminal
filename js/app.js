@@ -8348,7 +8348,7 @@ function buildCandleData(stock, totalNeeded) {
 		totalNeeded = Math.min(200, Math.ceil(state.viewLen / period) + 2);
 	}
 
-	// ── Live OHLCV candles (from this session) ──
+	// -- Live OHLCV candles (from this session) --
 	var liveCandles = [];
 	if (stock.ohlcHistory && stock.ohlcHistory.length > 0) {
 		liveCandles = stock.ohlcHistory.slice(-totalNeeded);
@@ -8368,7 +8368,12 @@ function buildCandleData(stock, totalNeeded) {
 			var o = sl[0];
 			var h = Math.max.apply(null, sl);
 			var l = Math.min.apply(null, sl);
-			if (sl.length === 1) {
+			
+			if (sl.length === 1 && stock.currentCandle && i === hist.length - 1) {
+				// Use the actual current live candle high/low, do not inject fake wicks!
+				h = stock.currentCandle.h;
+				l = stock.currentCandle.l;
+			} else if (sl.length === 1) {
 				var tickSeed = i + stock.ticker.charCodeAt(0);
 				var pRandWick1 = Math.abs(Math.sin(tickSeed * 12.9898)) % 1;
 				var pRandWick2 = Math.abs(Math.cos(tickSeed * 78.233)) % 1;
@@ -8393,11 +8398,11 @@ function buildCandleData(stock, totalNeeded) {
 		liveCandles = liveCandles.slice(-totalNeeded);
 	}
 
-	// ── Pre-history candles to fill remaining slots ──
+	// -- Pre-history candles to fill remaining slots --
 	var preCount = totalNeeded - liveCandles.length;
 	var preCandles = buildPreOHLC(stock, period, preCount);
 
-	// ── Combine and re-index ──
+	// -- Combine and re-index --
 	var combined = preCandles.concat(liveCandles).slice(-totalNeeded);
 	return combined.map(function (c, i) {
 		return { x: i, o: c.o, h: c.h, l: c.l, c: c.c, v: c.v || 0 };
