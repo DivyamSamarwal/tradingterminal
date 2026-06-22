@@ -8371,8 +8371,6 @@ function buildCandleData(stock, totalNeeded) {
 		if (isLastSlice && stock.currentCandle) {
 			h = Math.max(h, stock.currentCandle.h);
 			l = Math.min(l, stock.currentCandle.l);
-			o = stock.currentCandle.o;
-			sumV = stock.currentCandle.v;
 		} else if (sl.length === 1) {
 			var tickSeed = i + stock.ticker.charCodeAt(0);
 			var pRandWick1 = Math.abs(Math.sin(tickSeed * 12.9898)) % 1;

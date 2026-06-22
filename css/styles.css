@@ -2070,7 +2070,7 @@ body.light .nmb-fx, body.theme-sepia .nmb-fx     { color: #0097a7; }
         width: 100%;
     }
     }
-}
+
 
 /* ========== PREMIUM ADDITIONS ========== */
 .aurora-bg {
@@ -2153,7 +2153,7 @@ body.light .chart-time-selector .tf-btn:hover, body.theme-sepia .chart-time-sele
     border: 1px solid var(--accent);
     box-shadow: 0 2px 8px rgba(41, 98, 255, 0.15);
 }
-}
+
 body.light .chart-time-selector .tf-btn.active, body.theme-sepia .chart-time-selector .tf-btn.active {
     background: rgba(41, 98, 255, 0.08);
     color: var(--accent);
