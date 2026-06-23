@@ -4553,6 +4553,22 @@ var state = {
 	newsMarketFilter: "ALL", // news feed market filter
 	showSMA: false,
 	showEMA: false,
+	showBB: false,
+	showVWAP: false,
+	showRSI: false,
+	showMACD: false,
+	// Drawing tools
+	drawingMode: 'cursor',
+	activeDrawings: {},
+	drawingInProgress: null,
+	// Multi-chart layout
+	chartLayout: '1x',
+	panelStates: [
+		{ ticker: 'RELIANCE', viewLen: 375, candlePeriod: 5, chartType: 'line' },
+		{ ticker: 'TCS', viewLen: 375, candlePeriod: 5, chartType: 'line' },
+		{ ticker: 'HDFCBANK', viewLen: 375, candlePeriod: 5, chartType: 'line' },
+		{ ticker: 'INFY', viewLen: 375, candlePeriod: 5, chartType: 'line' }
+	],
 	pendingOrders: [],
 	marginCallThrottle: 0,
 	realEstate: [],
@@ -4806,6 +4822,524 @@ var state = {
 
 var marketInterval;
 var chartInstance = null;
+var subChartInstance = null;
+var multiChartInstances = []; // For 2x/4x multi-chart panels
+
+// ==================== SUB-CHART (RSI / MACD) ====================
+function renderSubChart(stock, prices) {
+	if (!prices || prices.length < 2) return;
+	var container = document.getElementById('sub-chart-container');
+	var canvas = document.getElementById('sub-chart');
+	if (!canvas) return;
+	var isLight = state.theme === 'light' || state.theme === 'sepia';
+	var gridColor = isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.05)';
+	var tickColor = isLight ? '#666' : '#707888';
+	var label = document.getElementById('sub-chart-label');
+	var refEl = document.querySelector('.sub-chart-ref');
+
+	if (state.showRSI) {
+		if (label) label.textContent = 'RSI (14)';
+		if (refEl) refEl.textContent = '— 70 Overbought   — 30 Oversold';
+		var rsiData = calcRSI(prices, 14);
+		var rsiLabels = rsiData.map(function(_, i) { return i; });
+
+		if (subChartInstance && subChartInstance._mode !== 'rsi') {
+			subChartInstance.destroy(); subChartInstance = null;
+		}
+		if (!subChartInstance) {
+			subChartInstance = new Chart(canvas.getContext('2d'), {
+				type: 'line',
+				data: {
+					labels: rsiLabels,
+					datasets: [
+						{
+							label: 'RSI',
+							data: rsiData,
+							borderColor: 'rgba(100, 181, 246, 0.9)',
+							backgroundColor: 'transparent',
+							borderWidth: 1.5,
+							pointRadius: 0,
+							tension: 0.1,
+							fill: false,
+						},
+						{
+							label: 'OB',
+							data: Array(rsiData.length).fill(70),
+							borderColor: 'rgba(239, 68, 68, 0.5)',
+							backgroundColor: 'transparent',
+							borderWidth: 1,
+							borderDash: [4, 3],
+							pointRadius: 0,
+							fill: false,
+							tension: 0,
+						},
+						{
+							label: 'OS',
+							data: Array(rsiData.length).fill(30),
+							borderColor: 'rgba(16, 185, 129, 0.5)',
+							backgroundColor: 'transparent',
+							borderWidth: 1,
+							borderDash: [4, 3],
+							pointRadius: 0,
+							fill: false,
+							tension: 0,
+						}
+					]
+				},
+				options: {
+					responsive: true, maintainAspectRatio: false, animation: false,
+					plugins: { legend: { display: false }, tooltip: { enabled: false } },
+					scales: {
+						x: { display: false, grid: { display: false } },
+						y: {
+							min: 0, max: 100,
+							grid: { color: gridColor, drawBorder: false },
+							ticks: { color: tickColor, font: { size: 9 }, maxTicksLimit: 5,
+								callback: function(v) { return v.toFixed(0); }
+							},
+							position: 'right'
+						}
+					}
+				}
+			});
+			subChartInstance._mode = 'rsi';
+		} else {
+			subChartInstance.data.labels = rsiLabels;
+			subChartInstance.data.datasets[0].data = rsiData;
+			subChartInstance.data.datasets[1].data = Array(rsiData.length).fill(70);
+			subChartInstance.data.datasets[2].data = Array(rsiData.length).fill(30);
+			subChartInstance.update('none');
+		}
+	} else if (state.showMACD) {
+		if (label) label.textContent = 'MACD (12, 26, 9)';
+		if (refEl) refEl.textContent = '— MACD   — Signal   ■ Histogram';
+		var macdResult = calcMACD(prices, 12, 26, 9);
+		var mLine = macdResult.macdLine;
+		var sLine = macdResult.signalLine;
+		var hist = macdResult.histogram;
+		var mLabels = mLine.map(function(_, i) { return i; });
+
+		var histColors = hist.map(function(v) {
+			if (v === null) return 'transparent';
+			return v >= 0 ? 'rgba(16, 185, 129, 0.6)' : 'rgba(239, 68, 68, 0.6)';
+		});
+
+		if (subChartInstance && subChartInstance._mode !== 'macd') {
+			subChartInstance.destroy(); subChartInstance = null;
+		}
+		if (!subChartInstance) {
+			subChartInstance = new Chart(canvas.getContext('2d'), {
+				type: 'bar',
+				data: {
+					labels: mLabels,
+					datasets: [
+						{
+							type: 'bar',
+							label: 'Histogram',
+							data: hist,
+							backgroundColor: histColors,
+							borderWidth: 0,
+							barPercentage: 0.8,
+						},
+						{
+							type: 'line',
+							label: 'MACD',
+							data: mLine,
+							borderColor: 'rgba(100, 181, 246, 0.9)',
+							backgroundColor: 'transparent',
+							borderWidth: 1.5,
+							pointRadius: 0,
+							tension: 0.1,
+							fill: false,
+						},
+						{
+							type: 'line',
+							label: 'Signal',
+							data: sLine,
+							borderColor: 'rgba(255, 152, 0, 0.9)',
+							backgroundColor: 'transparent',
+							borderWidth: 1.2,
+							pointRadius: 0,
+							tension: 0.1,
+							fill: false,
+						}
+					]
+				},
+				options: {
+					responsive: true, maintainAspectRatio: false, animation: false,
+					plugins: { legend: { display: false }, tooltip: { enabled: false } },
+					scales: {
+						x: { display: false, grid: { display: false } },
+						y: {
+							grid: { color: gridColor, drawBorder: false },
+							ticks: { color: tickColor, font: { size: 9 }, maxTicksLimit: 5,
+								callback: function(v) { return v.toFixed(2); }
+							},
+							position: 'right'
+						}
+					}
+				}
+			});
+			subChartInstance._mode = 'macd';
+		} else {
+			subChartInstance.data.labels = mLabels;
+			subChartInstance.data.datasets[0].data = hist;
+			subChartInstance.data.datasets[0].backgroundColor = histColors;
+			subChartInstance.data.datasets[1].data = mLine;
+			subChartInstance.data.datasets[2].data = sLine;
+			subChartInstance.update('none');
+		}
+	}
+}
+
+// ==================== DRAWING PLUGIN ====================
+var drawingPlugin = {
+	id: 'drawingPlugin',
+	afterDraw: function(chart) {
+		if (chart !== chartInstance) return; // Only draw on main chart
+		var ctx = chart.ctx;
+		var xScale = chart.scales.x;
+		var yScale = chart.scales.y;
+		if (!xScale || !yScale) return;
+		var ticker = state.activeStock ? state.activeStock.ticker : null;
+		if (!ticker) return;
+		var drawings = state.activeDrawings[ticker] || [];
+		var isLight = state.theme === 'light' || state.theme === 'sepia';
+		var chartArea = chart.chartArea;
+		if (!chartArea) return;
+		var dataLen = (chart.data.datasets[0] && chart.data.datasets[0].data.length) || 0;
+		if (!dataLen) return;
+
+		ctx.save();
+		ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+		ctx.clip();
+
+		drawings.forEach(function(d) {
+			ctx.globalAlpha = 0.85;
+			if (d.type === 'trendline') {
+				var x1 = xScale.getPixelForValue(d.x1);
+				var y1 = yScale.getPixelForValue(d.y1);
+				var x2 = xScale.getPixelForValue(d.x2);
+				var y2 = yScale.getPixelForValue(d.y2);
+				ctx.beginPath();
+				ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+				ctx.strokeStyle = isLight ? '#2563eb' : '#60a5fa';
+				ctx.lineWidth = 1.5;
+				ctx.setLineDash([]);
+				ctx.stroke();
+				// Endpoint dots
+				ctx.fillStyle = isLight ? '#2563eb' : '#60a5fa';
+				ctx.beginPath(); ctx.arc(x1, y1, 3, 0, Math.PI * 2); ctx.fill();
+				ctx.beginPath(); ctx.arc(x2, y2, 3, 0, Math.PI * 2); ctx.fill();
+
+			} else if (d.type === 'hline') {
+				var yPx = yScale.getPixelForValue(d.price);
+				ctx.beginPath();
+				ctx.moveTo(chartArea.left, yPx); ctx.lineTo(chartArea.right, yPx);
+				ctx.strokeStyle = isLight ? '#d97706' : '#fbbf24';
+				ctx.lineWidth = 1.2;
+				ctx.setLineDash([5, 4]);
+				ctx.stroke();
+				ctx.setLineDash([]);
+				// Price label
+				ctx.fillStyle = isLight ? '#d97706' : '#fbbf24';
+				ctx.font = '9px monospace';
+				ctx.fillText(d.price.toFixed(2), chartArea.right + 2, yPx + 3);
+
+			} else if (d.type === 'fib') {
+				var fibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
+				var fibColors = ['rgba(255,255,255,0.6)', 'rgba(253,224,71,0.8)', 'rgba(134,239,172,0.8)',
+					'rgba(147,197,253,0.8)', 'rgba(216,180,254,0.8)', 'rgba(253,164,175,0.8)', 'rgba(255,255,255,0.6)'];
+				var priceRange = d.y1 - d.y2;
+				fibLevels.forEach(function(level, li) {
+					var fibPrice = d.y2 + priceRange * (1 - level);
+					var yPxF = yScale.getPixelForValue(fibPrice);
+					ctx.beginPath();
+					ctx.moveTo(chartArea.left, yPxF); ctx.lineTo(chartArea.right, yPxF);
+					ctx.strokeStyle = fibColors[li];
+					ctx.lineWidth = 1;
+					ctx.setLineDash([4, 4]);
+					ctx.stroke();
+					ctx.setLineDash([]);
+					ctx.fillStyle = fibColors[li];
+					ctx.font = '9px monospace';
+					ctx.fillText((level * 100).toFixed(1) + '% ' + fibPrice.toFixed(2), chartArea.right + 2, yPxF + 3);
+				});
+			}
+		});
+
+		// Draw in-progress drawing
+		if (state.drawingInProgress) {
+			var ip = state.drawingInProgress;
+			ctx.globalAlpha = 0.6;
+			if (ip.type === 'trendline') {
+				ctx.beginPath();
+				ctx.moveTo(ip.startPx, ip.startPy);
+				ctx.lineTo(ip.curPx, ip.curPy);
+				ctx.strokeStyle = isLight ? '#2563eb' : '#60a5fa';
+				ctx.lineWidth = 1.5;
+				ctx.setLineDash([4, 3]);
+				ctx.stroke();
+				ctx.setLineDash([]);
+			} else if (ip.type === 'hline') {
+				ctx.beginPath();
+				ctx.moveTo(chartArea.left, ip.startPy);
+				ctx.lineTo(chartArea.right, ip.startPy);
+				ctx.strokeStyle = isLight ? '#d97706' : '#fbbf24';
+				ctx.lineWidth = 1.2;
+				ctx.setLineDash([5, 4]);
+				ctx.stroke();
+				ctx.setLineDash([]);
+			} else if (ip.type === 'fib') {
+				ctx.beginPath();
+				ctx.moveTo(ip.startPx, ip.startPy);
+				ctx.lineTo(ip.startPx, ip.curPy);
+				ctx.lineTo(ip.curPx, ip.curPy);
+				ctx.strokeStyle = 'rgba(253,224,71,0.7)';
+				ctx.lineWidth = 1;
+				ctx.setLineDash([4, 3]);
+				ctx.stroke();
+				ctx.setLineDash([]);
+			}
+		}
+		ctx.restore();
+	}
+};
+
+// ==================== DRAWING TOOL SETUP ====================
+function setupDrawingTools() {
+	var canvas = document.getElementById('main-chart');
+	if (!canvas) return;
+
+	document.querySelectorAll('.draw-btn[data-tool]').forEach(function(btn) {
+		btn.addEventListener('click', function() {
+			state.drawingMode = btn.getAttribute('data-tool');
+			document.querySelectorAll('.draw-btn[data-tool]').forEach(function(b) { b.classList.remove('active'); });
+			btn.classList.add('active');
+			canvas.style.cursor = (state.drawingMode === 'cursor') ? 'default' : 'crosshair';
+		});
+	});
+
+	var clearBtn = document.getElementById('draw-clear');
+	if (clearBtn) {
+		clearBtn.addEventListener('click', function() {
+			var ticker = state.activeStock ? state.activeStock.ticker : null;
+			if (ticker) state.activeDrawings[ticker] = [];
+			if (chartInstance) chartInstance.draw();
+		});
+	}
+
+	// Mouse events for drawing on the canvas
+	canvas.addEventListener('mousedown', function(e) {
+		if (state.drawingMode === 'cursor' || !chartInstance) return;
+		var rect = canvas.getBoundingClientRect();
+		var px = e.clientX - rect.left;
+		var py = e.clientY - rect.top;
+		var xScale = chartInstance.scales.x;
+		var yScale = chartInstance.scales.y;
+		if (!xScale || !yScale) return;
+		state.drawingInProgress = {
+			type: state.drawingMode,
+			startPx: px, startPy: py,
+			curPx: px, curPy: py,
+			startX: xScale.getValueForPixel(px),
+			startY: yScale.getValueForPixel(py)
+		};
+		e.preventDefault();
+	});
+
+	canvas.addEventListener('mousemove', function(e) {
+		if (!state.drawingInProgress || !chartInstance) return;
+		var rect = canvas.getBoundingClientRect();
+		state.drawingInProgress.curPx = e.clientX - rect.left;
+		state.drawingInProgress.curPy = e.clientY - rect.top;
+		chartInstance.draw(); // Force redraw for live preview
+	});
+
+	canvas.addEventListener('mouseup', function(e) {
+		if (!state.drawingInProgress || !chartInstance) return;
+		var ip = state.drawingInProgress;
+		var rect = canvas.getBoundingClientRect();
+		var px = e.clientX - rect.left;
+		var py = e.clientY - rect.top;
+		var xScale = chartInstance.scales.x;
+		var yScale = chartInstance.scales.y;
+		if (!xScale || !yScale) { state.drawingInProgress = null; return; }
+		var endX = xScale.getValueForPixel(px);
+		var endY = yScale.getValueForPixel(py);
+		var ticker = state.activeStock ? state.activeStock.ticker : null;
+		if (!ticker) { state.drawingInProgress = null; return; }
+		if (!state.activeDrawings[ticker]) state.activeDrawings[ticker] = [];
+
+		// Only commit if there's meaningful movement
+		var dx = Math.abs(ip.startPx - px);
+		var dy = Math.abs(ip.startPy - py);
+		if (dx > 3 || dy > 3 || ip.type === 'hline') {
+			if (ip.type === 'trendline') {
+				state.activeDrawings[ticker].push({ type: 'trendline', x1: ip.startX, y1: ip.startY, x2: endX, y2: endY });
+			} else if (ip.type === 'hline') {
+				state.activeDrawings[ticker].push({ type: 'hline', price: ip.startY });
+			} else if (ip.type === 'fib') {
+				state.activeDrawings[ticker].push({ type: 'fib', x1: ip.startX, y1: ip.startY, x2: endX, y2: endY });
+			}
+		}
+		state.drawingInProgress = null;
+		chartInstance.draw();
+	});
+
+	canvas.addEventListener('mouseleave', function() {
+		if (state.drawingInProgress) {
+			state.drawingInProgress = null;
+			if (chartInstance) chartInstance.draw();
+		}
+	});
+}
+
+// ==================== MULTI-CHART LAYOUT ====================
+function setChartLayout(layout) {
+	state.chartLayout = layout;
+
+	// Update layout selector buttons
+	['1x', '2x', '4x'].forEach(function(l) {
+		var btn = document.getElementById('btn-layout-' + l);
+		if (btn) btn.classList.toggle('active', l === layout);
+	});
+
+	// Destroy all multi-panel instances
+	multiChartInstances.forEach(function(inst) {
+		if (inst && typeof inst.destroy === 'function') inst.destroy();
+	});
+	multiChartInstances = [];
+
+	// If going back to 1x, restore single chart panel
+	var container = document.getElementById('chart-grid-container');
+	if (!container) return;
+
+	if (layout === '1x') {
+		container.className = 'chart-grid-1x';
+		container.innerHTML = '<div class="chart-panel" id="panel-0"><canvas id="main-chart" role="img" aria-label="Price chart"></canvas></div>';
+		// Destroy old main chart instance so it gets recreated on the new canvas
+		if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+		// Re-attach drawing tools to new canvas
+		setupDrawingTools();
+		if (state.activeStock) renderChart(state.activeStock);
+		return;
+	}
+
+	// Destroy main chart too — it references the old canvas
+	if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+	var panelCount = layout === '2x' ? 2 : 4;
+	container.className = 'chart-grid-' + layout;
+	container.innerHTML = '';
+
+	var allTickers = marketStocks.map(function(s) { return s.ticker; });
+	var optionsHTML = allTickers.map(function(tk) {
+		return '<option value="' + tk + '">' + tk + '</option>';
+	}).join('');
+
+	for (var pi = 0; pi < panelCount; pi++) {
+		var ps = state.panelStates[pi] || { ticker: marketStocks[pi] ? marketStocks[pi].ticker : 'RELIANCE', viewLen: 375, candlePeriod: 5, chartType: 'line' };
+		if (!state.panelStates[pi]) state.panelStates[pi] = ps;
+
+		var panelDiv = document.createElement('div');
+		panelDiv.className = 'chart-panel';
+		panelDiv.id = 'panel-' + pi;
+		panelDiv.innerHTML =
+			'<div class="panel-header">' +
+			'<select class="panel-ticker-select" data-panel="' + pi + '">' + optionsHTML + '</select>' +
+			'<button class="panel-tf-btn active" data-panel="' + pi + '" data-vl="375">1D</button>' +
+			'<button class="panel-tf-btn" data-panel="' + pi + '" data-vl="1875">1W</button>' +
+			'<button class="panel-tf-btn" data-panel="' + pi + '" data-vl="8250">1M</button>' +
+			'</div>' +
+			'<canvas id="panel-canvas-' + pi + '"></canvas>';
+		container.appendChild(panelDiv);
+
+		(function(panelIndex, panelState) {
+			var panelCanvas = document.getElementById('panel-canvas-' + panelIndex);
+			var panelChart = buildPanelChart(panelCanvas, panelState);
+			multiChartInstances[panelIndex] = panelChart;
+
+			// Ticker select
+			var sel = panelDiv.querySelector('.panel-ticker-select');
+			if (sel) {
+				sel.value = panelState.ticker;
+				sel.addEventListener('change', function() {
+					panelState.ticker = sel.value;
+					updatePanelChart(panelChart, panelState, false);
+				});
+			}
+
+			// Timeframe buttons
+			panelDiv.querySelectorAll('.panel-tf-btn').forEach(function(tfBtn) {
+				tfBtn.addEventListener('click', function() {
+					panelDiv.querySelectorAll('.panel-tf-btn').forEach(function(b) { b.classList.remove('active'); });
+					tfBtn.classList.add('active');
+					panelState.viewLen = parseInt(tfBtn.getAttribute('data-vl')) || 375;
+					updatePanelChart(panelChart, panelState, false);
+				});
+			});
+		})(pi, ps);
+	}
+}
+
+function buildPanelChart(canvas, panelState) {
+	var ctx = canvas.getContext('2d');
+	var isLight = state.theme === 'light' || state.theme === 'sepia';
+	var chart = new Chart(ctx, {
+		type: 'line',
+		data: { labels: [], datasets: [{ data: [], borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.15 }] },
+		options: {
+			responsive: true, maintainAspectRatio: false, animation: false,
+			plugins: { legend: { display: false }, tooltip: { enabled: false } },
+			scales: {
+				x: { display: false, grid: { display: false } },
+				y: {
+					display: true, position: 'right',
+					grid: { color: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.04)', drawBorder: false },
+					ticks: { color: isLight ? '#666' : '#707888', font: { size: 9 }, maxTicksLimit: 6,
+						callback: function(v) { return v >= 1000 ? (v/1000).toFixed(1) + 'k' : v.toFixed(0); }
+					}
+				}
+			}
+		}
+	});
+	updatePanelChart(chart, panelState, true);
+	return chart;
+}
+
+function updatePanelChart(chart, panelState, skipUpdate) {
+	var stock = stockMap[panelState.ticker];
+	if (!stock || !chart) return;
+	var isLight = state.theme === 'light' || state.theme === 'sepia';
+	var fullHistory = stock.preHistory && stock.preHistory.length
+		? stock.preHistory.concat(stock.history)
+		: stock.history;
+	var slice = fullHistory.slice(-(panelState.viewLen || 375));
+	var firstP = slice[0] || 1;
+	var lastP = slice[slice.length - 1] || 0;
+	var lineColor = lastP >= firstP
+		? (isLight ? '#00a846' : '#00c853')
+		: (isLight ? '#d50032' : '#ff1744');
+
+	chart.data.labels = slice.map(function(_, i) { return i; });
+	var ds = chart.data.datasets[0];
+	ds.data = slice;
+	ds.borderColor = lineColor;
+	ds.backgroundColor = lineColor + '12';
+	if (!skipUpdate) chart.update('none');
+}
+
+function updateAllPanels() {
+	// Called from the market tick loop to refresh multi-chart panels
+	if (state.chartLayout === '1x') return;
+	multiChartInstances.forEach(function(chart, pi) {
+		if (!chart) return;
+		var ps = state.panelStates[pi];
+		if (!ps) return;
+		updatePanelChart(chart, ps, false);
+	});
+}
 
 // ==================== CANDLESTICK PLUGIN ====================
 var candlestickPlugin = {
@@ -5338,6 +5872,71 @@ function setupListeners() {
 	document
 		.getElementById("btn-toggle-analytics")
 		.addEventListener("click", toggleAnalyticsView);
+
+	// ── New Indicator Toggles ──
+	var btnBB = document.getElementById('btn-toggle-bb');
+	if (btnBB) {
+		btnBB.addEventListener('click', function(e) {
+			state.showBB = !state.showBB;
+			e.currentTarget.classList.toggle('active', state.showBB);
+			if (state.activeStock) renderChart(state.activeStock);
+		});
+	}
+	var btnVWAP = document.getElementById('btn-toggle-vwap');
+	if (btnVWAP) {
+		btnVWAP.addEventListener('click', function(e) {
+			state.showVWAP = !state.showVWAP;
+			e.currentTarget.classList.toggle('active', state.showVWAP);
+			if (state.activeStock) renderChart(state.activeStock);
+		});
+	}
+	var btnRSI = document.getElementById('btn-toggle-rsi');
+	if (btnRSI) {
+		btnRSI.addEventListener('click', function(e) {
+			state.showRSI = !state.showRSI;
+			e.currentTarget.classList.toggle('active', state.showRSI);
+			var subContainer = document.getElementById('sub-chart-container');
+			if (subContainer) {
+				if (state.showRSI || state.showMACD) {
+					subContainer.classList.remove('hidden');
+				} else {
+					subContainer.classList.add('hidden');
+					if (subChartInstance) { subChartInstance.destroy(); subChartInstance = null; }
+				}
+			}
+			if (state.activeStock) renderChart(state.activeStock);
+		});
+	}
+	var btnMACD = document.getElementById('btn-toggle-macd');
+	if (btnMACD) {
+		btnMACD.addEventListener('click', function(e) {
+			state.showMACD = !state.showMACD;
+			e.currentTarget.classList.toggle('active', state.showMACD);
+			var subContainer = document.getElementById('sub-chart-container');
+			if (subContainer) {
+				if (state.showRSI || state.showMACD) {
+					subContainer.classList.remove('hidden');
+				} else {
+					subContainer.classList.add('hidden');
+					if (subChartInstance) { subChartInstance.destroy(); subChartInstance = null; }
+				}
+			}
+			if (state.activeStock) renderChart(state.activeStock);
+		});
+	}
+
+	// ── Layout Selector ──
+	['1x', '2x', '4x'].forEach(function(layout) {
+		var layoutBtn = document.getElementById('btn-layout-' + layout);
+		if (layoutBtn) {
+			layoutBtn.addEventListener('click', function() {
+				setChartLayout(layout);
+			});
+		}
+	});
+
+	// ── Drawing Tools ──
+	setupDrawingTools();
 }
 
 // ==================== SETTINGS / MODIFIABLE CASH ====================
@@ -7651,6 +8250,9 @@ function renderAll() {
 		if (state.activeBottomTab === "options") renderOptionsTable();
 		if (state.activeBottomTab === "pending") renderPendingTable();
 		if (state.activeBottomTab === "history") renderHistoryTable();
+
+		// 3. MULTI-CHART PANEL UPDATE
+		updateAllPanels();
 	});
 }
 
@@ -8722,6 +9324,52 @@ function _applyChartData(stock, isLight) {
 		dsEMA.hidden = true;
 	}
 
+	// ── Bollinger Bands (datasets 7, 8) ──
+	var dsBBUpper = chartInstance.data.datasets[7];
+	var dsBBLower = chartInstance.data.datasets[8];
+	if (state.showBB && dataLen) {
+		var bbPrices = smaData.map(function(_, idx) {
+			return chartInstance.data.datasets[0].data[idx] || 0;
+		});
+		// Use the actual raw price slice for BB calc
+		var rawPricesForBB = (state.chartType === 'candle')
+			? (chartInstance._ohlc || []).map(function(c) { return c.c; })
+			: (chartInstance._lineData || chartInstance.data.datasets[0].data || []);
+		var bb = calcBollingerBands(rawPricesForBB, 20, 2);
+		var bbU = bb.upper, bbL = bb.lower;
+		if (isPct && firstPrice) {
+			bbU = bbU.map(function(v) { return v === null ? null : ((v - firstPrice) / firstPrice) * 100; });
+			bbL = bbL.map(function(v) { return v === null ? null : ((v - firstPrice) / firstPrice) * 100; });
+		}
+		dsBBUpper.data = bbU;
+		dsBBLower.data = bbL;
+		dsBBUpper.hidden = false;
+		dsBBLower.hidden = false;
+	} else {
+		dsBBUpper.data = []; dsBBLower.data = [];
+		dsBBUpper.hidden = true; dsBBLower.hidden = true;
+	}
+
+	// ── VWAP (dataset 9) ──
+	var dsVWAP = chartInstance.data.datasets[9];
+	if (state.showVWAP && dataLen) {
+		var rawCloses = (state.chartType === 'candle')
+			? (chartInstance._ohlc || []).map(function(c) { return c.c; })
+			: (chartInstance._lineData || chartInstance.data.datasets[0].data || []);
+		var rawVols = (state.chartType === 'candle')
+			? (chartInstance._volumes || [])
+			: (stock.volumeHistory || []).slice(-rawCloses.length);
+		var vwapData = calcVWAP(rawCloses, rawVols);
+		if (isPct && firstPrice) {
+			vwapData = vwapData.map(function(v) { return v === null ? null : ((v - firstPrice) / firstPrice) * 100; });
+		}
+		dsVWAP.data = vwapData;
+		dsVWAP.hidden = false;
+	} else {
+		dsVWAP.data = [];
+		dsVWAP.hidden = true;
+	}
+
 	// Y-axis tick format (pct mode overrides price format)
 	scY.ticks.callback = isPct
 		? function (v) {
@@ -8760,6 +9408,14 @@ function _applyChartData(stock, isLight) {
 	tip.borderColor = isLight ? "#ddd" : "#2a2a3a";
 
 	chartInstance.update("none");
+
+	// ── Render sub-chart (RSI / MACD) in sync ──
+	if (state.showRSI || state.showMACD) {
+		var subPrices = (state.chartType === 'candle')
+			? (chartInstance._ohlc || []).map(function(c) { return c.c; })
+			: (chartInstance._lineData || chartInstance.data.datasets[0].data || []);
+		renderSubChart(stock, subPrices);
+	}
 }
 
 // ==================== CUSTOM HTML TOOLTIP ====================
@@ -8888,7 +9544,7 @@ function renderChart(stock) {
 	// Create the single chart instance
 	chartInstance = new Chart(ctx, {
 		type: "line",
-		plugins: [candlestickPlugin],
+		plugins: [candlestickPlugin, drawingPlugin],
 		data: {
 			labels: [],
 			datasets: [
@@ -8968,7 +9624,7 @@ function renderChart(stock) {
 					tension: 0.1,
 					hidden: true,
 				},
-				{
+					{
 					// 6: EMA 20 (purple solid line)
 					label: "EMA 20",
 					data: [],
@@ -8979,6 +9635,48 @@ function renderChart(stock) {
 					pointHoverRadius: 0,
 					fill: false,
 					tension: 0.1,
+					hidden: true,
+				},
+				{
+					// 7: BB Upper (teal)
+					label: "BB Upper",
+					data: [],
+					borderWidth: 1,
+					borderColor: "rgba(0, 188, 212, 0.7)",
+					backgroundColor: "rgba(0, 188, 212, 0.06)",
+					pointRadius: 0,
+					pointHoverRadius: 0,
+					fill: '+1',
+					tension: 0.1,
+					borderDash: [3, 3],
+					hidden: true,
+				},
+				{
+					// 8: BB Lower (teal)
+					label: "BB Lower",
+					data: [],
+					borderWidth: 1,
+					borderColor: "rgba(0, 188, 212, 0.7)",
+					backgroundColor: "rgba(0, 188, 212, 0.06)",
+					pointRadius: 0,
+					pointHoverRadius: 0,
+					fill: false,
+					tension: 0.1,
+					borderDash: [3, 3],
+					hidden: true,
+				},
+				{
+					// 9: VWAP (gold dashed)
+					label: "VWAP",
+					data: [],
+					borderWidth: 1.5,
+					borderColor: "rgba(255, 214, 0, 0.9)",
+					backgroundColor: "transparent",
+					pointRadius: 0,
+					pointHoverRadius: 0,
+					fill: false,
+					tension: 0.1,
+					borderDash: [4, 4],
 					hidden: true,
 				},
 			],
@@ -9964,6 +10662,103 @@ function calcEMA(prices, period) {
 		}
 	}
 	return ema;
+}
+
+// ==================== BOLLINGER BANDS (20, 2) ====================
+function calcBollingerBands(prices, period, multiplier) {
+	period = period || 20;
+	multiplier = multiplier || 2;
+	var upper = [], lower = [], middle = [];
+	for (var i = 0; i < prices.length; i++) {
+		if (i < period - 1) {
+			upper.push(null); lower.push(null); middle.push(null);
+		} else {
+			var slice = prices.slice(i - period + 1, i + 1);
+			var mean = 0;
+			for (var j = 0; j < slice.length; j++) mean += slice[j];
+			mean /= period;
+			var variance = 0;
+			for (var k2 = 0; k2 < slice.length; k2++) variance += (slice[k2] - mean) * (slice[k2] - mean);
+			var stdDev = Math.sqrt(variance / period);
+			middle.push(mean);
+			upper.push(mean + multiplier * stdDev);
+			lower.push(mean - multiplier * stdDev);
+		}
+	}
+	return { upper: upper, middle: middle, lower: lower };
+}
+
+// ==================== VWAP ====================
+// Approximates VWAP using close prices and simulated volumes
+function calcVWAP(closes, volumes) {
+	var vwap = [];
+	var cumPV = 0, cumVol = 0;
+	for (var i = 0; i < closes.length; i++) {
+		var vol = (volumes && volumes[i]) ? volumes[i] : 1;
+		cumPV += closes[i] * vol;
+		cumVol += vol;
+		vwap.push(cumVol > 0 ? cumPV / cumVol : closes[i]);
+	}
+	return vwap;
+}
+
+// ==================== RSI (14) ====================
+function calcRSI(prices, period) {
+	period = period || 14;
+	var rsi = [];
+	if (prices.length < period + 1) {
+		return Array(prices.length).fill(null);
+	}
+	var gains = 0, losses = 0;
+	for (var i = 1; i <= period; i++) {
+		var diff = prices[i] - prices[i - 1];
+		if (diff > 0) gains += diff; else losses -= diff;
+	}
+	var avgGain = gains / period;
+	var avgLoss = losses / period;
+	for (var i2 = 0; i2 < period; i2++) rsi.push(null);
+	var firstRs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+	rsi.push(100 - 100 / (1 + firstRs));
+	for (var i3 = period + 1; i3 < prices.length; i3++) {
+		var d = prices[i3] - prices[i3 - 1];
+		var g = d > 0 ? d : 0;
+		var l = d < 0 ? -d : 0;
+		avgGain = (avgGain * (period - 1) + g) / period;
+		avgLoss = (avgLoss * (period - 1) + l) / period;
+		var rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+		rsi.push(100 - 100 / (1 + rs));
+	}
+	return rsi;
+}
+
+// ==================== MACD (12, 26, 9) ====================
+function calcMACD(prices, fast, slow, signal) {
+	fast = fast || 12; slow = slow || 26; signal = signal || 9;
+	var emaFast = calcEMA(prices, fast);
+	var emaSlow = calcEMA(prices, slow);
+	var macdLine = [], signalLine = [], histogram = [];
+	for (var i = 0; i < prices.length; i++) {
+		if (emaFast[i] === null || emaSlow[i] === null) {
+			macdLine.push(null);
+		} else {
+			macdLine.push(emaFast[i] - emaSlow[i]);
+		}
+	}
+	// Signal = EMA(9) of MACD
+	var validMacd = macdLine.filter(function(v) { return v !== null; });
+	var sigFull = calcEMA(validMacd, signal);
+	var validIdx = 0;
+	for (var i2 = 0; i2 < macdLine.length; i2++) {
+		if (macdLine[i2] === null) {
+			signalLine.push(null);
+			histogram.push(null);
+		} else {
+			var sig = sigFull[validIdx++];
+			signalLine.push(sig === null ? null : sig);
+			histogram.push(sig === null ? null : macdLine[i2] - sig);
+		}
+	}
+	return { macdLine: macdLine, signalLine: signalLine, histogram: histogram };
 }
 
 // ==================== DALAL BANK ====================

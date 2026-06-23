@@ -176,11 +176,20 @@
                             <button class="chart-type-btn scale-btn" id="btn-scale-pct" title="% Change from view start"><span>%Chg</span></button>
                         </div>
                         <div class="segmented-control">
-                            <button class="chart-type-btn indicator-btn" id="btn-toggle-sma" title="Toggle SMA (20)"><span>SMA</span></button>
-                            <button class="chart-type-btn indicator-btn" id="btn-toggle-ema" title="Toggle EMA (20)"><span>EMA</span></button>
+                             <button class="chart-type-btn indicator-btn" id="btn-toggle-sma" title="Toggle SMA (20)"><span>SMA</span></button>
+                             <button class="chart-type-btn indicator-btn" id="btn-toggle-ema" title="Toggle EMA (20)"><span>EMA</span></button>
+                             <button class="chart-type-btn indicator-btn" id="btn-toggle-bb" title="Toggle Bollinger Bands (20, 2)"><span>BB</span></button>
+                             <button class="chart-type-btn indicator-btn" id="btn-toggle-vwap" title="Toggle VWAP"><span>VWAP</span></button>
+                             <button class="chart-type-btn indicator-btn" id="btn-toggle-rsi" title="Toggle RSI (14)"><span>RSI</span></button>
+                             <button class="chart-type-btn indicator-btn" id="btn-toggle-macd" title="Toggle MACD (12,26,9)"><span>MACD</span></button>
                         </div>
                         <div class="segmented-control">
                             <button class="chart-type-btn" id="btn-toggle-analytics" title="Stock Analytics & Fundamentals"><span><i class="fa-solid fa-chart-pie"></i> Analytics</span></button>
+                        </div>
+                        <div class="segmented-control layout-selector">
+                            <button class="chart-type-btn active" id="btn-layout-1x" title="Single Chart"><span><i class="fa-solid fa-square"></i></span></button>
+                            <button class="chart-type-btn" id="btn-layout-2x" title="2x Split"><span><i class="fa-solid fa-table-columns"></i></span></button>
+                            <button class="chart-type-btn" id="btn-layout-4x" title="4x Grid"><span><i class="fa-solid fa-table-cells"></i></span></button>
                         </div>
                     </div>
 
@@ -193,7 +202,42 @@
 
                 <!-- Chart -->
                 <div class="chart-container">
-                    <canvas id="main-chart" role="img" aria-label="Price chart for the selected instrument"></canvas>
+                    <!-- Drawing Toolbar -->
+                    <div class="drawing-toolbar" id="drawing-toolbar">
+                        <button class="draw-btn active" id="draw-cursor" title="Cursor / Pan" data-tool="cursor">
+                            <i class="fa-solid fa-arrow-pointer"></i>
+                        </button>
+                        <button class="draw-btn" id="draw-trendline" title="Trendline" data-tool="trendline">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </button>
+                        <button class="draw-btn" id="draw-hline" title="Horizontal Support / Resistance" data-tool="hline">
+                            <i class="fa-solid fa-minus"></i>
+                        </button>
+                        <button class="draw-btn" id="draw-fib" title="Fibonacci Retracement" data-tool="fib">
+                            <i class="fa-solid fa-wave-square"></i>
+                        </button>
+                        <div class="draw-sep"></div>
+                        <button class="draw-btn draw-clear" id="draw-clear" title="Clear All Drawings">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+
+                    <!-- Main Chart Grid Container -->
+                    <div id="chart-grid-container" class="chart-grid-1x">
+                        <div class="chart-panel" id="panel-0">
+                            <canvas id="main-chart" role="img" aria-label="Price chart for the selected instrument"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Sub-chart (RSI / MACD) -->
+                    <div id="sub-chart-container" class="hidden">
+                        <div class="sub-chart-header">
+                            <span id="sub-chart-label">RSI (14)</span>
+                            <span class="sub-chart-ref">— 70 Overbought &nbsp;&nbsp; — 30 Oversold</span>
+                        </div>
+                        <canvas id="sub-chart"></canvas>
+                    </div>
+
                     <div class="chart-time-selector">
                         <div class="chart-view-lengths">
                             <button class="tf-btn active" id="tf-1D">1D</button>
