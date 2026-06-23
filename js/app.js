@@ -4553,6 +4553,22 @@ var state = {
 	newsMarketFilter: "ALL", // news feed market filter
 	showSMA: false,
 	showEMA: false,
+	showBB: false,
+	showVWAP: false,
+	showRSI: false,
+	showMACD: false,
+	// Drawing tools
+	drawingMode: 'cursor',
+	activeDrawings: {},
+	drawingInProgress: null,
+	// Multi-chart layout
+	chartLayout: '1x',
+	panelStates: [
+		{ ticker: 'RELIANCE', viewLen: 375, candlePeriod: 5, chartType: 'line' },
+		{ ticker: 'TCS', viewLen: 375, candlePeriod: 5, chartType: 'line' },
+		{ ticker: 'HDFCBANK', viewLen: 375, candlePeriod: 5, chartType: 'line' },
+		{ ticker: 'INFY', viewLen: 375, candlePeriod: 5, chartType: 'line' }
+	],
 	pendingOrders: [],
 	marginCallThrottle: 0,
 	realEstate: [],
@@ -4806,6 +4822,843 @@ var state = {
 
 var marketInterval;
 var chartInstance = null;
+var subChartInstance = null;
+var multiChartInstances = []; // For 2x/4x multi-chart panels
+
+// ==================== SUB-CHART (RSI / MACD) ====================
+function renderSubChart(stock, prices) {
+	if (!prices || prices.length < 2) return;
+	var container = document.getElementById('sub-chart-container');
+	var canvas = document.getElementById('sub-chart');
+	if (!canvas) return;
+	var isLight = state.theme === 'light' || state.theme === 'sepia';
+	var gridColor = isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.05)';
+	var tickColor = isLight ? '#666' : '#707888';
+	var label = document.getElementById('sub-chart-label');
+	var refEl = document.querySelector('.sub-chart-ref');
+
+	if (state.showRSI) {
+		if (label) label.textContent = 'RSI (14)';
+		if (refEl) refEl.textContent = '— 70 Overbought   — 30 Oversold';
+		var rsiData = calcRSI(prices, 14);
+		var rsiLabels = rsiData.map(function(_, i) { return i; });
+
+		if (subChartInstance && subChartInstance._mode !== 'rsi') {
+			subChartInstance.destroy(); subChartInstance = null;
+		}
+		if (!subChartInstance) {
+			subChartInstance = new Chart(canvas.getContext('2d'), {
+				type: 'line',
+				data: {
+					labels: rsiLabels,
+					datasets: [
+						{
+							label: 'RSI',
+							data: rsiData,
+							borderColor: 'rgba(100, 181, 246, 0.9)',
+							backgroundColor: 'transparent',
+							borderWidth: 1.5,
+							pointRadius: 0,
+							tension: 0.1,
+							fill: false,
+						},
+						{
+							label: 'OB',
+							data: Array(rsiData.length).fill(70),
+							borderColor: 'rgba(239, 68, 68, 0.5)',
+							backgroundColor: 'transparent',
+							borderWidth: 1,
+							borderDash: [4, 3],
+							pointRadius: 0,
+							fill: false,
+							tension: 0,
+						},
+						{
+							label: 'OS',
+							data: Array(rsiData.length).fill(30),
+							borderColor: 'rgba(16, 185, 129, 0.5)',
+							backgroundColor: 'transparent',
+							borderWidth: 1,
+							borderDash: [4, 3],
+							pointRadius: 0,
+							fill: false,
+							tension: 0,
+						}
+					]
+				},
+				options: {
+					responsive: true, maintainAspectRatio: false, animation: false,
+					plugins: { legend: { display: false }, tooltip: { enabled: false } },
+					scales: {
+						x: { display: false, grid: { display: false } },
+						y: {
+							min: 0, max: 100,
+							grid: { color: gridColor, drawBorder: false },
+							ticks: { color: tickColor, font: { size: 9 }, maxTicksLimit: 5,
+								callback: function(v) { return v.toFixed(0); }
+							},
+							position: 'right'
+						}
+					}
+				}
+			});
+			subChartInstance._mode = 'rsi';
+		} else {
+			subChartInstance.data.labels = rsiLabels;
+			subChartInstance.data.datasets[0].data = rsiData;
+			subChartInstance.data.datasets[1].data = Array(rsiData.length).fill(70);
+			subChartInstance.data.datasets[2].data = Array(rsiData.length).fill(30);
+			subChartInstance.update('none');
+		}
+	} else if (state.showMACD) {
+		if (label) label.textContent = 'MACD (12, 26, 9)';
+		if (refEl) refEl.textContent = '— MACD   — Signal   ■ Histogram';
+		var macdResult = calcMACD(prices, 12, 26, 9);
+		var mLine = macdResult.macdLine;
+		var sLine = macdResult.signalLine;
+		var hist = macdResult.histogram;
+		var mLabels = mLine.map(function(_, i) { return i; });
+
+		var histColors = hist.map(function(v) {
+			if (v === null) return 'transparent';
+			return v >= 0 ? 'rgba(16, 185, 129, 0.6)' : 'rgba(239, 68, 68, 0.6)';
+		});
+
+		if (subChartInstance && subChartInstance._mode !== 'macd') {
+			subChartInstance.destroy(); subChartInstance = null;
+		}
+		if (!subChartInstance) {
+			subChartInstance = new Chart(canvas.getContext('2d'), {
+				type: 'bar',
+				data: {
+					labels: mLabels,
+					datasets: [
+						{
+							type: 'bar',
+							label: 'Histogram',
+							data: hist,
+							backgroundColor: histColors,
+							borderWidth: 0,
+							barPercentage: 0.8,
+						},
+						{
+							type: 'line',
+							label: 'MACD',
+							data: mLine,
+							borderColor: 'rgba(100, 181, 246, 0.9)',
+							backgroundColor: 'transparent',
+							borderWidth: 1.5,
+							pointRadius: 0,
+							tension: 0.1,
+							fill: false,
+						},
+						{
+							type: 'line',
+							label: 'Signal',
+							data: sLine,
+							borderColor: 'rgba(255, 152, 0, 0.9)',
+							backgroundColor: 'transparent',
+							borderWidth: 1.2,
+							pointRadius: 0,
+							tension: 0.1,
+							fill: false,
+						}
+					]
+				},
+				options: {
+					responsive: true, maintainAspectRatio: false, animation: false,
+					plugins: { legend: { display: false }, tooltip: { enabled: false } },
+					scales: {
+						x: { display: false, grid: { display: false } },
+						y: {
+							grid: { color: gridColor, drawBorder: false },
+							ticks: { color: tickColor, font: { size: 9 }, maxTicksLimit: 5,
+								callback: function(v) { return v.toFixed(2); }
+							},
+							position: 'right'
+						}
+					}
+				}
+			});
+			subChartInstance._mode = 'macd';
+		} else {
+			subChartInstance.data.labels = mLabels;
+			subChartInstance.data.datasets[0].data = hist;
+			subChartInstance.data.datasets[0].backgroundColor = histColors;
+			subChartInstance.data.datasets[1].data = mLine;
+			subChartInstance.data.datasets[2].data = sLine;
+			subChartInstance.update('none');
+		}
+	}
+}
+
+// ==================== DRAWING PLUGIN ====================
+var drawingPlugin = {
+	id: 'drawingPlugin',
+	afterDraw: function(chart) {
+		if (chart !== chartInstance && multiChartInstances.indexOf(chart) === -1) return; // Draw on main chart or panel charts
+		var ctx = chart.ctx;
+		var xScale = chart.scales.x;
+		var yScale = chart.scales.y;
+		if (!xScale || !yScale) return;
+		var ticker = chart._panelTicker || (state.activeStock ? state.activeStock.ticker : null);
+		if (!ticker) return;
+		var drawings = state.activeDrawings[ticker] || [];
+		var isLight = state.theme === 'light' || state.theme === 'sepia';
+		var chartArea = chart.chartArea;
+		if (!chartArea) return;
+		var dataLen = (chart.data.datasets[0] && chart.data.datasets[0].data.length) || 0;
+		if (!dataLen) return;
+
+		ctx.save();
+		ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+		ctx.clip();
+
+		drawings.forEach(function(d) {
+			ctx.globalAlpha = 0.85;
+			if (d.type === 'trendline') {
+				var x1 = xScale.getPixelForValue(d.x1);
+				var y1 = yScale.getPixelForValue(d.y1);
+				var x2 = xScale.getPixelForValue(d.x2);
+				var y2 = yScale.getPixelForValue(d.y2);
+				ctx.beginPath();
+				ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+				ctx.strokeStyle = isLight ? '#2563eb' : '#60a5fa';
+				ctx.lineWidth = 1.5;
+				ctx.setLineDash([]);
+				ctx.stroke();
+				// Endpoint dots
+				ctx.fillStyle = isLight ? '#2563eb' : '#60a5fa';
+				ctx.beginPath(); ctx.arc(x1, y1, 3, 0, Math.PI * 2); ctx.fill();
+				ctx.beginPath(); ctx.arc(x2, y2, 3, 0, Math.PI * 2); ctx.fill();
+
+			} else if (d.type === 'hline') {
+				var yPx = yScale.getPixelForValue(d.price);
+				ctx.beginPath();
+				ctx.moveTo(chartArea.left, yPx); ctx.lineTo(chartArea.right, yPx);
+				ctx.strokeStyle = isLight ? '#0891b2' : '#06b6d4';
+				ctx.lineWidth = 1.2;
+				ctx.setLineDash([5, 4]);
+				ctx.stroke();
+				ctx.setLineDash([]);
+				// Price label
+				ctx.fillStyle = isLight ? '#0891b2' : '#06b6d4';
+				ctx.font = '9px monospace';
+				ctx.fillText(d.price.toFixed(2), chartArea.right + 2, yPx + 3);
+
+			} else if (d.type === 'fib') {
+				var fibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
+				var fibColors = isLight 
+					? ['rgba(0,0,0,0.6)', 'rgba(202,138,4,0.8)', 'rgba(21,128,61,0.8)', 'rgba(29,78,216,0.8)', 'rgba(126,34,206,0.8)', 'rgba(190,18,60,0.8)', 'rgba(0,0,0,0.6)']
+					: ['rgba(255,255,255,0.7)', 'rgba(253,224,71,0.8)', 'rgba(134,239,172,0.8)', 'rgba(147,197,253,0.8)', 'rgba(216,180,254,0.8)', 'rgba(253,164,175,0.8)', 'rgba(255,255,255,0.7)'];
+				var x1Px = xScale.getPixelForValue(d.x1);
+				var x2Px = xScale.getPixelForValue(d.x2);
+				var fibLeft = Math.min(x1Px, x2Px);
+				var fibRight = Math.max(x1Px, x2Px);
+				var priceRange = d.y1 - d.y2;
+				fibLevels.forEach(function(level, li) {
+					var fibPrice = d.y2 + priceRange * (1 - level);
+					var yPxF = yScale.getPixelForValue(fibPrice);
+
+					// Draw Zone Background
+					if (li > 0) {
+						var prevLevel = fibLevels[li - 1];
+						var prevFibPrice = d.y2 + priceRange * (1 - prevLevel);
+						var prevYPxF = yScale.getPixelForValue(prevFibPrice);
+						ctx.fillStyle = fibColors[li].replace(/[\d.]+\)/, '0.08)');
+						ctx.fillRect(fibLeft, Math.min(yPxF, prevYPxF), fibRight - fibLeft, Math.abs(yPxF - prevYPxF));
+					}
+
+					ctx.beginPath();
+					ctx.moveTo(fibLeft, yPxF); ctx.lineTo(fibRight, yPxF);
+					ctx.strokeStyle = fibColors[li];
+					ctx.lineWidth = 1;
+					ctx.setLineDash([2, 4]);
+					ctx.stroke();
+					ctx.setLineDash([]);
+
+					ctx.fillStyle = fibColors[li].replace(/[\d.]+\)/, '0.15)');
+					var text = (level * 100).toFixed(1) + '%  ' + fibPrice.toFixed(2);
+					ctx.textAlign = 'right';
+					var tWidth = ctx.measureText(text).width;
+					ctx.fillRect(chartArea.right - tWidth - 14, yPxF - 10, tWidth + 10, 14);
+
+					ctx.fillStyle = fibColors[li].replace(/[\d.]+\)/, '0.9)');
+					ctx.font = 'bold 10px monospace';
+					ctx.fillText(text, chartArea.right - 9, yPxF + 3);
+					ctx.textAlign = 'left';
+				});
+			}
+		});
+
+		// Draw in-progress drawing
+		if (state.drawingInProgress) {
+			var ip = state.drawingInProgress;
+			ctx.globalAlpha = 0.6;
+			if (ip.type === 'trendline') {
+				ctx.beginPath();
+				ctx.moveTo(ip.startPx, ip.startPy);
+				ctx.lineTo(ip.curPx, ip.curPy);
+				ctx.strokeStyle = isLight ? '#2563eb' : '#60a5fa';
+				ctx.lineWidth = 1.5;
+				ctx.setLineDash([4, 3]);
+				ctx.stroke();
+				ctx.setLineDash([]);
+			} else if (ip.type === 'hline') {
+				ctx.beginPath();
+				ctx.moveTo(chartArea.left, ip.startPy);
+				ctx.lineTo(chartArea.right, ip.startPy);
+				ctx.strokeStyle = isLight ? '#d97706' : '#fbbf24';
+				ctx.lineWidth = 1.2;
+				ctx.setLineDash([5, 4]);
+				ctx.stroke();
+				ctx.setLineDash([]);
+			} else if (ip.type === 'fib') {
+				var fibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
+				var fibColors = isLight 
+					? ['rgba(0,0,0,0.6)', 'rgba(202,138,4,0.8)', 'rgba(21,128,61,0.8)', 'rgba(29,78,216,0.8)', 'rgba(126,34,206,0.8)', 'rgba(190,18,60,0.8)', 'rgba(0,0,0,0.6)']
+					: ['rgba(255,255,255,0.7)', 'rgba(253,224,71,0.8)', 'rgba(134,239,172,0.8)', 'rgba(147,197,253,0.8)', 'rgba(216,180,254,0.8)', 'rgba(253,164,175,0.8)', 'rgba(255,255,255,0.7)'];
+				
+				var curYVal = yScale.getValueForPixel(ip.curPy);
+				var priceRange = ip.startY - curYVal;
+				
+				// Trendline connecting the two drag points
+				ctx.beginPath();
+				ctx.moveTo(ip.startPx, ip.startPy);
+				ctx.lineTo(ip.curPx, ip.curPy);
+				ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+				ctx.lineWidth = 1.5;
+				ctx.setLineDash([4, 4]);
+				ctx.stroke();
+				ctx.setLineDash([]);
+
+				fibLevels.forEach(function(level, li) {
+					var fibPrice = curYVal + priceRange * (1 - level);
+					var yPxF = yScale.getPixelForValue(fibPrice);
+
+					if (li > 0) {
+						var prevLevel = fibLevels[li - 1];
+						var prevFibPrice = curYVal + priceRange * (1 - prevLevel);
+						var prevYPxF = yScale.getPixelForValue(prevFibPrice);
+						ctx.fillStyle = fibColors[li].replace(/[\d.]+\)/, '0.08)');
+						ctx.fillRect(chartArea.left, Math.min(yPxF, prevYPxF), chartArea.right - chartArea.left, Math.abs(yPxF - prevYPxF));
+					}
+
+					ctx.beginPath();
+					ctx.moveTo(chartArea.left, yPxF); ctx.lineTo(chartArea.right, yPxF);
+					ctx.strokeStyle = fibColors[li];
+					ctx.lineWidth = 1;
+					ctx.setLineDash([2, 4]);
+					ctx.stroke();
+					ctx.setLineDash([]);
+
+					ctx.fillStyle = fibColors[li].replace(/[\d.]+\)/, '0.15)');
+					var text = (level * 100).toFixed(1) + '%  ' + fibPrice.toFixed(2);
+					ctx.textAlign = 'right';
+					var tWidth = ctx.measureText(text).width;
+					ctx.fillRect(chartArea.right - tWidth - 14, yPxF - 10, tWidth + 10, 14);
+
+					ctx.fillStyle = fibColors[li].replace(/[\d.]+\)/, '0.9)');
+					ctx.font = 'bold 10px monospace';
+					ctx.fillText(text, chartArea.right - 9, yPxF + 3);
+					ctx.textAlign = 'left';
+				});
+			}
+		}
+
+		// Render Grab Handles
+		if (state.drawingMode === 'cursor') {
+			drawings.forEach(function(d, dIdx) {
+				var pts = [];
+				if (d.type === 'trendline' || d.type === 'fib') {
+					pts.push({ id: dIdx + '_1', x: xScale.getPixelForValue(d.x1), y: yScale.getPixelForValue(d.y1) });
+					pts.push({ id: dIdx + '_2', x: xScale.getPixelForValue(d.x2), y: yScale.getPixelForValue(d.y2) });
+				} else if (d.type === 'hline') {
+					var yPx = yScale.getPixelForValue(d.price);
+					pts.push({ id: dIdx + '_line', x: chartArea.right - 40, y: yPx });
+				}
+				
+				pts.forEach(function(pt) {
+					var isHovered = state.hoveredAnchor && state.hoveredAnchor.id === pt.id;
+					ctx.beginPath();
+					ctx.arc(pt.x, pt.y, isHovered ? 6 : 4, 0, Math.PI * 2);
+					ctx.fillStyle = isLight ? '#fff' : '#1e293b';
+					ctx.fill();
+					ctx.lineWidth = 2;
+					ctx.strokeStyle = isHovered ? (isLight ? '#2563eb' : '#60a5fa') : (isLight ? '#94a3b8' : '#475569');
+					ctx.stroke();
+				});
+			});
+		}
+
+		ctx.restore();
+	}
+};
+
+// ==================== DRAWING TOOL SETUP ====================
+function setupDrawingListenersForCanvas(canvas, getChartFn, getTickerFn) {
+	canvas.addEventListener('mousedown', function(e) {
+		var chartRef = getChartFn();
+		if (!chartRef) return;
+		var rect = canvas.getBoundingClientRect();
+		var px = e.clientX - rect.left;
+		var py = e.clientY - rect.top;
+		var xScale = chartRef.scales.x;
+		var yScale = chartRef.scales.y;
+		if (!xScale || !yScale) return;
+
+		// Handle Edit Mode Drag Start
+		if (state.drawingMode === 'cursor') {
+			if (state.hoveredAnchor) {
+				state.drawingInProgress = {
+					type: 'edit',
+					anchor: state.hoveredAnchor,
+					targetChart: chartRef
+				};
+				e.preventDefault();
+			}
+			return;
+		}
+
+		// Handle Drawing Mode Start
+		state.drawingInProgress = {
+			type: state.drawingMode,
+			startPx: px, startPy: py,
+			curPx: px, curPy: py,
+			startX: xScale.getValueForPixel(px),
+			startY: yScale.getValueForPixel(py),
+			targetChart: chartRef
+		};
+		e.preventDefault();
+	});
+
+	canvas.addEventListener('mousemove', function(e) {
+		var chartRef = getChartFn();
+		if (!chartRef) return;
+		var rect = canvas.getBoundingClientRect();
+		var px = e.clientX - rect.left;
+		var py = e.clientY - rect.top;
+		var xScale = chartRef.scales.x;
+		var yScale = chartRef.scales.y;
+
+		// Handle Edit Mode Hit Testing
+		if (state.drawingMode === 'cursor' && !state.drawingInProgress) {
+			var ticker = getTickerFn();
+			var drawings = (ticker && state.activeDrawings[ticker]) ? state.activeDrawings[ticker] : [];
+			var foundAnchor = null;
+			for (var i = 0; i < drawings.length; i++) {
+				var d = drawings[i];
+				if (d.type === 'trendline' || d.type === 'fib') {
+					var p1 = { x: xScale.getPixelForValue(d.x1), y: yScale.getPixelForValue(d.y1) };
+					var p2 = { x: xScale.getPixelForValue(d.x2), y: yScale.getPixelForValue(d.y2) };
+					if (Math.hypot(p1.x - px, p1.y - py) < 8) { foundAnchor = { id: i + '_1', idx: i, point: 1 }; break; }
+					if (Math.hypot(p2.x - px, p2.y - py) < 8) { foundAnchor = { id: i + '_2', idx: i, point: 2 }; break; }
+				} else if (d.type === 'hline') {
+					var pY = yScale.getPixelForValue(d.price);
+					var pX = chartRef.chartArea.right - 40;
+					if (Math.hypot(pX - px, pY - py) < 8) { foundAnchor = { id: i + '_line', idx: i, point: 'line' }; break; }
+				}
+			}
+			var changed = (state.hoveredAnchor ? state.hoveredAnchor.id : null) !== (foundAnchor ? foundAnchor.id : null);
+			state.hoveredAnchor = foundAnchor;
+			canvas.style.cursor = foundAnchor ? 'grab' : 'default';
+			if (changed) chartRef.draw();
+			return;
+		}
+
+		if (!state.drawingInProgress || state.drawingInProgress.targetChart !== chartRef) return;
+
+		// Handle Edit Mode Drag
+		if (state.drawingInProgress.type === 'edit') {
+			var ticker = getTickerFn();
+			var drawings = (ticker && state.activeDrawings[ticker]) ? state.activeDrawings[ticker] : [];
+			var anchor = state.drawingInProgress.anchor;
+			var d = drawings[anchor.idx];
+			if (d) {
+				if (anchor.point === 1) { d.x1 = xScale.getValueForPixel(px); d.y1 = yScale.getValueForPixel(py); }
+				else if (anchor.point === 2) { d.x2 = xScale.getValueForPixel(px); d.y2 = yScale.getValueForPixel(py); }
+				else if (anchor.point === 'line') { d.price = yScale.getValueForPixel(py); }
+				canvas.style.cursor = 'grabbing';
+				chartRef.draw();
+			}
+			return;
+		}
+
+		// Handle Drawing Mode Drag
+		state.drawingInProgress.curPx = px;
+		state.drawingInProgress.curPy = py;
+		chartRef.draw(); // Force redraw for live preview
+	});
+
+	canvas.addEventListener('mouseup', function(e) {
+		var chartRef = getChartFn();
+		if (!state.drawingInProgress || state.drawingInProgress.targetChart !== chartRef || !chartRef) return;
+
+		if (state.drawingInProgress.type === 'edit') {
+			state.drawingInProgress = null;
+			canvas.style.cursor = 'default';
+			chartRef.draw();
+			return;
+		}
+
+		var ip = state.drawingInProgress;
+		var rect = canvas.getBoundingClientRect();
+		var px = e.clientX - rect.left;
+		var py = e.clientY - rect.top;
+		var xScale = chartRef.scales.x;
+		var yScale = chartRef.scales.y;
+		if (!xScale || !yScale) { state.drawingInProgress = null; return; }
+		var endX = xScale.getValueForPixel(px);
+		var endY = yScale.getValueForPixel(py);
+		var ticker = getTickerFn();
+		if (!ticker) { state.drawingInProgress = null; return; }
+		if (!state.activeDrawings[ticker]) state.activeDrawings[ticker] = [];
+
+		// Only commit if there's meaningful movement
+		var dx = Math.abs(ip.startPx - px);
+		var dy = Math.abs(ip.startPy - py);
+		if (dx > 3 || dy > 3 || ip.type === 'hline') {
+			if (ip.type === 'trendline') {
+				state.activeDrawings[ticker].push({ type: 'trendline', x1: ip.startX, y1: ip.startY, x2: endX, y2: endY });
+			} else if (ip.type === 'hline') {
+				state.activeDrawings[ticker].push({ type: 'hline', price: ip.startY });
+			} else if (ip.type === 'fib') {
+				state.activeDrawings[ticker].push({ type: 'fib', x1: ip.startX, y1: ip.startY, x2: endX, y2: endY });
+			}
+		}
+		state.drawingInProgress = null;
+		chartRef.draw();
+	});
+
+	canvas.addEventListener('mouseleave', function() {
+		var chartRef = getChartFn();
+		if (state.drawingInProgress && state.drawingInProgress.targetChart === chartRef && chartRef) {
+			if (state.drawingInProgress.type === 'edit') canvas.style.cursor = 'default';
+			state.drawingInProgress = null;
+			chartRef.draw();
+		}
+		if (state.hoveredAnchor) {
+			state.hoveredAnchor = null;
+			canvas.style.cursor = 'default';
+			if (chartRef) chartRef.draw();
+		}
+	});
+}
+
+function setupDrawingTools() {
+	if (!window._drawingButtonsBound) {
+		document.querySelectorAll('.draw-btn[data-tool]').forEach(function(btn) {
+			btn.addEventListener('click', function() {
+				state.drawingMode = btn.getAttribute('data-tool');
+				document.querySelectorAll('.draw-btn[data-tool]').forEach(function(b) { b.classList.remove('active'); });
+				btn.classList.add('active');
+				document.querySelectorAll('canvas').forEach(function(c) {
+					if(c.id.indexOf('chart') !== -1 || c.id.indexOf('panel') !== -1) {
+						c.style.cursor = (state.drawingMode === 'cursor') ? 'default' : 'crosshair';
+					}
+				});
+			});
+		});
+
+		var clearBtn = document.getElementById('draw-clear');
+		if (clearBtn) {
+			clearBtn.addEventListener('click', function() {
+				if (state.chartLayout !== '1x') {
+					state.panelStates.forEach(function(ps) {
+						if (ps.ticker) state.activeDrawings[ps.ticker] = [];
+					});
+					multiChartInstances.forEach(function(c) { if (c) c.draw(); });
+				} else {
+					var ticker = state.activeStock ? state.activeStock.ticker : null;
+					if (ticker) state.activeDrawings[ticker] = [];
+					if (chartInstance) chartInstance.draw();
+				}
+			});
+		}
+		window._drawingButtonsBound = true;
+	}
+
+	var canvas = document.getElementById('main-chart');
+	if (canvas && !canvas._drawingListenersAttached) {
+		setupDrawingListenersForCanvas(canvas, function() { return chartInstance; }, function() {
+			return state.activeStock ? state.activeStock.ticker : null;
+		});
+		canvas._drawingListenersAttached = true;
+	}
+}
+
+// ==================== MULTI-CHART LAYOUT ====================
+function setChartLayout(layout) {
+	state.chartLayout = layout;
+
+	// Update layout selector buttons
+	['1x', '2x', '4x'].forEach(function(l) {
+		var btn = document.getElementById('btn-layout-' + l);
+		if (btn) btn.classList.toggle('active', l === layout);
+	});
+
+	// Destroy all multi-panel instances
+	multiChartInstances.forEach(function(inst) {
+		if (inst && typeof inst.destroy === 'function') inst.destroy();
+	});
+	multiChartInstances = [];
+
+	// If going back to 1x, restore single chart panel
+	var container = document.getElementById('chart-grid-container');
+	if (!container) return;
+
+	if (layout === '1x') {
+		container.className = 'chart-grid-1x';
+		container.innerHTML = '<div class="chart-panel" id="panel-0"><canvas id="main-chart" role="img" aria-label="Price chart"></canvas></div>';
+		// Destroy old main chart instance so it gets recreated on the new canvas
+		if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+		// Re-attach drawing tools to new canvas
+		setupDrawingTools();
+		if (state.activeStock) renderChart(state.activeStock);
+		return;
+	}
+
+	// Destroy main chart too — it references the old canvas
+	if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+	var panelCount = layout === '2x' ? 2 : 4;
+	container.className = 'chart-grid-' + layout;
+	container.innerHTML = '';
+
+	var allTickers = marketStocks.map(function(s) { return s.ticker; });
+	var optionsHTML = allTickers.map(function(tk) {
+		return '<option value="' + tk + '">' + tk + '</option>';
+	}).join('');
+
+	for (var pi = 0; pi < panelCount; pi++) {
+		var ps = state.panelStates[pi] || { ticker: marketStocks[pi] ? marketStocks[pi].ticker : 'RELIANCE', viewLen: 375, candlePeriod: 5, chartType: 'line' };
+		if (!state.panelStates[pi]) state.panelStates[pi] = ps;
+
+		var panelDiv = document.createElement('div');
+		panelDiv.className = 'chart-panel';
+		panelDiv.id = 'panel-' + pi;
+		panelDiv.innerHTML =
+			'<div class="panel-header">' +
+			'<select class="panel-ticker-select" data-panel="' + pi + '">' + optionsHTML + '</select>' +
+			'<span class="panel-price-ind" id="panel-price-' + pi + '">---</span>' +
+			'<button class="panel-trade-btn" data-panel="' + pi + '">Trade</button>' +
+			'<div style="flex:1;"></div>' +
+			'<button class="panel-tf-btn active" data-panel="' + pi + '" data-vl="375">1D</button>' +
+			'<button class="panel-tf-btn" data-panel="' + pi + '" data-vl="1875">1W</button>' +
+			'<button class="panel-tf-btn" data-panel="' + pi + '" data-vl="8250">1M</button>' +
+			'</div>' +
+			'<canvas id="panel-canvas-' + pi + '"></canvas>';
+		container.appendChild(panelDiv);
+
+		(function(panelIndex, panelState) {
+			var panelCanvas = document.getElementById('panel-canvas-' + panelIndex);
+			var panelChart = buildPanelChart(panelCanvas, panelState);
+			multiChartInstances[panelIndex] = panelChart;
+
+			// Ticker select
+			var sel = panelDiv.querySelector('.panel-ticker-select');
+			if (sel) {
+				sel.value = panelState.ticker;
+				sel.addEventListener('change', function() {
+					panelState.ticker = sel.value;
+					updatePanelChart(panelChart, panelState, false);
+				});
+			}
+
+			// Timeframe buttons
+			panelDiv.querySelectorAll('.panel-tf-btn').forEach(function(tfBtn) {
+				tfBtn.addEventListener('click', function() {
+					panelDiv.querySelectorAll('.panel-tf-btn').forEach(function(b) { b.classList.remove('active'); });
+					tfBtn.classList.add('active');
+					panelState.viewLen = parseInt(tfBtn.getAttribute('data-vl')) || 375;
+					updatePanelChart(panelChart, panelState, false);
+				});
+			});
+
+			// Trade Button
+			var tradeBtn = panelDiv.querySelector('.panel-trade-btn');
+			if (tradeBtn) {
+				tradeBtn.addEventListener('click', function() {
+					selectStock(stockMap[panelState.ticker]);
+					var orderPanel = document.querySelector('.order-panel');
+					if (orderPanel) {
+						orderPanel.classList.add('pulse-anim');
+						setTimeout(function() { orderPanel.classList.remove('pulse-anim'); }, 500);
+					}
+				});
+			}
+
+			// Add drawing mouse listeners to this panel canvas
+			setupDrawingListenersForCanvas(panelCanvas, function() { return panelChart; }, function() { return panelState.ticker; });
+		})(pi, ps);
+	}
+}
+
+function buildPanelChart(canvas, panelState) {
+	var ctx = canvas.getContext('2d');
+	var isLight = state.theme === 'light' || state.theme === 'sepia';
+	var chart = new Chart(ctx, {
+		type: 'line',
+		plugins: [drawingPlugin],
+		data: { labels: [], datasets: [
+			{ data: [], borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.15 },
+			{ label: "SMA 20", data: [], borderWidth: 1.5, borderColor: "rgba(255, 152, 0, 0.85)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0.1, hidden: true },
+			{ label: "EMA 20", data: [], borderWidth: 1.5, borderColor: "rgba(156, 39, 176, 0.85)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0.1, hidden: true },
+			{ label: "BB Upper", data: [], borderWidth: 1, borderColor: "rgba(0, 188, 212, 0.7)", backgroundColor: "rgba(0, 188, 212, 0.06)", pointRadius: 0, fill: '+1', tension: 0.1, borderDash: [3, 3], hidden: true },
+			{ label: "BB Lower", data: [], borderWidth: 1, borderColor: "rgba(0, 188, 212, 0.7)", backgroundColor: "rgba(0, 188, 212, 0.06)", pointRadius: 0, fill: false, tension: 0.1, borderDash: [3, 3], hidden: true },
+			{ label: "VWAP", data: [], borderWidth: 1.5, borderColor: "rgba(255, 214, 0, 0.9)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0.1, borderDash: [4, 4], hidden: true },
+			{ label: "Pos Avg", data: [], borderWidth: 1.5, borderDash: [4, 4], borderColor: "rgba(33, 150, 243, 0.9)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0, hidden: true },
+			{ label: "Pos SL", data: [], borderWidth: 1.5, borderDash: [4, 4], borderColor: "rgba(244, 67, 54, 0.8)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0, hidden: true },
+			{ label: "Pos Tgt", data: [], borderWidth: 1.5, borderDash: [4, 4], borderColor: "rgba(76, 175, 80, 0.8)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0, hidden: true }
+		] },
+		options: {
+			responsive: true, maintainAspectRatio: false, animation: false,
+			plugins: { legend: { display: false }, tooltip: { enabled: false } },
+			scales: {
+				x: { display: false, grid: { display: false } },
+				y: {
+					display: true, position: 'right',
+					grid: { color: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.04)', drawBorder: false },
+					ticks: { color: isLight ? '#666' : '#707888', font: { size: 9 }, maxTicksLimit: 6,
+						callback: function(v) { return v >= 1000 ? (v/1000).toFixed(1) + 'k' : v.toFixed(0); }
+					}
+				}
+			}
+		}
+	});
+	updatePanelChart(chart, panelState, true);
+	return chart;
+}
+
+function updatePanelChart(chart, panelState, skipUpdate) {
+	var stock = stockMap[panelState.ticker];
+	if (!stock || !chart) return;
+	
+	// Tag chart with ticker for drawingPlugin
+	chart._panelTicker = panelState.ticker;
+
+	var isLight = state.theme === 'light' || state.theme === 'sepia';
+	var fullHistory = stock.preHistory && stock.preHistory.length
+		? stock.preHistory.concat(stock.history)
+		: stock.history;
+
+	// Update panel header price indicator
+	var panelId = chart.canvas.id.replace('panel-canvas-', '');
+	var panelPriceEl = document.getElementById('panel-price-' + panelId);
+	if (panelPriceEl) {
+		panelPriceEl.textContent = fmtPrice(stock, stock.ltp);
+		var dayChg = stock.ltp - stock.open;
+		panelPriceEl.className = 'panel-price-ind ' + (dayChg >= 0 ? 'up' : 'dn');
+	}
+	var slice = fullHistory.slice(-(panelState.viewLen || 375));
+	
+	// Extract values correctly. stock.history is an array of objects `{o,h,l,c,v}`
+	var prices = slice.map(function(d) { return d.c !== undefined ? d.c : d; });
+	var vols = slice.map(function(d) { return d.v !== undefined ? d.v : 1; });
+
+	var firstP = prices[0] || 1;
+	var lastP = prices[prices.length - 1] || 0;
+	var lineColor = lastP >= firstP
+		? (isLight ? '#00a846' : '#00c853')
+		: (isLight ? '#d50032' : '#ff1744');
+
+	chart.data.labels = prices.map(function(_, i) { return i; });
+	var ds = chart.data.datasets[0];
+	ds.data = prices;
+	ds.borderColor = lineColor;
+	ds.backgroundColor = lineColor + '12';
+
+	// ── Update SMA & EMA ──
+	var dsSMA = chart.data.datasets[1];
+	if (state.showSMA && prices.length) {
+		dsSMA.data = calcSMA(prices, 20);
+		dsSMA.hidden = false;
+	} else {
+		dsSMA.data = [];
+		dsSMA.hidden = true;
+	}
+
+	var dsEMA = chart.data.datasets[2];
+	if (state.showEMA && prices.length) {
+		dsEMA.data = calcEMA(prices, 20);
+		dsEMA.hidden = false;
+	} else {
+		dsEMA.data = [];
+		dsEMA.hidden = true;
+	}
+
+	// ── Update BB ──
+	var dsBBUpper = chart.data.datasets[3];
+	var dsBBLower = chart.data.datasets[4];
+	if (state.showBB && prices.length) {
+		var bb = calcBollingerBands(prices, 20, 2);
+		dsBBUpper.data = bb.upper;
+		dsBBLower.data = bb.lower;
+		dsBBUpper.hidden = false;
+		dsBBLower.hidden = false;
+	} else {
+		dsBBUpper.data = []; dsBBLower.data = [];
+		dsBBUpper.hidden = true; dsBBLower.hidden = true;
+	}
+
+	// ── Update VWAP ──
+	var dsVWAP = chart.data.datasets[5];
+	if (state.showVWAP && prices.length) {
+		dsVWAP.data = calcVWAP(prices, vols);
+		dsVWAP.hidden = false;
+	} else {
+		dsVWAP.data = [];
+		dsVWAP.hidden = true;
+	}
+
+	// ── Position Lines ──
+	var dsAvg = chart.data.datasets[6];
+	var dsSL = chart.data.datasets[7];
+	var dsTgt = chart.data.datasets[8];
+	
+	var pos = state.positions[stock.ticker];
+	var dataLen = prices.length;
+	if (dsAvg) {
+		if (pos && dataLen) {
+			dsAvg.data = Array(dataLen).fill(pos.avgPrice);
+			dsAvg.hidden = false;
+		} else {
+			dsAvg.data = []; dsAvg.hidden = true;
+		}
+	}
+
+	var st = state.slTargets[stock.ticker];
+	if (dsSL) {
+		if (st && st.sl && dataLen) {
+			dsSL.data = Array(dataLen).fill(st.sl);
+			dsSL.hidden = false;
+		} else {
+			dsSL.data = []; dsSL.hidden = true;
+		}
+	}
+	
+	if (dsTgt) {
+		if (st && st.target && dataLen) {
+			dsTgt.data = Array(dataLen).fill(st.target);
+			dsTgt.hidden = false;
+		} else {
+			dsTgt.data = []; dsTgt.hidden = true;
+		}
+	}
+
+	if (!skipUpdate) chart.update('none');
+}
+
+function updateAllPanels() {
+	// Called from the market tick loop to refresh multi-chart panels
+	if (state.chartLayout === '1x') return;
+	multiChartInstances.forEach(function(chart, pi) {
+		if (!chart) return;
+		var ps = state.panelStates[pi];
+		if (!ps) return;
+		updatePanelChart(chart, ps, false);
+	});
+}
 
 // ==================== CANDLESTICK PLUGIN ====================
 var candlestickPlugin = {
@@ -5338,6 +6191,71 @@ function setupListeners() {
 	document
 		.getElementById("btn-toggle-analytics")
 		.addEventListener("click", toggleAnalyticsView);
+
+	// ── New Indicator Toggles ──
+	var btnBB = document.getElementById('btn-toggle-bb');
+	if (btnBB) {
+		btnBB.addEventListener('click', function(e) {
+			state.showBB = !state.showBB;
+			e.currentTarget.classList.toggle('active', state.showBB);
+			if (state.activeStock) renderChart(state.activeStock);
+		});
+	}
+	var btnVWAP = document.getElementById('btn-toggle-vwap');
+	if (btnVWAP) {
+		btnVWAP.addEventListener('click', function(e) {
+			state.showVWAP = !state.showVWAP;
+			e.currentTarget.classList.toggle('active', state.showVWAP);
+			if (state.activeStock) renderChart(state.activeStock);
+		});
+	}
+	var btnRSI = document.getElementById('btn-toggle-rsi');
+	if (btnRSI) {
+		btnRSI.addEventListener('click', function(e) {
+			state.showRSI = !state.showRSI;
+			e.currentTarget.classList.toggle('active', state.showRSI);
+			var subContainer = document.getElementById('sub-chart-container');
+			if (subContainer) {
+				if (state.showRSI || state.showMACD) {
+					subContainer.classList.remove('hidden');
+				} else {
+					subContainer.classList.add('hidden');
+					if (subChartInstance) { subChartInstance.destroy(); subChartInstance = null; }
+				}
+			}
+			if (state.activeStock) renderChart(state.activeStock);
+		});
+	}
+	var btnMACD = document.getElementById('btn-toggle-macd');
+	if (btnMACD) {
+		btnMACD.addEventListener('click', function(e) {
+			state.showMACD = !state.showMACD;
+			e.currentTarget.classList.toggle('active', state.showMACD);
+			var subContainer = document.getElementById('sub-chart-container');
+			if (subContainer) {
+				if (state.showRSI || state.showMACD) {
+					subContainer.classList.remove('hidden');
+				} else {
+					subContainer.classList.add('hidden');
+					if (subChartInstance) { subChartInstance.destroy(); subChartInstance = null; }
+				}
+			}
+			if (state.activeStock) renderChart(state.activeStock);
+		});
+	}
+
+	// ── Layout Selector ──
+	['1x', '2x', '4x'].forEach(function(layout) {
+		var layoutBtn = document.getElementById('btn-layout-' + layout);
+		if (layoutBtn) {
+			layoutBtn.addEventListener('click', function() {
+				setChartLayout(layout);
+			});
+		}
+	});
+
+	// ── Drawing Tools ──
+	setupDrawingTools();
 }
 
 // ==================== SETTINGS / MODIFIABLE CASH ====================
@@ -7688,6 +8606,9 @@ function renderAll() {
 		if (state.activeBottomTab === "options") renderOptionsTable();
 		if (state.activeBottomTab === "pending") renderPendingTable();
 		if (state.activeBottomTab === "history") renderHistoryTable();
+
+		// 3. MULTI-CHART PANEL UPDATE
+		updateAllPanels();
 	});
 }
 
@@ -8040,6 +8961,23 @@ function selectStock(stock) {
 function renderActiveStock() {
 	var stock = state.activeStock;
 	if (!stock) return;
+
+	if (state.chartLayout !== '1x') {
+		document.getElementById("active-symbol").textContent = "Multiple View";
+		document.getElementById("active-name").textContent = "Multi-Chart Layout";
+		document.getElementById("active-price").textContent = "---";
+		document.getElementById("active-price").className = "ct-price";
+		document.getElementById("active-change").textContent = "---";
+		document.getElementById("active-change").className = "ct-change";
+		var elPrev = document.getElementById("active-prev-close");
+		if (elPrev) elPrev.innerHTML = "";
+		var badge = document.getElementById("market-status-badge");
+		if (badge) badge.style.display = "none";
+		return;
+	} else {
+		var badge = document.getElementById("market-status-badge");
+		if (badge) badge.style.display = "";
+	}
 
 	document.getElementById("active-symbol").textContent = stock.ticker;
 	var badge = document.getElementById("market-status-badge");
@@ -8791,6 +9729,52 @@ function _applyChartData(stock, isLight) {
 		dsEMA.hidden = true;
 	}
 
+	// ── Bollinger Bands (datasets 7, 8) ──
+	var dsBBUpper = chartInstance.data.datasets[7];
+	var dsBBLower = chartInstance.data.datasets[8];
+	if (state.showBB && dataLen) {
+		var bbPrices = smaData.map(function(_, idx) {
+			return chartInstance.data.datasets[0].data[idx] || 0;
+		});
+		// Use the actual raw price slice for BB calc
+		var rawPricesForBB = (state.chartType === 'candle')
+			? (chartInstance._ohlc || []).map(function(c) { return c.c; })
+			: (chartInstance._lineData || chartInstance.data.datasets[0].data || []);
+		var bb = calcBollingerBands(rawPricesForBB, 20, 2);
+		var bbU = bb.upper, bbL = bb.lower;
+		if (isPct && firstPrice) {
+			bbU = bbU.map(function(v) { return v === null ? null : ((v - firstPrice) / firstPrice) * 100; });
+			bbL = bbL.map(function(v) { return v === null ? null : ((v - firstPrice) / firstPrice) * 100; });
+		}
+		dsBBUpper.data = bbU;
+		dsBBLower.data = bbL;
+		dsBBUpper.hidden = false;
+		dsBBLower.hidden = false;
+	} else {
+		dsBBUpper.data = []; dsBBLower.data = [];
+		dsBBUpper.hidden = true; dsBBLower.hidden = true;
+	}
+
+	// ── VWAP (dataset 9) ──
+	var dsVWAP = chartInstance.data.datasets[9];
+	if (state.showVWAP && dataLen) {
+		var rawCloses = (state.chartType === 'candle')
+			? (chartInstance._ohlc || []).map(function(c) { return c.c; })
+			: (chartInstance._lineData || chartInstance.data.datasets[0].data || []);
+		var rawVols = (state.chartType === 'candle')
+			? (chartInstance._volumes || [])
+			: (stock.volumeHistory || []).slice(-rawCloses.length);
+		var vwapData = calcVWAP(rawCloses, rawVols);
+		if (isPct && firstPrice) {
+			vwapData = vwapData.map(function(v) { return v === null ? null : ((v - firstPrice) / firstPrice) * 100; });
+		}
+		dsVWAP.data = vwapData;
+		dsVWAP.hidden = false;
+	} else {
+		dsVWAP.data = [];
+		dsVWAP.hidden = true;
+	}
+
 	// Y-axis tick format (pct mode overrides price format)
 	scY.ticks.callback = isPct
 		? function (v) {
@@ -8829,6 +9813,14 @@ function _applyChartData(stock, isLight) {
 	tip.borderColor = isLight ? "#ddd" : "#2a2a3a";
 
 	chartInstance.update("none");
+
+	// ── Render sub-chart (RSI / MACD) in sync ──
+	if (state.showRSI || state.showMACD) {
+		var subPrices = (state.chartType === 'candle')
+			? (chartInstance._ohlc || []).map(function(c) { return c.c; })
+			: (chartInstance._lineData || chartInstance.data.datasets[0].data || []);
+		renderSubChart(stock, subPrices);
+	}
 }
 
 // ==================== CUSTOM HTML TOOLTIP ====================
@@ -8957,7 +9949,7 @@ function renderChart(stock) {
 	// Create the single chart instance
 	chartInstance = new Chart(ctx, {
 		type: "line",
-		plugins: [candlestickPlugin],
+		plugins: [candlestickPlugin, drawingPlugin],
 		data: {
 			labels: [],
 			datasets: [
@@ -9037,7 +10029,7 @@ function renderChart(stock) {
 					tension: 0.1,
 					hidden: true,
 				},
-				{
+					{
 					// 6: EMA 20 (purple solid line)
 					label: "EMA 20",
 					data: [],
@@ -9048,6 +10040,48 @@ function renderChart(stock) {
 					pointHoverRadius: 0,
 					fill: false,
 					tension: 0.1,
+					hidden: true,
+				},
+				{
+					// 7: BB Upper (teal)
+					label: "BB Upper",
+					data: [],
+					borderWidth: 1,
+					borderColor: "rgba(0, 188, 212, 0.7)",
+					backgroundColor: "rgba(0, 188, 212, 0.06)",
+					pointRadius: 0,
+					pointHoverRadius: 0,
+					fill: '+1',
+					tension: 0.1,
+					borderDash: [3, 3],
+					hidden: true,
+				},
+				{
+					// 8: BB Lower (teal)
+					label: "BB Lower",
+					data: [],
+					borderWidth: 1,
+					borderColor: "rgba(0, 188, 212, 0.7)",
+					backgroundColor: "rgba(0, 188, 212, 0.06)",
+					pointRadius: 0,
+					pointHoverRadius: 0,
+					fill: false,
+					tension: 0.1,
+					borderDash: [3, 3],
+					hidden: true,
+				},
+				{
+					// 9: VWAP (gold dashed)
+					label: "VWAP",
+					data: [],
+					borderWidth: 1.5,
+					borderColor: "rgba(255, 214, 0, 0.9)",
+					backgroundColor: "transparent",
+					pointRadius: 0,
+					pointHoverRadius: 0,
+					fill: false,
+					tension: 0.1,
+					borderDash: [4, 4],
 					hidden: true,
 				},
 			],
@@ -9127,6 +10161,9 @@ function renderChart(stock) {
 
 	chartInstance._isLogAxis = needsLog;
 	_applyChartData(stock, isLight);
+	
+	// Ensure drawing listeners are bound to the current canvas/chart instance
+	setupDrawingTools();
 }
 
 function updateOrderMargin() {
@@ -10007,35 +11044,125 @@ function toast(title, msg, type) {
 function calcSMA(prices, period) {
 	var sma = [];
 	for (var i = 0; i < prices.length; i++) {
-		if (i < period - 1) {
-			sma.push(null);
-		} else {
-			var sum = 0;
-			for (var j = 0; j < period; j++) sum += prices[i - j];
-			sma.push(sum / period);
-		}
+		var sliceStart = Math.max(0, i - period + 1);
+		var slice = prices.slice(sliceStart, i + 1);
+		var sum = 0;
+		for (var j = 0; j < slice.length; j++) sum += slice[j];
+		sma.push(sum / slice.length);
 	}
 	return sma;
 }
 
 function calcEMA(prices, period) {
 	var ema = [];
-	var k = 2 / (period + 1);
 	var emaVal = 0;
 	for (var i = 0; i < prices.length; i++) {
-		if (i < period - 1) {
-			ema.push(null);
-		} else if (i === period - 1) {
-			var sum = 0;
-			for (var j = 0; j < period; j++) sum += prices[i - j];
-			emaVal = sum / period;
+		if (i === 0) {
+			emaVal = prices[0];
 			ema.push(emaVal);
 		} else {
-			emaVal = prices[i] * k + emaVal * (1 - k);
+			var currentPeriod = Math.min(i + 1, period);
+			var dynK = 2 / (currentPeriod + 1);
+			emaVal = prices[i] * dynK + emaVal * (1 - dynK);
 			ema.push(emaVal);
 		}
 	}
 	return ema;
+}
+
+// ==================== BOLLINGER BANDS (20, 2) ====================
+function calcBollingerBands(prices, period, multiplier) {
+	period = period || 20;
+	multiplier = multiplier || 2;
+	var upper = [], lower = [], middle = [];
+	for (var i = 0; i < prices.length; i++) {
+		var sliceStart = Math.max(0, i - period + 1);
+		var slice = prices.slice(sliceStart, i + 1);
+		var currentPeriod = slice.length;
+		var mean = 0;
+		for (var j = 0; j < slice.length; j++) mean += slice[j];
+		mean /= currentPeriod;
+		var variance = 0;
+		for (var k2 = 0; k2 < slice.length; k2++) variance += (slice[k2] - mean) * (slice[k2] - mean);
+		var stdDev = currentPeriod > 1 ? Math.sqrt(variance / currentPeriod) : 0;
+		middle.push(mean);
+		upper.push(mean + multiplier * stdDev);
+		lower.push(mean - multiplier * stdDev);
+	}
+	return { upper: upper, middle: middle, lower: lower };
+}
+
+// ==================== VWAP ====================
+// Approximates VWAP using close prices and simulated volumes
+function calcVWAP(closes, volumes) {
+	var vwap = [];
+	var cumPV = 0, cumVol = 0;
+	for (var i = 0; i < closes.length; i++) {
+		var vol = (volumes && volumes[i]) ? volumes[i] : 1;
+		cumPV += closes[i] * vol;
+		cumVol += vol;
+		vwap.push(cumVol > 0 ? cumPV / cumVol : closes[i]);
+	}
+	return vwap;
+}
+
+// ==================== RSI (14) ====================
+function calcRSI(prices, period) {
+	period = period || 14;
+	var rsi = [];
+	if (prices.length < period + 1) {
+		return Array(prices.length).fill(null);
+	}
+	var gains = 0, losses = 0;
+	for (var i = 1; i <= period; i++) {
+		var diff = prices[i] - prices[i - 1];
+		if (diff > 0) gains += diff; else losses -= diff;
+	}
+	var avgGain = gains / period;
+	var avgLoss = losses / period;
+	for (var i2 = 0; i2 < period; i2++) rsi.push(null);
+	var firstRs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+	rsi.push(100 - 100 / (1 + firstRs));
+	for (var i3 = period + 1; i3 < prices.length; i3++) {
+		var d = prices[i3] - prices[i3 - 1];
+		var g = d > 0 ? d : 0;
+		var l = d < 0 ? -d : 0;
+		avgGain = (avgGain * (period - 1) + g) / period;
+		avgLoss = (avgLoss * (period - 1) + l) / period;
+		var rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+		rsi.push(100 - 100 / (1 + rs));
+	}
+	return rsi;
+}
+
+// ==================== MACD (12, 26, 9) ====================
+function calcMACD(prices, fast, slow, signal) {
+	fast = fast || 12; slow = slow || 26; signal = signal || 9;
+	var emaFast = calcEMA(prices, fast);
+	var emaSlow = calcEMA(prices, slow);
+	var macdLine = [], signalLine = [], histogram = [];
+	for (var i = 0; i < prices.length; i++) {
+		if (emaFast[i] === null || emaSlow[i] === null) {
+			macdLine.push(null);
+		} else {
+			macdLine.push(emaFast[i] - emaSlow[i]);
+		}
+	}
+	// Signal = EMA(9) of MACD
+	var validMacd = macdLine.filter(function(v) { return v !== null; });
+	var sigFull = calcEMA(validMacd, signal);
+	var validIdx = 0;
+	for (var i2 = 0; i2 < macdLine.length; i2++) {
+		if (macdLine[i2] === null) {
+			signalLine.push(null);
+			histogram.push(null);
+		} else {
+			var sig = sigFull[validIdx++];
+			signalLine.push(sig === null ? null : sig);
+			histogram.push(sig === null ? null : macdLine[i2] - sig);
+		}
+	}
+	return { macdLine: macdLine, signalLine: signalLine, histogram: histogram };
 }
 
 // ==================== DALAL BANK ====================
