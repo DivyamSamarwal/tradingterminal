@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Dalal Street Terminal v3
  * 25 Stocks, 80+ News Events, Modifiable Cash, Circuit Limits,
  * NIFTY Index, Trade History, Market Sentiment, Volume Simulation
@@ -4996,12 +4996,12 @@ function renderSubChart(stock, prices) {
 var drawingPlugin = {
 	id: 'drawingPlugin',
 	afterDraw: function(chart) {
-		if (chart !== chartInstance) return; // Only draw on main chart
+		if (chart !== chartInstance && multiChartInstances.indexOf(chart) === -1) return; // Draw on main chart or panel charts
 		var ctx = chart.ctx;
 		var xScale = chart.scales.x;
 		var yScale = chart.scales.y;
 		if (!xScale || !yScale) return;
-		var ticker = state.activeStock ? state.activeStock.ticker : null;
+		var ticker = chart._panelTicker || (state.activeStock ? state.activeStock.ticker : null);
 		if (!ticker) return;
 		var drawings = state.activeDrawings[ticker] || [];
 		var isLight = state.theme === 'light' || state.theme === 'sepia';
@@ -5107,67 +5107,46 @@ var drawingPlugin = {
 };
 
 // ==================== DRAWING TOOL SETUP ====================
-function setupDrawingTools() {
-	var canvas = document.getElementById('main-chart');
-	if (!canvas) return;
-
-	document.querySelectorAll('.draw-btn[data-tool]').forEach(function(btn) {
-		btn.addEventListener('click', function() {
-			state.drawingMode = btn.getAttribute('data-tool');
-			document.querySelectorAll('.draw-btn[data-tool]').forEach(function(b) { b.classList.remove('active'); });
-			btn.classList.add('active');
-			canvas.style.cursor = (state.drawingMode === 'cursor') ? 'default' : 'crosshair';
-		});
-	});
-
-	var clearBtn = document.getElementById('draw-clear');
-	if (clearBtn) {
-		clearBtn.addEventListener('click', function() {
-			var ticker = state.activeStock ? state.activeStock.ticker : null;
-			if (ticker) state.activeDrawings[ticker] = [];
-			if (chartInstance) chartInstance.draw();
-		});
-	}
-
-	// Mouse events for drawing on the canvas
+function setupDrawingListenersForCanvas(canvas, chartRef, getTickerFn) {
 	canvas.addEventListener('mousedown', function(e) {
-		if (state.drawingMode === 'cursor' || !chartInstance) return;
+		if (state.drawingMode === 'cursor' || !chartRef) return;
 		var rect = canvas.getBoundingClientRect();
 		var px = e.clientX - rect.left;
 		var py = e.clientY - rect.top;
-		var xScale = chartInstance.scales.x;
-		var yScale = chartInstance.scales.y;
+		var xScale = chartRef.scales.x;
+		var yScale = chartRef.scales.y;
 		if (!xScale || !yScale) return;
 		state.drawingInProgress = {
 			type: state.drawingMode,
 			startPx: px, startPy: py,
 			curPx: px, curPy: py,
 			startX: xScale.getValueForPixel(px),
-			startY: yScale.getValueForPixel(py)
+			startY: yScale.getValueForPixel(py),
+			targetChart: chartRef
 		};
 		e.preventDefault();
 	});
 
 	canvas.addEventListener('mousemove', function(e) {
-		if (!state.drawingInProgress || !chartInstance) return;
+		if (!state.drawingInProgress || state.drawingInProgress.targetChart !== chartRef) return;
 		var rect = canvas.getBoundingClientRect();
 		state.drawingInProgress.curPx = e.clientX - rect.left;
 		state.drawingInProgress.curPy = e.clientY - rect.top;
-		chartInstance.draw(); // Force redraw for live preview
+		chartRef.draw(); // Force redraw for live preview
 	});
 
 	canvas.addEventListener('mouseup', function(e) {
-		if (!state.drawingInProgress || !chartInstance) return;
+		if (!state.drawingInProgress || state.drawingInProgress.targetChart !== chartRef) return;
 		var ip = state.drawingInProgress;
 		var rect = canvas.getBoundingClientRect();
 		var px = e.clientX - rect.left;
 		var py = e.clientY - rect.top;
-		var xScale = chartInstance.scales.x;
-		var yScale = chartInstance.scales.y;
+		var xScale = chartRef.scales.x;
+		var yScale = chartRef.scales.y;
 		if (!xScale || !yScale) { state.drawingInProgress = null; return; }
 		var endX = xScale.getValueForPixel(px);
 		var endY = yScale.getValueForPixel(py);
-		var ticker = state.activeStock ? state.activeStock.ticker : null;
+		var ticker = getTickerFn();
 		if (!ticker) { state.drawingInProgress = null; return; }
 		if (!state.activeDrawings[ticker]) state.activeDrawings[ticker] = [];
 
@@ -5184,15 +5163,56 @@ function setupDrawingTools() {
 			}
 		}
 		state.drawingInProgress = null;
-		chartInstance.draw();
+		chartRef.draw();
 	});
 
 	canvas.addEventListener('mouseleave', function() {
-		if (state.drawingInProgress) {
+		if (state.drawingInProgress && state.drawingInProgress.targetChart === chartRef) {
 			state.drawingInProgress = null;
-			if (chartInstance) chartInstance.draw();
+			chartRef.draw();
 		}
 	});
+}
+
+function setupDrawingTools() {
+	if (!window._drawingButtonsBound) {
+		document.querySelectorAll('.draw-btn[data-tool]').forEach(function(btn) {
+			btn.addEventListener('click', function() {
+				state.drawingMode = btn.getAttribute('data-tool');
+				document.querySelectorAll('.draw-btn[data-tool]').forEach(function(b) { b.classList.remove('active'); });
+				btn.classList.add('active');
+				document.querySelectorAll('canvas').forEach(function(c) {
+					if(c.id.indexOf('chart') !== -1 || c.id.indexOf('panel') !== -1) {
+						c.style.cursor = (state.drawingMode === 'cursor') ? 'default' : 'crosshair';
+					}
+				});
+			});
+		});
+
+		var clearBtn = document.getElementById('draw-clear');
+		if (clearBtn) {
+			clearBtn.addEventListener('click', function() {
+				if (state.chartLayout !== '1x') {
+					state.panelStates.forEach(function(ps) {
+						if (ps.ticker) state.activeDrawings[ps.ticker] = [];
+					});
+					multiChartInstances.forEach(function(c) { if (c) c.draw(); });
+				} else {
+					var ticker = state.activeStock ? state.activeStock.ticker : null;
+					if (ticker) state.activeDrawings[ticker] = [];
+					if (chartInstance) chartInstance.draw();
+				}
+			});
+		}
+		window._drawingButtonsBound = true;
+	}
+
+	var canvas = document.getElementById('main-chart');
+	if (canvas && chartInstance) {
+		setupDrawingListenersForCanvas(canvas, chartInstance, function() {
+			return state.activeStock ? state.activeStock.ticker : null;
+		});
+	}
 }
 
 // ==================== MULTI-CHART LAYOUT ====================
@@ -5279,6 +5299,8 @@ function setChartLayout(layout) {
 					updatePanelChart(panelChart, panelState, false);
 				});
 			});
+			// Add drawing mouse listeners to this panel canvas
+			setupDrawingListenersForCanvas(panelCanvas, panelChart, function() { return panelState.ticker; });
 		})(pi, ps);
 	}
 }
@@ -5288,7 +5310,15 @@ function buildPanelChart(canvas, panelState) {
 	var isLight = state.theme === 'light' || state.theme === 'sepia';
 	var chart = new Chart(ctx, {
 		type: 'line',
-		data: { labels: [], datasets: [{ data: [], borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.15 }] },
+		plugins: [drawingPlugin],
+		data: { labels: [], datasets: [
+			{ data: [], borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.15 },
+			{ label: "SMA 20", data: [], borderWidth: 1.5, borderColor: "rgba(255, 152, 0, 0.85)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0.1, hidden: true },
+			{ label: "EMA 20", data: [], borderWidth: 1.5, borderColor: "rgba(156, 39, 176, 0.85)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0.1, hidden: true },
+			{ label: "BB Upper", data: [], borderWidth: 1, borderColor: "rgba(0, 188, 212, 0.7)", backgroundColor: "rgba(0, 188, 212, 0.06)", pointRadius: 0, fill: '+1', tension: 0.1, borderDash: [3, 3], hidden: true },
+			{ label: "BB Lower", data: [], borderWidth: 1, borderColor: "rgba(0, 188, 212, 0.7)", backgroundColor: "rgba(0, 188, 212, 0.06)", pointRadius: 0, fill: false, tension: 0.1, borderDash: [3, 3], hidden: true },
+			{ label: "VWAP", data: [], borderWidth: 1.5, borderColor: "rgba(255, 214, 0, 0.9)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0.1, borderDash: [4, 4], hidden: true }
+		] },
 		options: {
 			responsive: true, maintainAspectRatio: false, animation: false,
 			plugins: { legend: { display: false }, tooltip: { enabled: false } },
@@ -5311,22 +5341,75 @@ function buildPanelChart(canvas, panelState) {
 function updatePanelChart(chart, panelState, skipUpdate) {
 	var stock = stockMap[panelState.ticker];
 	if (!stock || !chart) return;
+	
+	// Tag chart with ticker for drawingPlugin
+	chart._panelTicker = panelState.ticker;
+
 	var isLight = state.theme === 'light' || state.theme === 'sepia';
 	var fullHistory = stock.preHistory && stock.preHistory.length
 		? stock.preHistory.concat(stock.history)
 		: stock.history;
 	var slice = fullHistory.slice(-(panelState.viewLen || 375));
-	var firstP = slice[0] || 1;
-	var lastP = slice[slice.length - 1] || 0;
+	
+	// Extract values correctly. stock.history is an array of objects `{o,h,l,c,v}`
+	var prices = slice.map(function(d) { return d.c !== undefined ? d.c : d; });
+	var vols = slice.map(function(d) { return d.v !== undefined ? d.v : 1; });
+
+	var firstP = prices[0] || 1;
+	var lastP = prices[prices.length - 1] || 0;
 	var lineColor = lastP >= firstP
 		? (isLight ? '#00a846' : '#00c853')
 		: (isLight ? '#d50032' : '#ff1744');
 
-	chart.data.labels = slice.map(function(_, i) { return i; });
+	chart.data.labels = prices.map(function(_, i) { return i; });
 	var ds = chart.data.datasets[0];
-	ds.data = slice;
+	ds.data = prices;
 	ds.borderColor = lineColor;
 	ds.backgroundColor = lineColor + '12';
+
+	// ── Update SMA & EMA ──
+	var dsSMA = chart.data.datasets[1];
+	if (state.showSMA && prices.length) {
+		dsSMA.data = calcSMA(prices, 20);
+		dsSMA.hidden = false;
+	} else {
+		dsSMA.data = [];
+		dsSMA.hidden = true;
+	}
+
+	var dsEMA = chart.data.datasets[2];
+	if (state.showEMA && prices.length) {
+		dsEMA.data = calcEMA(prices, 20);
+		dsEMA.hidden = false;
+	} else {
+		dsEMA.data = [];
+		dsEMA.hidden = true;
+	}
+
+	// ── Update BB ──
+	var dsBBUpper = chart.data.datasets[3];
+	var dsBBLower = chart.data.datasets[4];
+	if (state.showBB && prices.length) {
+		var bb = calcBollingerBands(prices, 20, 2);
+		dsBBUpper.data = bb.upper;
+		dsBBLower.data = bb.lower;
+		dsBBUpper.hidden = false;
+		dsBBLower.hidden = false;
+	} else {
+		dsBBUpper.data = []; dsBBLower.data = [];
+		dsBBUpper.hidden = true; dsBBLower.hidden = true;
+	}
+
+	// ── Update VWAP ──
+	var dsVWAP = chart.data.datasets[5];
+	if (state.showVWAP && prices.length) {
+		dsVWAP.data = calcVWAP(prices, vols);
+		dsVWAP.hidden = false;
+	} else {
+		dsVWAP.data = [];
+		dsVWAP.hidden = true;
+	}
+
 	if (!skipUpdate) chart.update('none');
 }
 
@@ -8605,6 +8688,23 @@ function selectStock(stock) {
 function renderActiveStock() {
 	var stock = state.activeStock;
 	if (!stock) return;
+
+	if (state.chartLayout !== '1x') {
+		document.getElementById("active-symbol").textContent = "Multiple View";
+		document.getElementById("active-name").textContent = "Multi-Chart Layout";
+		document.getElementById("active-price").textContent = "---";
+		document.getElementById("active-price").className = "ct-price";
+		document.getElementById("active-change").textContent = "---";
+		document.getElementById("active-change").className = "ct-change";
+		var elPrev = document.getElementById("active-prev-close");
+		if (elPrev) elPrev.innerHTML = "";
+		var badge = document.getElementById("market-status-badge");
+		if (badge) badge.style.display = "none";
+		return;
+	} else {
+		var badge = document.getElementById("market-status-badge");
+		if (badge) badge.style.display = "";
+	}
 
 	document.getElementById("active-symbol").textContent = stock.ticker;
 	var badge = document.getElementById("market-status-badge");
