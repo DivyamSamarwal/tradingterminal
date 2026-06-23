@@ -5036,34 +5036,56 @@ var drawingPlugin = {
 				var yPx = yScale.getPixelForValue(d.price);
 				ctx.beginPath();
 				ctx.moveTo(chartArea.left, yPx); ctx.lineTo(chartArea.right, yPx);
-				ctx.strokeStyle = isLight ? '#d97706' : '#fbbf24';
+				ctx.strokeStyle = isLight ? '#0891b2' : '#06b6d4';
 				ctx.lineWidth = 1.2;
 				ctx.setLineDash([5, 4]);
 				ctx.stroke();
 				ctx.setLineDash([]);
 				// Price label
-				ctx.fillStyle = isLight ? '#d97706' : '#fbbf24';
+				ctx.fillStyle = isLight ? '#0891b2' : '#06b6d4';
 				ctx.font = '9px monospace';
 				ctx.fillText(d.price.toFixed(2), chartArea.right + 2, yPx + 3);
 
 			} else if (d.type === 'fib') {
 				var fibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
-				var fibColors = ['rgba(255,255,255,0.6)', 'rgba(253,224,71,0.8)', 'rgba(134,239,172,0.8)',
-					'rgba(147,197,253,0.8)', 'rgba(216,180,254,0.8)', 'rgba(253,164,175,0.8)', 'rgba(255,255,255,0.6)'];
+				var fibColors = ['rgba(255,255,255,0.7)', 'rgba(253,224,71,0.8)', 'rgba(134,239,172,0.8)',
+					'rgba(147,197,253,0.8)', 'rgba(216,180,254,0.8)', 'rgba(253,164,175,0.8)', 'rgba(255,255,255,0.7)'];
+				var x1Px = xScale.getPixelForValue(d.x1);
+				var x2Px = xScale.getPixelForValue(d.x2);
+				var fibLeft = Math.min(x1Px, x2Px);
+				var fibRight = Math.max(x1Px, x2Px);
 				var priceRange = d.y1 - d.y2;
 				fibLevels.forEach(function(level, li) {
 					var fibPrice = d.y2 + priceRange * (1 - level);
 					var yPxF = yScale.getPixelForValue(fibPrice);
+
+					// Draw Zone Background
+					if (li > 0) {
+						var prevLevel = fibLevels[li - 1];
+						var prevFibPrice = d.y2 + priceRange * (1 - prevLevel);
+						var prevYPxF = yScale.getPixelForValue(prevFibPrice);
+						ctx.fillStyle = fibColors[li].replace(/[\d.]+\)/, '0.08)');
+						ctx.fillRect(fibLeft, Math.min(yPxF, prevYPxF), fibRight - fibLeft, Math.abs(yPxF - prevYPxF));
+					}
+
 					ctx.beginPath();
-					ctx.moveTo(chartArea.left, yPxF); ctx.lineTo(chartArea.right, yPxF);
+					ctx.moveTo(fibLeft, yPxF); ctx.lineTo(fibRight, yPxF);
 					ctx.strokeStyle = fibColors[li];
 					ctx.lineWidth = 1;
-					ctx.setLineDash([4, 4]);
+					ctx.setLineDash([2, 4]);
 					ctx.stroke();
 					ctx.setLineDash([]);
-					ctx.fillStyle = fibColors[li];
-					ctx.font = '9px monospace';
-					ctx.fillText((level * 100).toFixed(1) + '% ' + fibPrice.toFixed(2), chartArea.right + 2, yPxF + 3);
+
+					ctx.fillStyle = fibColors[li].replace(/[\d.]+\)/, '0.15)');
+					var text = (level * 100).toFixed(1) + '%  ' + fibPrice.toFixed(2);
+					ctx.textAlign = 'right';
+					var tWidth = ctx.measureText(text).width;
+					ctx.fillRect(chartArea.right - tWidth - 14, yPxF - 10, tWidth + 10, 14);
+
+					ctx.fillStyle = fibColors[li].replace(/[\d.]+\)/, '0.9)');
+					ctx.font = 'bold 10px monospace';
+					ctx.fillText(text, chartArea.right - 9, yPxF + 3);
+					ctx.textAlign = 'left';
 				});
 			}
 		});
@@ -5091,17 +5113,82 @@ var drawingPlugin = {
 				ctx.stroke();
 				ctx.setLineDash([]);
 			} else if (ip.type === 'fib') {
+				var fibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
+				var fibColors = ['rgba(255,255,255,0.7)', 'rgba(253,224,71,0.8)', 'rgba(134,239,172,0.8)',
+					'rgba(147,197,253,0.8)', 'rgba(216,180,254,0.8)', 'rgba(253,164,175,0.8)', 'rgba(255,255,255,0.7)'];
+				
+				var curYVal = yScale.getValueForPixel(ip.curPy);
+				var priceRange = ip.startY - curYVal;
+				
+				// Trendline connecting the two drag points
 				ctx.beginPath();
 				ctx.moveTo(ip.startPx, ip.startPy);
-				ctx.lineTo(ip.startPx, ip.curPy);
 				ctx.lineTo(ip.curPx, ip.curPy);
-				ctx.strokeStyle = 'rgba(253,224,71,0.7)';
-				ctx.lineWidth = 1;
-				ctx.setLineDash([4, 3]);
+				ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+				ctx.lineWidth = 1.5;
+				ctx.setLineDash([4, 4]);
 				ctx.stroke();
 				ctx.setLineDash([]);
+
+				fibLevels.forEach(function(level, li) {
+					var fibPrice = curYVal + priceRange * (1 - level);
+					var yPxF = yScale.getPixelForValue(fibPrice);
+
+					if (li > 0) {
+						var prevLevel = fibLevels[li - 1];
+						var prevFibPrice = curYVal + priceRange * (1 - prevLevel);
+						var prevYPxF = yScale.getPixelForValue(prevFibPrice);
+						ctx.fillStyle = fibColors[li].replace(/[\d.]+\)/, '0.08)');
+						ctx.fillRect(chartArea.left, Math.min(yPxF, prevYPxF), chartArea.right - chartArea.left, Math.abs(yPxF - prevYPxF));
+					}
+
+					ctx.beginPath();
+					ctx.moveTo(chartArea.left, yPxF); ctx.lineTo(chartArea.right, yPxF);
+					ctx.strokeStyle = fibColors[li];
+					ctx.lineWidth = 1;
+					ctx.setLineDash([2, 4]);
+					ctx.stroke();
+					ctx.setLineDash([]);
+
+					ctx.fillStyle = fibColors[li].replace(/[\d.]+\)/, '0.15)');
+					var text = (level * 100).toFixed(1) + '%  ' + fibPrice.toFixed(2);
+					ctx.textAlign = 'right';
+					var tWidth = ctx.measureText(text).width;
+					ctx.fillRect(chartArea.right - tWidth - 14, yPxF - 10, tWidth + 10, 14);
+
+					ctx.fillStyle = fibColors[li].replace(/[\d.]+\)/, '0.9)');
+					ctx.font = 'bold 10px monospace';
+					ctx.fillText(text, chartArea.right - 9, yPxF + 3);
+					ctx.textAlign = 'left';
+				});
 			}
 		}
+
+		// Render Grab Handles
+		if (state.drawingMode === 'cursor') {
+			drawings.forEach(function(d, dIdx) {
+				var pts = [];
+				if (d.type === 'trendline' || d.type === 'fib') {
+					pts.push({ id: dIdx + '_1', x: xScale.getPixelForValue(d.x1), y: yScale.getPixelForValue(d.y1) });
+					pts.push({ id: dIdx + '_2', x: xScale.getPixelForValue(d.x2), y: yScale.getPixelForValue(d.y2) });
+				} else if (d.type === 'hline') {
+					var yPx = yScale.getPixelForValue(d.price);
+					pts.push({ id: dIdx + '_line', x: chartArea.right - 40, y: yPx });
+				}
+				
+				pts.forEach(function(pt) {
+					var isHovered = state.hoveredAnchor && state.hoveredAnchor.id === pt.id;
+					ctx.beginPath();
+					ctx.arc(pt.x, pt.y, isHovered ? 6 : 4, 0, Math.PI * 2);
+					ctx.fillStyle = isLight ? '#fff' : '#1e293b';
+					ctx.fill();
+					ctx.lineWidth = 2;
+					ctx.strokeStyle = isHovered ? (isLight ? '#2563eb' : '#60a5fa') : (isLight ? '#94a3b8' : '#475569');
+					ctx.stroke();
+				});
+			});
+		}
+
 		ctx.restore();
 	}
 };
@@ -5110,13 +5197,28 @@ var drawingPlugin = {
 function setupDrawingListenersForCanvas(canvas, getChartFn, getTickerFn) {
 	canvas.addEventListener('mousedown', function(e) {
 		var chartRef = getChartFn();
-		if (state.drawingMode === 'cursor' || !chartRef) return;
+		if (!chartRef) return;
 		var rect = canvas.getBoundingClientRect();
 		var px = e.clientX - rect.left;
 		var py = e.clientY - rect.top;
 		var xScale = chartRef.scales.x;
 		var yScale = chartRef.scales.y;
 		if (!xScale || !yScale) return;
+
+		// Handle Edit Mode Drag Start
+		if (state.drawingMode === 'cursor') {
+			if (state.hoveredAnchor) {
+				state.drawingInProgress = {
+					type: 'edit',
+					anchor: state.hoveredAnchor,
+					targetChart: chartRef
+				};
+				e.preventDefault();
+			}
+			return;
+		}
+
+		// Handle Drawing Mode Start
 		state.drawingInProgress = {
 			type: state.drawingMode,
 			startPx: px, startPy: py,
@@ -5130,16 +5232,73 @@ function setupDrawingListenersForCanvas(canvas, getChartFn, getTickerFn) {
 
 	canvas.addEventListener('mousemove', function(e) {
 		var chartRef = getChartFn();
-		if (!state.drawingInProgress || state.drawingInProgress.targetChart !== chartRef || !chartRef) return;
+		if (!chartRef) return;
 		var rect = canvas.getBoundingClientRect();
-		state.drawingInProgress.curPx = e.clientX - rect.left;
-		state.drawingInProgress.curPy = e.clientY - rect.top;
+		var px = e.clientX - rect.left;
+		var py = e.clientY - rect.top;
+		var xScale = chartRef.scales.x;
+		var yScale = chartRef.scales.y;
+
+		// Handle Edit Mode Hit Testing
+		if (state.drawingMode === 'cursor' && !state.drawingInProgress) {
+			var ticker = getTickerFn();
+			var drawings = (ticker && state.activeDrawings[ticker]) ? state.activeDrawings[ticker] : [];
+			var foundAnchor = null;
+			for (var i = 0; i < drawings.length; i++) {
+				var d = drawings[i];
+				if (d.type === 'trendline' || d.type === 'fib') {
+					var p1 = { x: xScale.getPixelForValue(d.x1), y: yScale.getPixelForValue(d.y1) };
+					var p2 = { x: xScale.getPixelForValue(d.x2), y: yScale.getPixelForValue(d.y2) };
+					if (Math.hypot(p1.x - px, p1.y - py) < 8) { foundAnchor = { id: i + '_1', idx: i, point: 1 }; break; }
+					if (Math.hypot(p2.x - px, p2.y - py) < 8) { foundAnchor = { id: i + '_2', idx: i, point: 2 }; break; }
+				} else if (d.type === 'hline') {
+					var pY = yScale.getPixelForValue(d.price);
+					var pX = chartRef.chartArea.right - 40;
+					if (Math.hypot(pX - px, pY - py) < 8) { foundAnchor = { id: i + '_line', idx: i, point: 'line' }; break; }
+				}
+			}
+			var changed = (state.hoveredAnchor ? state.hoveredAnchor.id : null) !== (foundAnchor ? foundAnchor.id : null);
+			state.hoveredAnchor = foundAnchor;
+			canvas.style.cursor = foundAnchor ? 'grab' : 'default';
+			if (changed) chartRef.draw();
+			return;
+		}
+
+		if (!state.drawingInProgress || state.drawingInProgress.targetChart !== chartRef) return;
+
+		// Handle Edit Mode Drag
+		if (state.drawingInProgress.type === 'edit') {
+			var ticker = getTickerFn();
+			var drawings = (ticker && state.activeDrawings[ticker]) ? state.activeDrawings[ticker] : [];
+			var anchor = state.drawingInProgress.anchor;
+			var d = drawings[anchor.idx];
+			if (d) {
+				if (anchor.point === 1) { d.x1 = xScale.getValueForPixel(px); d.y1 = yScale.getValueForPixel(py); }
+				else if (anchor.point === 2) { d.x2 = xScale.getValueForPixel(px); d.y2 = yScale.getValueForPixel(py); }
+				else if (anchor.point === 'line') { d.price = yScale.getValueForPixel(py); }
+				canvas.style.cursor = 'grabbing';
+				chartRef.draw();
+			}
+			return;
+		}
+
+		// Handle Drawing Mode Drag
+		state.drawingInProgress.curPx = px;
+		state.drawingInProgress.curPy = py;
 		chartRef.draw(); // Force redraw for live preview
 	});
 
 	canvas.addEventListener('mouseup', function(e) {
 		var chartRef = getChartFn();
 		if (!state.drawingInProgress || state.drawingInProgress.targetChart !== chartRef || !chartRef) return;
+
+		if (state.drawingInProgress.type === 'edit') {
+			state.drawingInProgress = null;
+			canvas.style.cursor = 'default';
+			chartRef.draw();
+			return;
+		}
+
 		var ip = state.drawingInProgress;
 		var rect = canvas.getBoundingClientRect();
 		var px = e.clientX - rect.left;
@@ -5166,15 +5325,20 @@ function setupDrawingListenersForCanvas(canvas, getChartFn, getTickerFn) {
 			}
 		}
 		state.drawingInProgress = null;
-		state.drawingInProgress = null;
 		chartRef.draw();
 	});
 
 	canvas.addEventListener('mouseleave', function() {
 		var chartRef = getChartFn();
 		if (state.drawingInProgress && state.drawingInProgress.targetChart === chartRef && chartRef) {
+			if (state.drawingInProgress.type === 'edit') canvas.style.cursor = 'default';
 			state.drawingInProgress = null;
 			chartRef.draw();
+		}
+		if (state.hoveredAnchor) {
+			state.hoveredAnchor = null;
+			canvas.style.cursor = 'default';
+			if (chartRef) chartRef.draw();
 		}
 	});
 }
@@ -10742,31 +10906,26 @@ function toast(title, msg, type) {
 function calcSMA(prices, period) {
 	var sma = [];
 	for (var i = 0; i < prices.length; i++) {
-		if (i < period - 1) {
-			sma.push(null);
-		} else {
-			var sum = 0;
-			for (var j = 0; j < period; j++) sum += prices[i - j];
-			sma.push(sum / period);
-		}
+		var sliceStart = Math.max(0, i - period + 1);
+		var slice = prices.slice(sliceStart, i + 1);
+		var sum = 0;
+		for (var j = 0; j < slice.length; j++) sum += slice[j];
+		sma.push(sum / slice.length);
 	}
 	return sma;
 }
 
 function calcEMA(prices, period) {
 	var ema = [];
-	var k = 2 / (period + 1);
 	var emaVal = 0;
 	for (var i = 0; i < prices.length; i++) {
-		if (i < period - 1) {
-			ema.push(null);
-		} else if (i === period - 1) {
-			var sum = 0;
-			for (var j = 0; j < period; j++) sum += prices[i - j];
-			emaVal = sum / period;
+		if (i === 0) {
+			emaVal = prices[0];
 			ema.push(emaVal);
 		} else {
-			emaVal = prices[i] * k + emaVal * (1 - k);
+			var currentPeriod = Math.min(i + 1, period);
+			var dynK = 2 / (currentPeriod + 1);
+			emaVal = prices[i] * dynK + emaVal * (1 - dynK);
 			ema.push(emaVal);
 		}
 	}
@@ -10779,20 +10938,18 @@ function calcBollingerBands(prices, period, multiplier) {
 	multiplier = multiplier || 2;
 	var upper = [], lower = [], middle = [];
 	for (var i = 0; i < prices.length; i++) {
-		if (i < period - 1) {
-			upper.push(null); lower.push(null); middle.push(null);
-		} else {
-			var slice = prices.slice(i - period + 1, i + 1);
-			var mean = 0;
-			for (var j = 0; j < slice.length; j++) mean += slice[j];
-			mean /= period;
-			var variance = 0;
-			for (var k2 = 0; k2 < slice.length; k2++) variance += (slice[k2] - mean) * (slice[k2] - mean);
-			var stdDev = Math.sqrt(variance / period);
-			middle.push(mean);
-			upper.push(mean + multiplier * stdDev);
-			lower.push(mean - multiplier * stdDev);
-		}
+		var sliceStart = Math.max(0, i - period + 1);
+		var slice = prices.slice(sliceStart, i + 1);
+		var currentPeriod = slice.length;
+		var mean = 0;
+		for (var j = 0; j < slice.length; j++) mean += slice[j];
+		mean /= currentPeriod;
+		var variance = 0;
+		for (var k2 = 0; k2 < slice.length; k2++) variance += (slice[k2] - mean) * (slice[k2] - mean);
+		var stdDev = currentPeriod > 1 ? Math.sqrt(variance / currentPeriod) : 0;
+		middle.push(mean);
+		upper.push(mean + multiplier * stdDev);
+		lower.push(mean - multiplier * stdDev);
 	}
 	return { upper: upper, middle: middle, lower: lower };
 }
