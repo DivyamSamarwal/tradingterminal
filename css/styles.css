@@ -2469,7 +2469,7 @@ body.light .dropdown-option:hover, body.theme-sepia .dropdown-option:hover {
     display: none !important;
 }
 
-#view-bank, #view-realestate, #view-settings {
+#view-bank, #view-realestate, #view-settings, #view-syndicate {
     grid-row: 2 / 4;
     grid-column: 1 / -1;
     display: flex;
@@ -2480,7 +2480,7 @@ body.light .dropdown-option:hover, body.theme-sepia .dropdown-option:hover {
 }
 
 /* --- Dalal Bank --- */
-#view-bank, #view-realestate, #view-settings {
+#view-bank, #view-realestate, #view-settings, #view-syndicate {
     height: 100%;
     overflow: hidden;
 }
@@ -3457,4 +3457,35 @@ body.font-jetbrains { --font: 'JetBrains Mono', monospace; --mono: 'JetBrains Mo
     .mobile-action-bar {
         display: none !important;
     }
+}
+
+/* ==================== SYNDICATE CRATE REVEAL ANIMATIONS ==================== */
+@keyframes crateRevealIn {
+    0%   { opacity: 0; transform: scale(0.6) translateY(40px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes crateRewardIn {
+    0%   { opacity: 0; transform: scale(0.7) translateY(20px); }
+    60%  { transform: scale(1.05) translateY(-5px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes cratePulse {
+    0%   { transform: scale(1);    box-shadow: 0 0 30px currentColor, 0 0 60px currentColor; }
+    100% { transform: scale(1.06); box-shadow: 0 0 50px currentColor, 0 0 100px currentColor; }
+}
+
+@keyframes crateParticle {
+    0%   { top: 110%; opacity: 0.7; }
+    50%  { opacity: 0.5; }
+    100% { top: -10%;  opacity: 0; }
+}
+
+@keyframes crateShake {
+    0%, 100% { transform: rotate(0deg); }
+    20%  { transform: rotate(-6deg) scale(1.05); }
+    40%  { transform: rotate(6deg) scale(1.08); }
+    60%  { transform: rotate(-4deg) scale(1.05); }
+    80%  { transform: rotate(4deg) scale(1.03); }
 }
