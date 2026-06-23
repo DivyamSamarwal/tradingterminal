@@ -653,7 +653,7 @@ body {
     color: var(--text-dim);
     font-size: 9px;
     font-weight: 700;
-    padding: 2px 5px;
+    padding: 3px 8px;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.15s;
@@ -662,6 +662,39 @@ body {
 }
 .panel-tf-btn:hover { background: var(--bg-3); color: var(--text); }
 .panel-tf-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.panel-price-ind {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+    font-weight: 700;
+    margin-left: 8px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--bg-2);
+}
+.panel-price-ind.up { color: var(--green); }
+.panel-price-ind.dn { color: var(--red); }
+
+.panel-trade-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 8px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.panel-trade-btn:hover { opacity: 0.8; }
+
+@keyframes pulse-border {
+    0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+.pulse-anim { animation: pulse-border 0.5s ease-out; }
 
 /* ========== DRAWING TOOLBAR ========== */
 .drawing-toolbar {

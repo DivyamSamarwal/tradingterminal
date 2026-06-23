@@ -5048,8 +5048,9 @@ var drawingPlugin = {
 
 			} else if (d.type === 'fib') {
 				var fibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
-				var fibColors = ['rgba(255,255,255,0.7)', 'rgba(253,224,71,0.8)', 'rgba(134,239,172,0.8)',
-					'rgba(147,197,253,0.8)', 'rgba(216,180,254,0.8)', 'rgba(253,164,175,0.8)', 'rgba(255,255,255,0.7)'];
+				var fibColors = isLight 
+					? ['rgba(0,0,0,0.6)', 'rgba(202,138,4,0.8)', 'rgba(21,128,61,0.8)', 'rgba(29,78,216,0.8)', 'rgba(126,34,206,0.8)', 'rgba(190,18,60,0.8)', 'rgba(0,0,0,0.6)']
+					: ['rgba(255,255,255,0.7)', 'rgba(253,224,71,0.8)', 'rgba(134,239,172,0.8)', 'rgba(147,197,253,0.8)', 'rgba(216,180,254,0.8)', 'rgba(253,164,175,0.8)', 'rgba(255,255,255,0.7)'];
 				var x1Px = xScale.getPixelForValue(d.x1);
 				var x2Px = xScale.getPixelForValue(d.x2);
 				var fibLeft = Math.min(x1Px, x2Px);
@@ -5114,8 +5115,9 @@ var drawingPlugin = {
 				ctx.setLineDash([]);
 			} else if (ip.type === 'fib') {
 				var fibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
-				var fibColors = ['rgba(255,255,255,0.7)', 'rgba(253,224,71,0.8)', 'rgba(134,239,172,0.8)',
-					'rgba(147,197,253,0.8)', 'rgba(216,180,254,0.8)', 'rgba(253,164,175,0.8)', 'rgba(255,255,255,0.7)'];
+				var fibColors = isLight 
+					? ['rgba(0,0,0,0.6)', 'rgba(202,138,4,0.8)', 'rgba(21,128,61,0.8)', 'rgba(29,78,216,0.8)', 'rgba(126,34,206,0.8)', 'rgba(190,18,60,0.8)', 'rgba(0,0,0,0.6)']
+					: ['rgba(255,255,255,0.7)', 'rgba(253,224,71,0.8)', 'rgba(134,239,172,0.8)', 'rgba(147,197,253,0.8)', 'rgba(216,180,254,0.8)', 'rgba(253,164,175,0.8)', 'rgba(255,255,255,0.7)'];
 				
 				var curYVal = yScale.getValueForPixel(ip.curPy);
 				var priceRange = ip.startY - curYVal;
@@ -5438,6 +5440,9 @@ function setChartLayout(layout) {
 		panelDiv.innerHTML =
 			'<div class="panel-header">' +
 			'<select class="panel-ticker-select" data-panel="' + pi + '">' + optionsHTML + '</select>' +
+			'<span class="panel-price-ind" id="panel-price-' + pi + '">---</span>' +
+			'<button class="panel-trade-btn" data-panel="' + pi + '">Trade</button>' +
+			'<div style="flex:1;"></div>' +
 			'<button class="panel-tf-btn active" data-panel="' + pi + '" data-vl="375">1D</button>' +
 			'<button class="panel-tf-btn" data-panel="' + pi + '" data-vl="1875">1W</button>' +
 			'<button class="panel-tf-btn" data-panel="' + pi + '" data-vl="8250">1M</button>' +
@@ -5469,6 +5474,20 @@ function setChartLayout(layout) {
 					updatePanelChart(panelChart, panelState, false);
 				});
 			});
+
+			// Trade Button
+			var tradeBtn = panelDiv.querySelector('.panel-trade-btn');
+			if (tradeBtn) {
+				tradeBtn.addEventListener('click', function() {
+					selectStock(stockMap[panelState.ticker]);
+					var orderPanel = document.querySelector('.order-panel');
+					if (orderPanel) {
+						orderPanel.classList.add('pulse-anim');
+						setTimeout(function() { orderPanel.classList.remove('pulse-anim'); }, 500);
+					}
+				});
+			}
+
 			// Add drawing mouse listeners to this panel canvas
 			setupDrawingListenersForCanvas(panelCanvas, function() { return panelChart; }, function() { return panelState.ticker; });
 		})(pi, ps);
@@ -5487,7 +5506,10 @@ function buildPanelChart(canvas, panelState) {
 			{ label: "EMA 20", data: [], borderWidth: 1.5, borderColor: "rgba(156, 39, 176, 0.85)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0.1, hidden: true },
 			{ label: "BB Upper", data: [], borderWidth: 1, borderColor: "rgba(0, 188, 212, 0.7)", backgroundColor: "rgba(0, 188, 212, 0.06)", pointRadius: 0, fill: '+1', tension: 0.1, borderDash: [3, 3], hidden: true },
 			{ label: "BB Lower", data: [], borderWidth: 1, borderColor: "rgba(0, 188, 212, 0.7)", backgroundColor: "rgba(0, 188, 212, 0.06)", pointRadius: 0, fill: false, tension: 0.1, borderDash: [3, 3], hidden: true },
-			{ label: "VWAP", data: [], borderWidth: 1.5, borderColor: "rgba(255, 214, 0, 0.9)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0.1, borderDash: [4, 4], hidden: true }
+			{ label: "VWAP", data: [], borderWidth: 1.5, borderColor: "rgba(255, 214, 0, 0.9)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0.1, borderDash: [4, 4], hidden: true },
+			{ label: "Pos Avg", data: [], borderWidth: 1.5, borderDash: [4, 4], borderColor: "rgba(33, 150, 243, 0.9)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0, hidden: true },
+			{ label: "Pos SL", data: [], borderWidth: 1.5, borderDash: [4, 4], borderColor: "rgba(244, 67, 54, 0.8)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0, hidden: true },
+			{ label: "Pos Tgt", data: [], borderWidth: 1.5, borderDash: [4, 4], borderColor: "rgba(76, 175, 80, 0.8)", backgroundColor: "transparent", pointRadius: 0, fill: false, tension: 0, hidden: true }
 		] },
 		options: {
 			responsive: true, maintainAspectRatio: false, animation: false,
@@ -5519,6 +5541,15 @@ function updatePanelChart(chart, panelState, skipUpdate) {
 	var fullHistory = stock.preHistory && stock.preHistory.length
 		? stock.preHistory.concat(stock.history)
 		: stock.history;
+
+	// Update panel header price indicator
+	var panelId = chart.canvas.id.replace('panel-canvas-', '');
+	var panelPriceEl = document.getElementById('panel-price-' + panelId);
+	if (panelPriceEl) {
+		panelPriceEl.textContent = fmtPrice(stock, stock.ltp);
+		var dayChg = stock.ltp - stock.open;
+		panelPriceEl.className = 'panel-price-ind ' + (dayChg >= 0 ? 'up' : 'dn');
+	}
 	var slice = fullHistory.slice(-(panelState.viewLen || 375));
 	
 	// Extract values correctly. stock.history is an array of objects `{o,h,l,c,v}`
@@ -5578,6 +5609,41 @@ function updatePanelChart(chart, panelState, skipUpdate) {
 	} else {
 		dsVWAP.data = [];
 		dsVWAP.hidden = true;
+	}
+
+	// ── Position Lines ──
+	var dsAvg = chart.data.datasets[6];
+	var dsSL = chart.data.datasets[7];
+	var dsTgt = chart.data.datasets[8];
+	
+	var pos = state.positions[stock.ticker];
+	var dataLen = prices.length;
+	if (dsAvg) {
+		if (pos && dataLen) {
+			dsAvg.data = Array(dataLen).fill(pos.avgPrice);
+			dsAvg.hidden = false;
+		} else {
+			dsAvg.data = []; dsAvg.hidden = true;
+		}
+	}
+
+	var st = state.slTargets[stock.ticker];
+	if (dsSL) {
+		if (st && st.sl && dataLen) {
+			dsSL.data = Array(dataLen).fill(st.sl);
+			dsSL.hidden = false;
+		} else {
+			dsSL.data = []; dsSL.hidden = true;
+		}
+	}
+	
+	if (dsTgt) {
+		if (st && st.target && dataLen) {
+			dsTgt.data = Array(dataLen).fill(st.target);
+			dsTgt.hidden = false;
+		} else {
+			dsTgt.data = []; dsTgt.hidden = true;
+		}
 	}
 
 	if (!skipUpdate) chart.update('none');
