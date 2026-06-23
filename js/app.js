@@ -5107,8 +5107,9 @@ var drawingPlugin = {
 };
 
 // ==================== DRAWING TOOL SETUP ====================
-function setupDrawingListenersForCanvas(canvas, chartRef, getTickerFn) {
+function setupDrawingListenersForCanvas(canvas, getChartFn, getTickerFn) {
 	canvas.addEventListener('mousedown', function(e) {
+		var chartRef = getChartFn();
 		if (state.drawingMode === 'cursor' || !chartRef) return;
 		var rect = canvas.getBoundingClientRect();
 		var px = e.clientX - rect.left;
@@ -5128,7 +5129,8 @@ function setupDrawingListenersForCanvas(canvas, chartRef, getTickerFn) {
 	});
 
 	canvas.addEventListener('mousemove', function(e) {
-		if (!state.drawingInProgress || state.drawingInProgress.targetChart !== chartRef) return;
+		var chartRef = getChartFn();
+		if (!state.drawingInProgress || state.drawingInProgress.targetChart !== chartRef || !chartRef) return;
 		var rect = canvas.getBoundingClientRect();
 		state.drawingInProgress.curPx = e.clientX - rect.left;
 		state.drawingInProgress.curPy = e.clientY - rect.top;
@@ -5136,7 +5138,8 @@ function setupDrawingListenersForCanvas(canvas, chartRef, getTickerFn) {
 	});
 
 	canvas.addEventListener('mouseup', function(e) {
-		if (!state.drawingInProgress || state.drawingInProgress.targetChart !== chartRef) return;
+		var chartRef = getChartFn();
+		if (!state.drawingInProgress || state.drawingInProgress.targetChart !== chartRef || !chartRef) return;
 		var ip = state.drawingInProgress;
 		var rect = canvas.getBoundingClientRect();
 		var px = e.clientX - rect.left;
@@ -5163,11 +5166,13 @@ function setupDrawingListenersForCanvas(canvas, chartRef, getTickerFn) {
 			}
 		}
 		state.drawingInProgress = null;
+		state.drawingInProgress = null;
 		chartRef.draw();
 	});
 
 	canvas.addEventListener('mouseleave', function() {
-		if (state.drawingInProgress && state.drawingInProgress.targetChart === chartRef) {
+		var chartRef = getChartFn();
+		if (state.drawingInProgress && state.drawingInProgress.targetChart === chartRef && chartRef) {
 			state.drawingInProgress = null;
 			chartRef.draw();
 		}
@@ -5208,10 +5213,11 @@ function setupDrawingTools() {
 	}
 
 	var canvas = document.getElementById('main-chart');
-	if (canvas && chartInstance) {
-		setupDrawingListenersForCanvas(canvas, chartInstance, function() {
+	if (canvas && !canvas._drawingListenersAttached) {
+		setupDrawingListenersForCanvas(canvas, function() { return chartInstance; }, function() {
 			return state.activeStock ? state.activeStock.ticker : null;
 		});
+		canvas._drawingListenersAttached = true;
 	}
 }
 
@@ -5300,7 +5306,7 @@ function setChartLayout(layout) {
 				});
 			});
 			// Add drawing mouse listeners to this panel canvas
-			setupDrawingListenersForCanvas(panelCanvas, panelChart, function() { return panelState.ticker; });
+			setupDrawingListenersForCanvas(panelCanvas, function() { return panelChart; }, function() { return panelState.ticker; });
 		})(pi, ps);
 	}
 }
@@ -9856,6 +9862,9 @@ function renderChart(stock) {
 
 	chartInstance._isLogAxis = needsLog;
 	_applyChartData(stock, isLight);
+	
+	// Ensure drawing listeners are bound to the current canvas/chart instance
+	setupDrawingTools();
 }
 
 function updateOrderMargin() {
