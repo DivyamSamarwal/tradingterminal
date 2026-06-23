@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Dalal Street Terminal v3
  * 25 Stocks, 80+ News Events, Modifiable Cash, Circuit Limits,
  * NIFTY Index, Trade History, Market Sentiment, Volume Simulation
@@ -6074,6 +6074,8 @@ function tickMinute() {
 		if (indexStock.volumeHistory.length > state.historyLen)
 			indexStock.volumeHistory.shift();
 		indexStock.volume += tickVol;
+		indexStock.available_liquidity = tickVol * 1.5 + 5000; // Provide ambient liquidity for indices
+		indexStock.bidAskSpread = indexStock.ltp * (Math.random() * 0.0005 + 0.0001); // 0.01% to 0.05% spread
 		
 		if (!indexStock.currentCandle) {
 			indexStock.currentCandle = {
@@ -6608,6 +6610,9 @@ function startNewDay() {
 	state.sentiment = 0;
 	// Note: slTargets are intentionally NOT cleared - user SL/Targets persist across days
 
+	// Clear pending orders with DAY time-in-force at end of day
+	state.pendingOrders = state.pendingOrders.filter(function(o) { return o.tif !== "DAY"; });
+
 	document.getElementById("day-counter").textContent = "Day " + state.day;
 	state.newsCount = 0;
 	document.getElementById("news-count").textContent = "0";
@@ -6824,6 +6829,15 @@ function executeTrade(side) {
 
 	var stock = state.activeStock;
 
+	if (stock.market === "INDEX") {
+		toast(
+			"Error",
+			"Indices cannot be traded directly as equity. Please trade Index Options instead.",
+			"error"
+		);
+		return;
+	}
+
 	// Block trading if circuit hit
 	if (stock.circuitHit === "UC" && side === "BUY") {
 		toast(
@@ -6898,6 +6912,7 @@ function executeTrade(side) {
 			return;
 		}
 		state.pendingOrders.push({
+			id: Math.random().toString(36).substr(2, 9),
 			time: formatTime(state.time),
 			day: state.day,
 			ticker: stock.ticker,
@@ -6955,6 +6970,7 @@ function executeTrade(side) {
 			return;
 		}
 		state.pendingOrders.push({
+			id: Math.random().toString(36).substr(2, 9),
 			time: formatTime(state.time),
 			day: state.day,
 			ticker: stock.ticker,
@@ -7029,6 +7045,7 @@ function executeTrade(side) {
 							"info",
 						);
 						state.pendingOrders.push({
+							id: Math.random().toString(36).substr(2, 9),
 							time: formatTime(state.time),
 							day: state.day,
 							ticker: stock.ticker,
@@ -7052,6 +7069,7 @@ function executeTrade(side) {
 				);
 			} else if (tif === "DAY") {
 				state.pendingOrders.push({
+					id: Math.random().toString(36).substr(2, 9),
 					time: formatTime(state.time),
 					day: state.day,
 					ticker: stock.ticker,
@@ -7515,6 +7533,7 @@ function executeOptionTrade(side) {
 	var premium = 0;
 	var cost = 0;
 	var costINR = 0;
+	var pnl = null;
 
 	if (side === "BUY") {
 		var pos = state.optionsPositions[optionId];
@@ -7549,6 +7568,19 @@ function executeOptionTrade(side) {
 		state.optionsPositions[optionId] = pos;
 		state.margin -= costINR + brokerage;
 		state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
+
+		state.tradeHistory.unshift({
+			time: formatTime(state.time),
+			day: state.day,
+			ticker: stock.ticker,
+			side: "BUY",
+			type: optType + " OPT",
+			qty: totalQty,
+			price: premium,
+			value: costINR,
+			pnl: 0,
+		});
+
 		toast(
 			"Option BUY",
 			lots +
@@ -7580,6 +7612,10 @@ function executeOptionTrade(side) {
 			toast("Error", "Insufficient margin for brokerage", "error");
 			return;
 		}
+
+		var pnlNative = (premium - pos2.avgPremium) * totalQty;
+		pnl = pnlNative * fxRate;
+
 		state.margin += costINR - brokerage; // convert proceeds to INR minus brokerage
 		state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
 		pos2.lots -= lots;
@@ -7619,6 +7655,7 @@ function executeOptionTrade(side) {
 		qty: totalQty,
 		price: premium,
 		value: costINR,
+		pnl: pnl,
 	});
 
 	document.getElementById("option-lots").value = 1;
@@ -8276,6 +8313,38 @@ function renderMarketDepth(stock) {
 			bidPct: bidPct,
 			askPct: askPct,
 		};
+	}
+
+	// Disable equity buttons for Index stocks
+	var isIndex = stock.market === "INDEX";
+	var btnBuy = document.getElementById("btn-buy");
+	var btnSell = document.getElementById("btn-sell");
+	var btnMobileBuy = document.getElementById("mobile-buy-btn");
+	var btnMobileSell = document.getElementById("mobile-sell-btn");
+	if (btnBuy) btnBuy.disabled = isIndex;
+	if (btnSell) btnSell.disabled = isIndex;
+	if (btnMobileBuy) btnMobileBuy.disabled = isIndex;
+	if (btnMobileSell) btnMobileSell.disabled = isIndex;
+	
+	var orderNotice = document.getElementById("index-order-notice");
+	if (isIndex && state.activeTab === "positions") {
+		if (!orderNotice) {
+			orderNotice = document.createElement("div");
+			orderNotice.id = "index-order-notice";
+			orderNotice.style.color = "#ff9100";
+			orderNotice.style.fontSize = "12px";
+			orderNotice.style.marginTop = "10px";
+			orderNotice.style.textAlign = "center";
+			orderNotice.textContent = "Indices cannot be traded directly. Switch to Options tab.";
+			var actionPanel = document.querySelector(".action-panel .order-actions");
+			if (actionPanel) {
+				actionPanel.parentNode.insertBefore(orderNotice, actionPanel.nextSibling);
+			}
+		} else {
+			orderNotice.style.display = "block";
+		}
+	} else if (orderNotice) {
+		orderNotice.style.display = "none";
 	}
 }
 
@@ -9172,6 +9241,7 @@ function closeEquityPosition(ticker, forceInstant) {
 		}
 
 		state.pendingOrders.push({
+			id: Math.random().toString(36).substr(2, 9),
 			time: formatTime(state.time),
 			day: state.day,
 			ticker: ticker,
@@ -9179,6 +9249,7 @@ function closeEquityPosition(ticker, forceInstant) {
 			qty: qtyToSubmit,
 			limitPrice: stock.ltp, // Needed for partial fill logic
 			orderType: "MARKET",
+			tif: "IOC",
 			currency: stock.currency,
 		});
 
@@ -9571,9 +9642,9 @@ function renderPendingTable() {
 			'<td class="r">' +
 			(stock ? fmtPrice(stock, curLTP) : "0.00") +
 			"</td>" +
-			'<td class="r"><button class="btn-cancel-order" onclick="event.stopPropagation();cancelPendingOrder(' +
-			index +
-			')" title="Cancel order">&#x2715; Cancel</button></td>';
+			'<td class="r"><button class="btn-cancel-order" onclick="event.stopPropagation();cancelPendingOrder(\'' +
+			order.id +
+			'\')" title="Cancel order">&#x2715; Cancel</button></td>';
 
 		if (stock) {
 			tr.onclick = function () {
@@ -9584,7 +9655,8 @@ function renderPendingTable() {
 	});
 }
 
-function cancelPendingOrder(index) {
+function cancelPendingOrder(id) {
+	var index = state.pendingOrders.findIndex(function(o) { return o.id === id; });
 	if (index >= 0 && index < state.pendingOrders.length) {
 		var order = state.pendingOrders[index];
 		state.pendingOrders.splice(index, 1);
@@ -9661,7 +9733,7 @@ function exportTradeHistoryCSV() {
 
 	// Header row
 	var rows = [
-		'"Time","Day","Symbol","Side","Type","Qty","Price (Native)","Value (INR)"',
+		'"Time","Day","Symbol","Side","Type","Qty","Price (Native)","Value (INR)","P&L"',
 	];
 
 	// Trade rows - oldest first (tradeHistory is stored newest-first)
