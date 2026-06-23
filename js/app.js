@@ -4821,6 +4821,7 @@ var state = {
 };
 
 var marketInterval;
+var depthInterval = null;
 var chartInstance = null;
 var subChartInstance = null;
 var multiChartInstances = []; // For 2x/4x multi-chart panels
@@ -5450,13 +5451,13 @@ function setChartLayout(layout) {
 			'<canvas id="panel-canvas-' + pi + '"></canvas>';
 		container.appendChild(panelDiv);
 
-		(function(panelIndex, panelState) {
+		(function(panelIndex, panelState, pDiv) {
 			var panelCanvas = document.getElementById('panel-canvas-' + panelIndex);
 			var panelChart = buildPanelChart(panelCanvas, panelState);
 			multiChartInstances[panelIndex] = panelChart;
 
 			// Ticker select
-			var sel = panelDiv.querySelector('.panel-ticker-select');
+			var sel = pDiv.querySelector('.panel-ticker-select');
 			if (sel) {
 				sel.value = panelState.ticker;
 				sel.addEventListener('change', function() {
@@ -5466,9 +5467,9 @@ function setChartLayout(layout) {
 			}
 
 			// Timeframe buttons
-			panelDiv.querySelectorAll('.panel-tf-btn').forEach(function(tfBtn) {
+			pDiv.querySelectorAll('.panel-tf-btn').forEach(function(tfBtn) {
 				tfBtn.addEventListener('click', function() {
-					panelDiv.querySelectorAll('.panel-tf-btn').forEach(function(b) { b.classList.remove('active'); });
+					pDiv.querySelectorAll('.panel-tf-btn').forEach(function(b) { b.classList.remove('active'); });
 					tfBtn.classList.add('active');
 					panelState.viewLen = parseInt(tfBtn.getAttribute('data-vl')) || 375;
 					updatePanelChart(panelChart, panelState, false);
@@ -5476,7 +5477,7 @@ function setChartLayout(layout) {
 			});
 
 			// Trade Button
-			var tradeBtn = panelDiv.querySelector('.panel-trade-btn');
+			var tradeBtn = pDiv.querySelector('.panel-trade-btn');
 			if (tradeBtn) {
 				tradeBtn.addEventListener('click', function() {
 					selectStock(stockMap[panelState.ticker]);
@@ -5490,7 +5491,7 @@ function setChartLayout(layout) {
 
 			// Add drawing mouse listeners to this panel canvas
 			setupDrawingListenersForCanvas(panelCanvas, function() { return panelChart; }, function() { return panelState.ticker; });
-		})(pi, ps);
+		})(pi, ps, panelDiv);
 	}
 }
 
@@ -5792,7 +5793,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	applyTheme(state.theme);
 
 	// High-frequency HFT order book flicker (visual realism)
-	setInterval(function () {
+	depthInterval = setInterval(function () {
 		if (
 			state.activeStock &&
 			!state.isPaused &&
@@ -8973,72 +8974,71 @@ function renderActiveStock() {
 		if (elPrev) elPrev.innerHTML = "";
 		var badge = document.getElementById("market-status-badge");
 		if (badge) badge.style.display = "none";
-		return;
 	} else {
 		var badge = document.getElementById("market-status-badge");
-		if (badge) badge.style.display = "";
-	}
-
-	document.getElementById("active-symbol").textContent = stock.ticker;
-	var badge = document.getElementById("market-status-badge");
-	if (badge) {
-		var open = isMarketOpen(stock, state.time);
-		badge.textContent = open ? "OPEN" : "CLOSED";
-		// Give it a slightly bolder background so the pill stands out nicely
-		badge.style.backgroundColor = open
-			? "rgba(0, 200, 83, 0.15)"
-			: "rgba(255, 23, 68, 0.15)";
-		badge.style.border = open
-			? "1px solid rgba(0, 200, 83, 0.3)"
-			: "1px solid rgba(255, 23, 68, 0.3)";
-		badge.style.color = open ? "#00e676" : "#ff4b4b";
-	}
-	document.getElementById("active-name").textContent =
-		stock.name + " · " + stock.sector + " [" + stock.market + "]";
-	document.getElementById("order-symbol").textContent = stock.ticker;
-
-	var dayChg = stock.ltp - stock.open;
-	var dayPct = (dayChg / stock.open) * 100;
-	var isUp = dayChg >= 0;
-
-	var elPrice = document.getElementById("active-price");
-	elPrice.textContent = fmtPrice(stock, stock.ltp);
-	elPrice.className = "ct-price " + (isUp ? "up" : "dn");
-
-	var elChg = document.getElementById("active-change");
-	var circuitStr = stock.circuitHit ? " | " + stock.circuitHit : "";
-	elChg.textContent =
-		(isUp ? "+" : "") +
-		dayChg.toFixed(2) +
-		" (" +
-		dayPct.toFixed(2) +
-		"%)" +
-		circuitStr;
-	elChg.className = "ct-change " + (isUp ? "up" : "dn");
-
-	var elPrev = document.getElementById("active-prev-close");
-	if (elPrev) {
-		if (stock.prevClose) {
-			var chgFromPrev = stock.ltp - stock.prevClose;
-			var pctFromPrev = (chgFromPrev / stock.prevClose) * 100;
-			var colorClass = chgFromPrev >= 0 ? "up" : "dn";
-			var sign = chgFromPrev >= 0 ? "+" : "";
-			elPrev.innerHTML =
-				"Prev Close: " +
-				fmtPrice(stock, stock.prevClose) +
-				' &nbsp;<span class="' +
-				colorClass +
-				'">' +
-				sign +
-				pctFromPrev.toFixed(2) +
-				"%</span>";
-			elPrev.className = "ct-prev-close";
-		} else {
-			elPrev.innerHTML = "";
+		if (badge) {
+			badge.style.display = "";
+			var open = isMarketOpen(stock, state.time);
+			badge.textContent = open ? "OPEN" : "CLOSED";
+			// Give it a slightly bolder background so the pill stands out nicely
+			badge.style.backgroundColor = open
+				? "rgba(0, 200, 83, 0.15)"
+				: "rgba(255, 23, 68, 0.15)";
+			badge.style.border = open
+				? "1px solid rgba(0, 200, 83, 0.3)"
+				: "1px solid rgba(255, 23, 68, 0.3)";
+			badge.style.color = open ? "#00e676" : "#ff4b4b";
 		}
+
+		document.getElementById("active-symbol").textContent = stock.ticker;
+		document.getElementById("active-name").textContent =
+			stock.name + " · " + stock.sector + " [" + stock.market + "]";
+
+		var dayChg = stock.ltp - stock.open;
+		var dayPct = (dayChg / stock.open) * 100;
+		var isUp = dayChg >= 0;
+
+		var elPrice = document.getElementById("active-price");
+		elPrice.textContent = fmtPrice(stock, stock.ltp);
+		elPrice.className = "ct-price " + (isUp ? "up" : "dn");
+
+		var elChg = document.getElementById("active-change");
+		var circuitStr = stock.circuitHit ? " | " + stock.circuitHit : "";
+		elChg.textContent =
+			(isUp ? "+" : "") +
+			dayChg.toFixed(2) +
+			" (" +
+			dayPct.toFixed(2) +
+			"%)" +
+			circuitStr;
+		elChg.className = "ct-change " + (isUp ? "up" : "dn");
+
+		var elPrev = document.getElementById("active-prev-close");
+		if (elPrev) {
+			if (stock.prevClose) {
+				var chgFromPrev = stock.ltp - stock.prevClose;
+				var pctFromPrev = (chgFromPrev / stock.prevClose) * 100;
+				var colorClass = chgFromPrev >= 0 ? "up" : "dn";
+				var sign = chgFromPrev >= 0 ? "+" : "";
+				elPrev.innerHTML =
+					"Prev Close: " +
+					fmtPrice(stock, stock.prevClose) +
+					' &nbsp;<span class="' +
+					colorClass +
+					'">' +
+					sign +
+					pctFromPrev.toFixed(2) +
+					"%</span>";
+				elPrev.className = "ct-prev-close";
+			} else {
+				elPrev.innerHTML = "";
+			}
+		}
+
+		renderChart(stock);
 	}
 
-	renderChart(stock);
+	document.getElementById("order-symbol").textContent = stock.ticker;
 	updateOrderMargin();
 	renderPositionCard(stock);
 
@@ -9096,22 +9096,26 @@ function renderMarketDepth(stock) {
 
 	// Ironclad lock: If market is closed, cache the depth and never recalculate it
 	if (!isOpen && stock._cachedDepthHTML) {
-		bidsContainer.innerHTML = stock._cachedDepthHTML.bids;
-		asksContainer.innerHTML = stock._cachedDepthHTML.asks;
+		if (!stock._cachedDepthHTML.applied) {
+			bidsContainer.innerHTML = stock._cachedDepthHTML.bids;
+			asksContainer.innerHTML = stock._cachedDepthHTML.asks;
 
-		var ratioBidEl = document.getElementById("l2-ratio-bid");
-		var ratioAskEl = document.getElementById("l2-ratio-ask");
-		if (ratioBidEl)
-			ratioBidEl.style.width = stock._cachedDepthHTML.bidPct + "%";
-		if (ratioAskEl)
-			ratioAskEl.style.width = stock._cachedDepthHTML.askPct + "%";
+			var ratioBidEl = document.getElementById("l2-ratio-bid");
+			var ratioAskEl = document.getElementById("l2-ratio-ask");
+			if (ratioBidEl)
+				ratioBidEl.style.width = stock._cachedDepthHTML.bidPct + "%";
+			if (ratioAskEl)
+				ratioAskEl.style.width = stock._cachedDepthHTML.askPct + "%";
 
-		var bidPctEl = document.getElementById("l2-bid-pct");
-		var askPctEl = document.getElementById("l2-ask-pct");
-		if (bidPctEl)
-			bidPctEl.textContent = Math.round(stock._cachedDepthHTML.bidPct) + "%";
-		if (askPctEl)
-			askPctEl.textContent = Math.round(stock._cachedDepthHTML.askPct) + "%";
+			var bidPctEl = document.getElementById("l2-bid-pct");
+			var askPctEl = document.getElementById("l2-ask-pct");
+			if (bidPctEl)
+				bidPctEl.textContent = Math.round(stock._cachedDepthHTML.bidPct) + "%";
+			if (askPctEl)
+				askPctEl.textContent = Math.round(stock._cachedDepthHTML.askPct) + "%";
+			
+			stock._cachedDepthHTML.applied = true;
+		}
 		return;
 	}
 
@@ -9250,6 +9254,7 @@ function renderMarketDepth(stock) {
 			asks: askHTML,
 			bidPct: bidPct,
 			askPct: askPct,
+			applied: true
 		};
 	}
 
@@ -10484,6 +10489,7 @@ function renderPositionsTable() {
 	}
 
 	tbody.innerHTML = "";
+	var fragment = document.createDocumentFragment();
 	keys.forEach(function (ticker) {
 		var pos = state.positions[ticker];
 		var stock = stockMap[ticker];
@@ -10550,8 +10556,9 @@ function renderPositionsTable() {
 		tr.onclick = function () {
 			selectStock(stockMap[ticker]);
 		};
-		tbody.appendChild(tr);
+		fragment.appendChild(tr);
 	});
+	tbody.appendChild(fragment);
 }
 
 function renderOptionsTable() {
@@ -10565,6 +10572,7 @@ function renderOptionsTable() {
 	}
 
 	tbody.innerHTML = "";
+	var fragment = document.createDocumentFragment();
 	keys.forEach(function (id) {
 		var pos = state.optionsPositions[id];
 		var stock = stockMap[pos.ticker];
@@ -10593,7 +10601,7 @@ function renderOptionsTable() {
 			"<td>" +
 			pos.expiryType +
 			" (" +
-			pos.daysToExpiry +
+			remainingDays.toFixed(1) +
 			"d)</td>" +
 			'<td class="r">' +
 			pos.lots +
@@ -10619,8 +10627,9 @@ function renderOptionsTable() {
 		tr.onclick = function () {
 			selectStock(stockMap[pos.ticker]);
 		};
-		tbody.appendChild(tr);
+		fragment.appendChild(tr);
 	});
+	tbody.appendChild(fragment);
 }
 
 function renderPendingTable() {
@@ -10725,6 +10734,7 @@ function renderHistoryTable() {
 	}
 
 	tbody.innerHTML = "";
+	var fragment = document.createDocumentFragment();
 	state.tradeHistory.forEach(function (trade) {
 		var sideClass =
 			trade.side === "BUY" || trade.side === "COVER"
@@ -10758,8 +10768,9 @@ function renderHistoryTable() {
 			'<td class="r">' +
 			fmtCur(trade.value) +
 			"</td>";
-		tbody.appendChild(tr);
+		fragment.appendChild(tr);
 	});
+	tbody.appendChild(fragment);
 }
 
 function exportTradeHistoryCSV() {
