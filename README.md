@@ -65,6 +65,7 @@ A robust routing and execution engine supporting advanced order types and Time-i
 * **Cryptocurrency**: Continuous 24/7 trading for digital assets.
 * **Forex (FX) & Fixed Income**: Currency pairs and sovereign debt yields.
 * **Automated FX Conversion**: Real-time cross-currency conversion dynamically settles international P&L into the base portfolio currency.
+* **Categorized Watchlist**: Organize and filter the vast universe of instruments via a dedicated, toggleable sidebar watchlist.
 
 ### 🏦 6. Dalal Bank & Credit System
 * **Dynamic Credit Scoring**: Tracks a live CIBIL Score (300-900) based on financial behavior, affecting loan eligibility and interest rates.
@@ -81,6 +82,8 @@ A robust routing and execution engine supporting advanced order types and Time-i
 * **Live Portfolio Metrics**: Real-time calculation of Portfolio Value, Cash Balance, Required Margin, and Unrealized P&L.
 * **Bracket Orders**: Integrated Stop-Loss and Take-Profit functionality for automated risk management.
 * **Technical Charting**: Integrated candlestick charting with customizable intervals, logarithmic scaling, and technical overlays.
+* **Multi-Chart Layouts**: Split the workspace into 2x or 4x grids to simultaneously monitor and trade multiple different instruments side-by-side.
+* **Interactive Drawing Tools**: Annotate charts directly with Trendlines, Horizontal Support/Resistance levels, and Fibonacci Retracements.
 * **News & Sentiment Engine**: Injects simulated macroeconomic data and geopolitical events, triggering localized volatility spikes and algorithmic sentiment shifts.
 
 ### 🎨 9. Customization & Theming Engine
@@ -96,6 +99,10 @@ A robust routing and execution engine supporting advanced order types and Time-i
 * **Underground Crates**: Utilize excess cash to purchase Bronze, Silver, or Gold crates that drop randomized, powerful market perks.
 * **Insider Advantages**: Unlock temporary rule-bending mechanics such as **Brokerage Holiday** (zero trading fees), **Circuit Override** (bypass exchange halts), **Market Freeze** (pause time to evaluate positions), and **Profit Amplifier** (boosted returns).
 * **Inventory Management**: Accumulate and deploy these perks strategically to maximize portfolio growth or survive severe market downturns.
+
+### ⏱️ 12. Simulation Playback Controls
+* **Time Acceleration**: Fast-forward the market simulation at **10x Speed** to quickly backtest strategies across multiple trading days.
+* **Market Freeze**: Manually pause the simulation engine to calmly review portfolio metrics, analyze charts, and place complex order setups without latency pressure.
 
 ---
 
