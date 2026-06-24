@@ -6918,7 +6918,22 @@ function applyTheme(themeName) {
 		}
 	});
 
-	if (state.activeStock) renderChart(state.activeStock);
+	if (state.chartLayout === "1x") {
+		if (state.activeStock) renderChart(state.activeStock);
+	} else {
+		setChartLayout(state.chartLayout);
+	}
+	
+	if (state.showRSI || state.showMACD) {
+		if (subChartInstance) { subChartInstance.destroy(); subChartInstance = null; }
+		if (state.activeStock) {
+			var prices = (state.chartType === 'candle')
+				? ((chartInstance && chartInstance._ohlc) ? chartInstance._ohlc.map(function(c) { return c.c; }) : [])
+				: ((chartInstance && chartInstance._lineData) ? chartInstance._lineData : []);
+			renderSubChart(state.activeStock, prices);
+		}
+	}
+
 	toast("Theme Updated", "Switched to " + themeName + " mode", "info");
 }
 
@@ -7745,6 +7760,10 @@ function tickMinute() {
 
 	// News events
 	if (Math.random() < NEWS_FREQ) triggerNewsEvent();
+
+	// Prevent memory bloat and data corruption in long-running sessions
+	if (state.tradeHistory.length > 5000) state.tradeHistory.length = 5000;
+	if (state.loanHistory.length > 200) state.loanHistory.splice(0, state.loanHistory.length - 200);
 
 	renderAll();
 }
@@ -10485,10 +10504,12 @@ function renderChart(stock) {
 	var currentFont = fontMap[state.font] || "Outfit";
 	var needsLog = state.chartScale === "log";
 
-	// Destroy chart if Y-axis type needs to change (log ↔ linear)
+	// Destroy chart if Y-axis type needs to change (log ↔ linear) or chart type changes or theme changes
 	if (chartInstance) {
 		var curLog = chartInstance._isLogAxis || false;
-		if (curLog !== needsLog) {
+		var curType = chartInstance._chartType || "line";
+		var curTheme = chartInstance._theme || "dark";
+		if (curLog !== needsLog || curType !== state.chartType || curTheme !== state.theme) {
 			chartInstance.destroy();
 			chartInstance = null;
 		}
@@ -10714,6 +10735,8 @@ function renderChart(stock) {
 	});
 
 	chartInstance._isLogAxis = needsLog;
+	chartInstance._chartType = state.chartType;
+	chartInstance._theme = state.theme;
 	_applyChartData(stock, isLight);
 	
 	// Ensure drawing listeners are bound to the current canvas/chart instance
