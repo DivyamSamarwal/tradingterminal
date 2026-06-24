@@ -4528,6 +4528,8 @@ var state = {
 		profitBoostDays: 0,
 		circuitOverrideDays: 0,
 	},
+	marketFreezeActive: false,
+	marketFreezeSecondsLeft: 0,
 	loans: [],
 	loanHistory: [],
 	fixedDeposits: [],
@@ -5846,8 +5848,11 @@ function initMarket() {
 
 // ==================== LISTENERS ====================
 function setupListeners() {
-	document.getElementById("btn-pause").addEventListener("click", function (e) {
-		setSpeed(0, e.currentTarget);
+	document.getElementById("btn-freeze").addEventListener("click", function () {
+		activateMarketFreeze();
+	});
+	document.getElementById("btn-freeze-cancel").addEventListener("click", function () {
+		deactivateMarketFreeze();
 	});
 	document.getElementById("btn-play").addEventListener("click", function (e) {
 		setSpeed(1000, e.currentTarget);
@@ -5905,9 +5910,7 @@ function setupListeners() {
 		document.getElementById("vol-val").innerText = parseFloat(e.target.value).toFixed(1) + "x";
 		VOL_MULTIPLIER = parseFloat(e.target.value);
 	});
-	document.getElementById("settings-circuit-limits").addEventListener("change", function (e) {
-		state.circuitLimits = e.target.checked;
-	});
+
 
 	// Simulation Speed Setup
 	document.querySelectorAll(".sim-speed-btn").forEach(function(btn) {
@@ -6281,7 +6284,29 @@ function renderSyndicateInventory() {
 	var inv = state.inventory;
 	if (invBrokerage) invBrokerage.textContent = inv.brokerageFreeDays + " Days";
 	if (invBailout) invBailout.textContent = inv.bailoutCards;
-	if (invFreeze) invFreeze.textContent = (inv.marketFreezeMinutes || 0) + " Min";
+	if (invFreeze) {
+		var freezeMins = inv.marketFreezeMinutes || 0;
+		if (state.marketFreezeActive) {
+			var secsLeft = state.marketFreezeSecondsLeft || 0;
+			invFreeze.textContent = "ACTIVE \u2014 " + secsLeft + "m left";
+			invFreeze.style.color = "#64d8ff";
+		} else {
+			invFreeze.textContent = freezeMins + " Min";
+			invFreeze.style.color = "";
+		}
+	}
+	// Update freeze button tooltip
+	var freezeBtn = document.getElementById("btn-freeze");
+	if (freezeBtn) {
+		var fm = inv.marketFreezeMinutes || 0;
+		if (state.marketFreezeActive) {
+			freezeBtn.title = "Market Freeze ACTIVE";
+		} else if (fm > 0) {
+			freezeBtn.title = "Activate Market Freeze (" + fm + " min available)";
+		} else {
+			freezeBtn.title = "Market Freeze (no minutes \u2014 earn from Syndicate crates)";
+		}
+	}
 	if (invBoost) invBoost.textContent = (inv.profitBoostDays || 0) + " Days";
 	if (invCircuit) invCircuit.textContent = (inv.circuitOverrideDays || 0) + " Days";
 	
@@ -6295,7 +6320,7 @@ function renderSyndicateInventory() {
 				var col = tip.gapPct > 0 ? "#00e676" : "#ff4b4b";
 				var el = document.createElement("div");
 				el.style.cssText = "padding:12px 14px;background:rgba(255,145,0,0.07);border:1px solid #ff9100;border-radius:8px;display:flex;align-items:center;gap:10px;";
-				el.innerHTML = "<i class='fa-solid fa-user-secret' style='color:#ff9100;font-size:18px;'></i><div><b style='color:#fff;'>" + tip.ticker + "</b><span style='color:#888;font-size:12px;margin:0 6px;'>will gap</span><b style='color:" + col + ";'>" + dir + " " + (Math.abs(tip.gapPct)*100).toFixed(1) + "%</b><span style='color:#888;font-size:12px;margin-left:6px;'>in " + tip.daysLeft + " day" + (tip.daysLeft > 1 ? "s" : "") + "</span></div>";
+				el.innerHTML = "<i class='fa-solid fa-user-secret' style='color:#ff9100;font-size:18px;'></i><div><b style='color:var(--text);'>" + tip.ticker + "</b><span style='color:#888;font-size:12px;margin:0 6px;'>will gap</span><b style='color:" + col + ";'>" + dir + " " + (Math.abs(tip.gapPct)*100).toFixed(1) + "%</b><span style='color:#888;font-size:12px;margin-left:6px;'>in " + tip.daysLeft + " day" + (tip.daysLeft > 1 ? "s" : "") + "</span></div>";
 				invTips.appendChild(el);
 			});
 		}
@@ -6389,7 +6414,7 @@ window.openSyndicateCrate = function(tier) {
 			state.loans.splice(maxIdx, 1);
 			rewardTitle = "Debt Forgiveness";
 			rewardDesc = "Your " + fmtCur(maxLoan.principal) + " loan has been wiped from Dalal Bank's servers. Permanently.";
-			rewardIcon = "fa-file-shredder";
+			rewardIcon = "fa-eraser";
 			rewardValue = "Wiped: " + fmtCur(maxLoan.principal);
 		}
 	} else if (rewardType === "insider") {
@@ -6667,9 +6692,8 @@ function applySettings() {
 	NEWS_FREQ = newFreq;
 	VOL_MULTIPLIER = newVol;
 	
-	// Set Circuit Limits based on checkbox
-	var limitsEnabled = document.getElementById("settings-circuit-limits").checked;
-	state.circuitLimits = limitsEnabled;
+	// Circuit Limits are now permanently on unless bypassed by Syndicate perk
+	state.circuitLimits = true;
 
 	toast("Settings Updated", "Simulation parameters have been updated.", "success");
 
@@ -7023,6 +7047,16 @@ function startClock() {
 }
 
 function setSpeed(ms, btn) {
+	// Block Play/Fast while Market Freeze is active
+	if (state.marketFreezeActive && ms !== 0) {
+		toast("Market Frozen \u2744\ufe0f", "End the freeze first to resume price movement.", "error");
+		document.querySelectorAll(".ctrl-btn").forEach(function (b) {
+			if (b.id !== "btn-theme" && b.id !== "btn-settings") b.classList.remove("on");
+		});
+		document.getElementById("btn-freeze").classList.add("on");
+		return;
+	}
+
 	document.querySelectorAll(".ctrl-btn").forEach(function (b) {
 		if (b.id !== "btn-theme" && b.id !== "btn-settings")
 			b.classList.remove("on");
@@ -7041,6 +7075,97 @@ function setSpeed(ms, btn) {
 		state.speedMs = ms;
 		startClock();
 	}
+}
+
+// ==================== MARKET FREEZE ====================
+var freezeCountdownInterval = null;
+
+function activateMarketFreeze() {
+	if (state.marketFreezeActive) {
+		toast("Market Freeze", "A freeze is already active!", "error");
+		return;
+	}
+	var mins = state.inventory.marketFreezeMinutes || 0;
+	if (mins <= 0) {
+		toast("Market Freeze", "No freeze minutes in inventory. Open Syndicate crates to earn some!", "error");
+		return;
+	}
+	if (!state.marketOpen) {
+		toast("Market Freeze", "Market is closed. Start a new day first.", "error");
+		return;
+	}
+	// Each freeze-minute = 1 real second
+	var secondsTotal = mins;
+	state.inventory.marketFreezeMinutes = 0;
+	state.marketFreezeActive = true;
+	state.marketFreezeSecondsLeft = secondsTotal;
+
+	// Pause market
+	state.isRunning = false;
+	clearInterval(marketInterval);
+
+	// Update freeze button UI
+	var freezeBtn = document.getElementById("btn-freeze");
+	if (freezeBtn) freezeBtn.classList.add("on");
+	// Deactivate play/fast buttons visually
+	document.getElementById("btn-play").classList.remove("on");
+	document.getElementById("btn-fast").classList.remove("on");
+
+	// Show HUD
+	var hud = document.getElementById("freeze-hud");
+	if (hud) hud.classList.remove("hidden");
+	updateFreezeHudTimer();
+
+	renderSyndicateInventory();
+	toast("Market Freeze ACTIVATED", mins + " minutes of frozen prices. Analyze and trade risk-free!", "success");
+
+	// Start real-time countdown (1 second intervals)
+	if (freezeCountdownInterval) clearInterval(freezeCountdownInterval);
+	freezeCountdownInterval = setInterval(function() {
+		state.marketFreezeSecondsLeft--;
+		updateFreezeHudTimer();
+		renderSyndicateInventory();
+		if (state.marketFreezeSecondsLeft <= 0) {
+			deactivateMarketFreeze();
+		}
+	}, 1000);
+}
+
+function deactivateMarketFreeze() {
+	if (freezeCountdownInterval) clearInterval(freezeCountdownInterval);
+	freezeCountdownInterval = null;
+	state.marketFreezeActive = false;
+	state.marketFreezeSecondsLeft = 0;
+
+	// Resume market at previous speed
+	if (state.marketOpen) {
+		state.isRunning = true;
+		startClock();
+		// Restore play button as active
+		document.querySelectorAll(".ctrl-btn").forEach(function(b) {
+			if (b.id !== "btn-theme" && b.id !== "btn-settings") b.classList.remove("on");
+		});
+		var playBtn = document.getElementById("btn-play");
+		if (playBtn) playBtn.classList.add("on");
+	}
+
+	// Update freeze button
+	var freezeBtn = document.getElementById("btn-freeze");
+	if (freezeBtn) freezeBtn.classList.remove("on");
+
+	// Hide HUD
+	var hud = document.getElementById("freeze-hud");
+	if (hud) hud.classList.add("hidden");
+
+	renderSyndicateInventory();
+	toast("Market Freeze Ended", "Prices are moving again.", "info");
+}
+
+function updateFreezeHudTimer() {
+	var el = document.getElementById("freeze-hud-timer");
+	if (!el) return;
+	var s = Math.max(0, state.marketFreezeSecondsLeft);
+	el.textContent = s + "m";
 }
 
 function isMarketOpen(stock, t) {
@@ -7188,7 +7313,7 @@ function tickMinute() {
 			if (b.id !== "btn-theme" && b.id !== "btn-settings")
 				b.classList.remove("on");
 		});
-		document.getElementById("btn-pause").classList.add("on");
+		document.getElementById("btn-freeze").classList.add("on");
 		showDayEndOverlay();
 		renderAll();
 		return;
@@ -7214,7 +7339,8 @@ function tickMinute() {
 			stock.market === "CRYPTO" ||
 			stock.market === "FX" ||
 			stock.market === "BOND" ||
-			state.circuitLimits === false;
+			state.circuitLimits === false ||
+			(state.inventory && state.inventory.circuitOverrideDays > 0);
 		var limitMult = isNoCircuit ? 100.0 : CIRCUIT_LIMIT;
 		var upperCircuit = stock.open * (1 + limitMult);
 		var lowerCircuit = stock.open * (1 - limitMult);
@@ -7941,6 +8067,20 @@ function startNewDay() {
 			}
 		}
 		
+		if (state.inventory.circuitOverrideDays > 0) {
+			state.inventory.circuitOverrideDays--;
+			if (state.inventory.circuitOverrideDays === 0) {
+				toast("Syndicate", "Your Circuit Override has expired. Limits are back in effect.", "info");
+			}
+		}
+
+		if (state.inventory.profitBoostDays > 0) {
+			state.inventory.profitBoostDays--;
+			if (state.inventory.profitBoostDays === 0) {
+				toast("Syndicate", "Your Profit Amplifier has expired.", "info");
+			}
+		}
+		
 		if (state.inventory.insiderTips && state.inventory.insiderTips.length > 0) {
 			var remainingTips = [];
 			state.inventory.insiderTips.forEach(function(tip) {
@@ -8090,7 +8230,7 @@ function triggerNewsEvent() {
 		if (s.circuitHit) return; // skip frozen stocks
 		var newPrice = parseFloat((s.ltp * (1 + impact)).toFixed(2));
 		var isNoCircuit =
-			s.market === "CRYPTO" || s.market === "FX" || s.market === "BOND" || state.circuitLimits === false;
+			s.market === "CRYPTO" || s.market === "FX" || s.market === "BOND" || state.circuitLimits === false || (state.inventory && state.inventory.circuitOverrideDays > 0);
 		var limitMult = isNoCircuit ? 100.0 : CIRCUIT_LIMIT;
 		var upperCircuit = s.open * (1 + limitMult);
 		var lowerCircuit = s.open * (1 - limitMult);

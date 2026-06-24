@@ -97,9 +97,9 @@
                 <div class="stat"><span class="stat-label">Brokerage</span><span class="stat-val" id="brokerage-paid">₹ 0.00</span></div>
             </div>
             <div class="topbar-controls">
-                <button class="playback-btn ctrl-btn" id="btn-pause" title="Pause" aria-label="Pause simulation">
+                <button class="playback-btn ctrl-btn" id="btn-freeze" title="Market Freeze" aria-label="Activate Market Freeze">
                   <div class="btn">
-                    <span class="btn-txt"><i class="fa-solid fa-pause"></i></span>
+                    <span class="btn-txt"><i class="fa-solid fa-snowflake"></i></span>
                     <div class="dot"></div>
                   </div>
                 </button>
@@ -933,16 +933,7 @@
                                 </div>
                             </div>
                             
-                            <div class="settings-group" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                                <div>
-                                    <label class="settings-label" style="margin-bottom:0;"><i class="fa-solid fa-shield-halved"></i> Circuit Breakers</label>
-                                    <div style="font-size:11px; color:var(--text-dim); margin-top:4px;">Halt trading if price moves Â±10% in a day</div>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="settings-circuit-limits" checked>
-                                    <span class="ts-slider round"></span>
-                                </label>
-                            </div>
+
                         </div>
 
                         <!-- Typography & Fonts Settings -->
@@ -1009,27 +1000,27 @@
                 <div id="syndicate-inventory" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap:12px; color:var(--text); font-size:14px;">
                     <div style="padding:12px 14px;background:var(--bg-1);border-radius:8px;border:1px solid var(--border);">
                         <div style="font-size:10px;letter-spacing:1px;color:#888;text-transform:uppercase;margin-bottom:6px;">Zero Brokerage</div>
-                        <div style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-percent" style="color:#00e676;font-size:18px;"></i><span id="inv-brokerage-days" style="font-size:20px;font-weight:800;color:#fff;">0 Days</span></div>
+                        <div style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-percent" style="color:#00e676;font-size:18px;"></i><span id="inv-brokerage-days" style="font-size:20px;font-weight:800;color:var(--text);">0 Days</span></div>
                         <div style="font-size:11px;color:#555;margin-top:4px;">0.1% commission waived</div>
                     </div>
                     <div style="padding:12px 14px;background:var(--bg-1);border-radius:8px;border:1px solid var(--border);">
                         <div style="font-size:10px;letter-spacing:1px;color:#888;text-transform:uppercase;margin-bottom:6px;">Bailout Cards</div>
-                        <div style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-life-ring" style="color:#00b0ff;font-size:18px;"></i><span id="inv-bailout-cards" style="font-size:20px;font-weight:800;color:#fff;">0</span></div>
+                        <div style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-life-ring" style="color:#00b0ff;font-size:18px;"></i><span id="inv-bailout-cards" style="font-size:20px;font-weight:800;color:var(--text);">0</span></div>
                         <div style="font-size:11px;color:#555;margin-top:4px;">Auto-saves from wipeout</div>
                     </div>
                     <div style="padding:12px 14px;background:var(--bg-1);border-radius:8px;border:1px solid var(--border);">
                         <div style="font-size:10px;letter-spacing:1px;color:#888;text-transform:uppercase;margin-bottom:6px;">Market Freeze</div>
-                        <div style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-snowflake" style="color:#64d8ff;font-size:18px;"></i><span id="inv-freeze-minutes" style="font-size:20px;font-weight:800;color:#fff;">0 Min</span></div>
+                        <div style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-snowflake" style="color:#64d8ff;font-size:18px;"></i><span id="inv-freeze-minutes" style="font-size:20px;font-weight:800;color:var(--text);">0 Min</span></div>
                         <div style="font-size:11px;color:#555;margin-top:4px;">Pauses price movement</div>
                     </div>
                     <div style="padding:12px 14px;background:var(--bg-1);border-radius:8px;border:1px solid var(--border);">
                         <div style="font-size:10px;letter-spacing:1px;color:#888;text-transform:uppercase;margin-bottom:6px;">Profit Amplifier</div>
-                        <div style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-rocket" style="color:#ff6ec7;font-size:18px;"></i><span id="inv-profit-boost" style="font-size:20px;font-weight:800;color:#fff;">0 Days</span></div>
+                        <div style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-rocket" style="color:#ff6ec7;font-size:18px;"></i><span id="inv-profit-boost" style="font-size:20px;font-weight:800;color:var(--text);">0 Days</span></div>
                         <div style="font-size:11px;color:#555;margin-top:4px;">+25% bonus on profits</div>
                     </div>
                     <div style="padding:12px 14px;background:var(--bg-1);border-radius:8px;border:1px solid var(--border);">
                         <div style="font-size:10px;letter-spacing:1px;color:#888;text-transform:uppercase;margin-bottom:6px;">Circuit Override</div>
-                        <div style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-bolt" style="color:#ffe03a;font-size:18px;"></i><span id="inv-circuit-override" style="font-size:20px;font-weight:800;color:#fff;">0 Days</span></div>
+                        <div style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-bolt" style="color:#ffe03a;font-size:18px;"></i><span id="inv-circuit-override" style="font-size:20px;font-weight:800;color:var(--text);">0 Days</span></div>
                         <div style="font-size:11px;color:#555;margin-top:4px;">No ±10% daily price cap</div>
                     </div>
                 </div>
@@ -1046,38 +1037,49 @@
                 </div>
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:14px;">
                     <div style="padding:16px;background:var(--bg-1);border-radius:10px;border:1px solid var(--border);border-left:3px solid #aaa;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-money-bill-wave" style="color:#aaa;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:#fff;font-size:14px;">Untraceable Cash</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(170,170,170,0.15);color:#aaa;border:1px solid #aaa;letter-spacing:1px;">COMMON — LEGENDARY</span></div></div>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-money-bill-wave" style="color:#aaa;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:var(--text);font-size:14px;">Untraceable Cash</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(170,170,170,0.15);color:#aaa;border:1px solid #aaa;letter-spacing:1px;">COMMON — LEGENDARY</span></div></div>
                         <p style="font-size:13px;color:#888;margin:0;line-height:1.6;">A direct deposit into your account. Amount scales with tier — Bronze drops ₹20K–₹1L, Silver up to ₹6L, Gold up to ₹25L.</p>
                     </div>
                     <div style="padding:16px;background:var(--bg-1);border-radius:10px;border:1px solid var(--border);border-left:3px solid #2196f3;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-percent" style="color:#2196f3;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:#fff;font-size:14px;">Brokerage Holiday</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(33,150,243,0.15);color:#2196f3;border:1px solid #2196f3;letter-spacing:1px;">RARE — EPIC</span></div></div>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-percent" style="color:#2196f3;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:var(--text);font-size:14px;">Brokerage Holiday</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(33,150,243,0.15);color:#2196f3;border:1px solid #2196f3;letter-spacing:1px;">RARE — EPIC</span></div></div>
                         <p style="font-size:13px;color:#888;margin:0;line-height:1.6;">The 0.1% brokerage fee on all equity and options trades is completely waived for X days. Every buy and sell is free of charge.</p>
                     </div>
                     <div style="padding:16px;background:var(--bg-1);border-radius:10px;border:1px solid var(--border);border-left:3px solid #00b0ff;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-life-ring" style="color:#00b0ff;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:#fff;font-size:14px;">Corporate Bailout</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(0,176,255,0.15);color:#00b0ff;border:1px solid #00b0ff;letter-spacing:1px;">RARE — LEGENDARY</span></div></div>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-life-ring" style="color:#00b0ff;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:var(--text);font-size:14px;">Corporate Bailout</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(0,176,255,0.15);color:#00b0ff;border:1px solid #00b0ff;letter-spacing:1px;">RARE — LEGENDARY</span></div></div>
                         <p style="font-size:13px;color:#888;margin:0;line-height:1.6;">Auto-triggers when your portfolio drops to &lt;1% of starting capital. Consumes 1 card, injects 50% of starting capital, and saves all your open positions from forced liquidation.</p>
                     </div>
                     <div style="padding:16px;background:var(--bg-1);border-radius:10px;border:1px solid var(--border);border-left:3px solid #9c27b0;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-file-shredder" style="color:#9c27b0;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:#fff;font-size:14px;">Debt Forgiveness</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(156,39,176,0.15);color:#9c27b0;border:1px solid #9c27b0;letter-spacing:1px;">EPIC</span></div></div>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-eraser" style="color:#9c27b0;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:var(--text);font-size:14px;">Debt Forgiveness</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(156,39,176,0.15);color:#9c27b0;border:1px solid #9c27b0;letter-spacing:1px;">EPIC</span></div></div>
                         <p style="font-size:13px;color:#888;margin:0;line-height:1.6;">Wipes your single largest outstanding loan from Dalal Bank entirely — principal, interest, and all. Useless with no loans; crate cost is refunded instead.</p>
                     </div>
                     <div style="padding:16px;background:var(--bg-1);border-radius:10px;border:1px solid var(--border);border-left:3px solid #64d8ff;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-snowflake" style="color:#64d8ff;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:#fff;font-size:14px;">Market Freeze</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(100,216,255,0.15);color:#64d8ff;border:1px solid #64d8ff;letter-spacing:1px;">UNCOMMON — EPIC</span></div></div>
-                        <p style="font-size:13px;color:#888;margin:0;line-height:1.6;">Adds freeze minutes to your inventory (30/60/120 min by tier). All stock prices are paused — analyze and place orders with zero risk of prices moving against you. <em style="color:#666;">Activation UI coming soon.</em></p>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-snowflake" style="color:#64d8ff;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:var(--text);font-size:14px;">Market Freeze</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(100,216,255,0.15);color:#64d8ff;border:1px solid #64d8ff;letter-spacing:1px;">UNCOMMON — EPIC</span></div></div>
+                        <p style="font-size:13px;color:#888;margin:0;line-height:1.6;">Adds freeze minutes to your inventory (30/60/120 min by tier). All stock prices are paused — analyze and place orders with zero risk of prices moving against you. Click the ❄️ button in the toolbar to activate.</p>
                     </div>
                     <div style="padding:16px;background:var(--bg-1);border-radius:10px;border:1px solid var(--border);border-left:3px solid #ff6ec7;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-rocket" style="color:#ff6ec7;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:#fff;font-size:14px;">Profit Amplifier</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(255,110,199,0.15);color:#ff6ec7;border:1px solid #ff6ec7;letter-spacing:1px;">EPIC</span></div></div>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-rocket" style="color:#ff6ec7;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:var(--text);font-size:14px;">Profit Amplifier</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(255,110,199,0.15);color:#ff6ec7;border:1px solid #ff6ec7;letter-spacing:1px;">EPIC</span></div></div>
                         <p style="font-size:13px;color:#888;margin:0;line-height:1.6;">For X days, every realized profit from a trade gets an extra 25% cash bonus. Sell ₹1,00,000 in profit? You receive ₹1,25,000. Only applies to profitable trades.</p>
                     </div>
                     <div style="padding:16px;background:var(--bg-1);border-radius:10px;border:1px solid var(--border);border-left:3px solid #ffe03a;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-bolt" style="color:#ffe03a;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:#fff;font-size:14px;">Circuit Override</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(255,224,58,0.15);color:#ffe03a;border:1px solid #ffe03a;letter-spacing:1px;">EPIC</span></div></div>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-bolt" style="color:#ffe03a;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:var(--text);font-size:14px;">Circuit Override</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(255,224,58,0.15);color:#ffe03a;border:1px solid #ffe03a;letter-spacing:1px;">EPIC</span></div></div>
                         <p style="font-size:13px;color:#888;margin:0;line-height:1.6;">SEBI circuit breakers (±10% daily limit) are disabled for X days. Stocks can move 20%, 30%+ in a day — massive gains OR catastrophic losses. High risk, high reward.</p>
                     </div>
                     <div style="padding:16px;background:var(--bg-1);border-radius:10px;border:1px solid rgba(255,145,0,0.3);border-left:3px solid #ff9100;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-user-secret" style="color:#ff9100;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:#fff;font-size:14px;">Insider Information</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(255,145,0,0.15);color:#ff9100;border:1px solid #ff9100;letter-spacing:1px;">LEGENDARY</span></div></div>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><i class="fa-solid fa-user-secret" style="color:#ff9100;font-size:20px;width:24px;text-align:center;"></i><div><div style="font-weight:700;color:var(--text);font-size:14px;">Insider Information</div><span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(255,145,0,0.15);color:#ff9100;border:1px solid #ff9100;letter-spacing:1px;">LEGENDARY</span></div></div>
                         <p style="font-size:13px;color:#888;margin:0;line-height:1.6;">A classified tip on a specific stock guaranteed to gap UP or DOWN by 5–13% in exactly 2 days — enforced by the engine. Buy or short accordingly for a near-risk-free trade.</p>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Market Freeze HUD Overlay -->
+        <div id="freeze-hud" class="freeze-hud hidden" aria-live="polite">
+            <div class="freeze-hud-inner">
+                <div class="freeze-hud-icon"><i class="fa-solid fa-snowflake"></i></div>
+                <div class="freeze-hud-label">MARKET FROZEN</div>
+                <div class="freeze-hud-timer" id="freeze-hud-timer">30m</div>
+                <div class="freeze-hud-sub">Prices are locked — trade risk-free</div>
+                <button class="freeze-hud-cancel" id="btn-freeze-cancel">End Freeze Early</button>
             </div>
         </div>
 

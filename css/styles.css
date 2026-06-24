@@ -2667,9 +2667,18 @@ body.light .dropdown-option:hover, body.theme-sepia .dropdown-option:hover {
   margin-right: 4px;
 }
 
-#btn-pause { --hue: 0; }     /* Red for pause */
+#btn-freeze { --hue: 190; }  /* Cyan/ice for freeze */
 #btn-play { --hue: 120; }    /* Green for play */
 #btn-fast { --hue: 30; }     /* Orange for fast */
+
+/* Freeze button: spin animation when active */
+#btn-freeze.on .btn-txt i {
+  animation: freeze-spin 3s linear infinite;
+}
+@keyframes freeze-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 
 .playback-btn .btn {
   display: flex;
@@ -3488,4 +3497,93 @@ body.font-jetbrains { --font: 'JetBrains Mono', monospace; --mono: 'JetBrains Mo
     40%  { transform: rotate(6deg) scale(1.08); }
     60%  { transform: rotate(-4deg) scale(1.05); }
     80%  { transform: rotate(4deg) scale(1.03); }
+}
+
+/* ==================== MARKET FREEZE HUD ==================== */
+.freeze-hud {
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.freeze-hud.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-12px) scale(0.97);
+}
+.freeze-hud:not(.hidden) {
+  pointer-events: auto;
+}
+.freeze-hud-inner {
+  background: linear-gradient(135deg, rgba(8, 24, 36, 0.97) 0%, rgba(0, 30, 50, 0.97) 100%);
+  border: 1px solid rgba(100, 216, 255, 0.35);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgba(100, 216, 255, 0.1),
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(100, 216, 255, 0.08) inset;
+  padding: 18px 22px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.freeze-hud-icon {
+  font-size: 28px;
+  color: #64d8ff;
+  filter: drop-shadow(0 0 8px rgba(100, 216, 255, 0.8));
+  animation: freeze-hud-spin 4s linear infinite;
+  margin-bottom: 2px;
+}
+@keyframes freeze-hud-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.freeze-hud-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 800;
+  color: #64d8ff;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.freeze-hud-timer {
+  font-size: 36px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 2px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 20px rgba(100, 216, 255, 0.6), 0 0 40px rgba(100, 216, 255, 0.3);
+  line-height: 1.1;
+  font-family: 'Outfit', monospace;
+}
+.freeze-hud-sub {
+  font-size: 11px;
+  color: rgba(100, 216, 255, 0.6);
+  text-align: center;
+  margin-top: 2px;
+}
+.freeze-hud-cancel {
+  margin-top: 10px;
+  background: rgba(100, 216, 255, 0.1);
+  border: 1px solid rgba(100, 216, 255, 0.3);
+  color: #64d8ff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  letter-spacing: 0.5px;
+}
+.freeze-hud-cancel:hover {
+  background: rgba(100, 216, 255, 0.2);
+  border-color: rgba(100, 216, 255, 0.6);
 }
