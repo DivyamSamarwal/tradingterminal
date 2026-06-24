@@ -1,12 +1,24 @@
 # 📈 Trading Terminal Simulator
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)]()
-[![License](https://img.shields.io/badge/license-MIT-green.svg)]()
-[![Environment](https://img.shields.io/badge/environment-Client--Side-orange.svg)]()
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Environment](https://img.shields.io/badge/environment-Client--Side-orange.svg)
 
 A high-performance, real-time trading terminal simulator built entirely with client-side web technologies. 
 
 This project provides a highly accurate, tick-by-tick financial market microstructure simulation. It is engineered for quantitative analysis, strategy backtesting, and educational purposes, allowing users to interact with synthetic markets featuring authentic liquidity constraints, timezone synchronization, and derivatives pricing models.
+
+---
+
+## 📑 Table of Contents
+
+- [Core Architecture](#-core-architecture)
+- [Features](#-features)
+- [Installation & Usage](#-installation--usage)
+- [About the Project](#️-about-the-project)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Disclaimer](#-disclaimer)
 
 ---
 
@@ -80,21 +92,62 @@ A robust routing and execution engine supporting advanced order types and Time-i
 * **True Mathematical Fundamentals**: Generates live simulation analytics such as Total Turnover (Volume × Price), Average Daily Volume, All-Time Highs, and Historical Volatility Range calculated directly from the simulation's mathematical history rather than static data.
 * **Live Technical Signals**: EOD (End of Day) tracking for 20-day Simple and Exponential Moving Averages (SMA / EMA) to provide dynamic Bullish/Bearish sentiment signals.
 
+### 💼 11. The Syndicate (Black Market)
+* **Underground Crates**: Utilize excess cash to purchase Bronze, Silver, or Gold crates that drop randomized, powerful market perks.
+* **Insider Advantages**: Unlock temporary rule-bending mechanics such as **Brokerage Holiday** (zero trading fees), **Circuit Override** (bypass exchange halts), **Market Freeze** (pause time to evaluate positions), and **Profit Amplifier** (boosted returns).
+* **Inventory Management**: Accumulate and deploy these perks strategically to maximize portfolio growth or survive severe market downturns.
+
 ---
 
 ## 💻 Installation & Usage
 
 The application requires no backend configuration or package installation.
 
-1. Clone the repository to your local environment.
-2. Open `index.html` in any modern web browser (Google Chrome, Firefox, Safari, Edge).
-3. The simulation engine will initialize automatically.
+1. **Clone the repository** to your local environment:
+   ```bash
+   git clone https://github.com/yourusername/tradingterminal.git
+   ```
+2. **Navigate** into the project directory:
+   ```bash
+   cd tradingterminal
+   ```
+3. **Open `index.html`** in any modern web browser (Google Chrome, Firefox, Safari, Edge).
+4. The simulation engine will initialize automatically. No build step is required!
 
 ### Quick Start
 1. **Asset Selection**: Utilize the categorical tabs (Equities, Indices, Crypto, etc.) to navigate the asset universe.
 2. **Market Data**: Select an instrument to render its live chart and Level 2 Market Depth order book.
-3. **Order Entry**: Navigate to the order panel, input the desired quantity, and select the order type (MARKET, LIMIT, STOP) and TIF instruction.
+3. **Order Entry**: Navigate to the order panel, input the desired quantity, and select the order type (`MARKET`, `LIMIT`, `STOP`) and TIF instruction.
 4. **Position Management**: Monitor active trades and pending orders in the lower dashboard. Close positions manually or rely on automated EOD settlement.
+
+---
+
+## ℹ️ About the Project
+
+The **Trading Terminal Simulator** was conceived to bridge the gap between theoretical financial knowledge and practical market dynamics without the inherent risk of actual capital loss. 
+
+Many basic simulators provide infinite liquidity and instant execution, which fails to prepare users for the realities of slippage, partial fills, and liquidity constraints. This project addresses these shortcomings by implementing a robust, purely client-side matching engine that accurately models order book depth, time-in-force instructions, and realistic market constraints. 
+
+Whether you are a student learning market microstructure, a developer studying low-latency JavaScript rendering, or a quant enthusiast testing logic against synthetic ticks, this simulator provides a rich, uncompromising environment.
+
+---
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome! 
+Feel free to check [issues page](#) if you want to contribute.
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
