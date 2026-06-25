@@ -6318,9 +6318,10 @@ function renderSyndicateInventory() {
 			inv.insiderTips.forEach(function(tip) {
 				var dir = tip.gapPct > 0 ? "UP" : "DOWN";
 				var col = tip.gapPct > 0 ? "#00e676" : "#ff4b4b";
+				var daysStr = tip.daysLeft <= 0 ? "at next open" : ("in " + tip.daysLeft + " day" + (tip.daysLeft > 1 ? "s" : ""));
 				var el = document.createElement("div");
 				el.style.cssText = "padding:12px 14px;background:rgba(255,145,0,0.07);border:1px solid #ff9100;border-radius:8px;display:flex;align-items:center;gap:10px;";
-				el.innerHTML = "<i class='fa-solid fa-user-secret' style='color:#ff9100;font-size:18px;'></i><div><b style='color:var(--text);'>" + tip.ticker + "</b><span style='color:#888;font-size:12px;margin:0 6px;'>will gap</span><b style='color:" + col + ";'>" + dir + " " + (Math.abs(tip.gapPct)*100).toFixed(1) + "%</b><span style='color:#888;font-size:12px;margin-left:6px;'>in " + tip.daysLeft + " day" + (tip.daysLeft > 1 ? "s" : "") + "</span></div>";
+				el.innerHTML = "<i class='fa-solid fa-user-secret' style='color:#ff9100;font-size:18px;'></i><div><b style='color:var(--text);'>" + tip.ticker + "</b><span style='color:#888;font-size:12px;margin:0 6px;'>will gap</span><b style='color:" + col + ";'>" + dir + " " + (Math.abs(tip.gapPct)*100).toFixed(1) + "%</b><span style='color:#888;font-size:12px;margin-left:6px;'>" + daysStr + "</span></div>";
 				invTips.appendChild(el);
 			});
 		}
@@ -7805,6 +7806,18 @@ function showDayEndOverlay() {
 function resetMarketStock(stock) {
 	stock.prevClose = stock.ltp; // save previous day's close
 	var overnightChange = (Math.random() - 0.5) * 0.02;
+
+	if (state.inventory && state.inventory.insiderTips) {
+		var tipIndex = state.inventory.insiderTips.findIndex(function(t) { return t.ticker === stock.ticker && t.daysLeft <= 0; });
+		if (tipIndex !== -1) {
+			var tip = state.inventory.insiderTips[tipIndex];
+			overnightChange = tip.gapPct;
+			toast("INSIDER TIP EXECUTED", stock.ticker + " gapped " + (tip.gapPct > 0 ? "UP" : "DOWN") + " by " + (Math.abs(tip.gapPct)*100).toFixed(1) + "% as guaranteed!", "success");
+			state.inventory.insiderTips.splice(tipIndex, 1);
+			if (typeof renderSyndicateInventory === "function") renderSyndicateInventory();
+		}
+	}
+
 	var pDec = stock.ltp < 10 ? 4 : 2;
 	stock.ltp = parseFloat((stock.ltp * (1 + overnightChange)).toFixed(pDec));
 	stock.ltp = Math.max(0.0001, stock.ltp); // Prevent falling to 0 which causes NaN in meanRevert
@@ -8024,6 +8037,12 @@ function startNewDay() {
 		p.daysToExpiry = Math.max(0, p.daysToExpiry - 1);
 	});
 
+	if (state.inventory && state.inventory.insiderTips && state.inventory.insiderTips.length > 0) {
+		state.inventory.insiderTips.forEach(function(tip) {
+			tip.daysLeft--;
+		});
+	}
+
 	// 24/7 markets and overnight gap logic
 	marketStocks.forEach(function (stock) {
 		// Only reset 24/7 continuous markets (and DALAL) at global midnight.
@@ -8100,24 +8119,7 @@ function startNewDay() {
 			}
 		}
 		
-		if (state.inventory.insiderTips && state.inventory.insiderTips.length > 0) {
-			var remainingTips = [];
-			state.inventory.insiderTips.forEach(function(tip) {
-				tip.daysLeft--;
-				if (tip.daysLeft <= 0) {
-					var targetStock = stockMap[tip.ticker];
-					if (targetStock) {
-						targetStock.open = targetStock.open * (1 + tip.gapPct);
-						targetStock.ltp = targetStock.open;
-						targetStock.history = Array(state.historyLen).fill(targetStock.open);
-						toast("INSIDER TIP EXECUTED", targetStock.ticker + " gapped " + (tip.gapPct > 0 ? "UP" : "DOWN") + " by " + (Math.abs(tip.gapPct)*100).toFixed(1) + "% as guaranteed!", "success");
-					}
-				} else {
-					remainingTips.push(tip);
-				}
-			});
-			state.inventory.insiderTips = remainingTips;
-		}
+		// Insider tips have been moved to resetMarketStock so they gap on market open
 	}
 
 	if (typeof renderSyndicateInventory === "function") renderSyndicateInventory();
