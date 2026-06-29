@@ -11345,19 +11345,41 @@ function cancelPendingOrder(id) {
 function renderHistoryTable() {
 	var tbody = document.getElementById("history-tbody");
 
-	if (state.tradeHistory.length === 0) {
+	var combinedHistory = [];
+	state.tradeHistory.forEach(function(t) { 
+		var t2 = Object.assign({}, t); t2.executor = "Manual"; combinedHistory.push(t2); 
+	});
+	if (state.botTradeHistory) {
+		state.botTradeHistory.forEach(function(t) { 
+			var t2 = Object.assign({}, t); t2.executor = "Bot"; combinedHistory.push(t2); 
+		});
+	}
+
+	if (combinedHistory.length === 0) {
 		tbody.innerHTML =
 			'<tr><td colspan="8" class="empty">No trades yet</td></tr>';
 		return;
 	}
 
+	combinedHistory.sort(function(a, b) {
+		if (b.day !== a.day) return b.day - a.day;
+		if (b.time !== a.time) return b.time.localeCompare(a.time);
+		return 0;
+	});
+
 	tbody.innerHTML = "";
 	var fragment = document.createDocumentFragment();
-	state.tradeHistory.forEach(function (trade) {
+	combinedHistory.forEach(function (trade) {
 		var sideClass =
 			trade.side === "BUY" || trade.side === "COVER"
 				? "side-long"
 				: "side-short";
+		
+		var tickerHtml = trade.ticker;
+		if (trade.executor === "Bot") {
+			tickerHtml += ' <span style="font-size: 10px; background: rgba(255,165,0,0.2); color: orange; padding: 2px 4px; border-radius: 3px;">BOT</span>';
+		}
+
 		var tr = document.createElement("tr");
 		tr.innerHTML =
 			'<td class="mono">' +
@@ -11367,7 +11389,7 @@ function renderHistoryTable() {
 			trade.day +
 			"</td>" +
 			'<td class="sym-cell">' +
-			trade.ticker +
+			tickerHtml +
 			"</td>" +
 			'<td class="' +
 			sideClass +

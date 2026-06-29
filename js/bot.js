@@ -4,6 +4,8 @@ function BotInstance(ticker, config) {
 	this.ticker = ticker;
 	this.strategy = config.strategy || "CONFLUENCE";
 	this.riskPct = config.riskPct || 5;
+	this.slPct = config.slPct || 1;
+	this.tpPct = config.tpPct || 2;
 	this.direction = config.direction || "LONG_SHORT"; // LONG_ONLY, SHORT_ONLY, LONG_SHORT
 	this.asset = config.asset || "EQUITY"; // EQUITY, OPTIONS
 	this.useTrailingStop = config.useTrailingStop || false;
@@ -50,16 +52,16 @@ BotInstance.prototype.tick = function() {
 		}
 	}
 
-	// Trailing Stop Logic Updates
+	// Trailing Stop Logic
 	if (this.useTrailingStop && this.state !== "FLAT") {
 		if (this.state === "LONG" && ltp > this.highestPrice) {
 			this.highestPrice = ltp;
-			var newSl = this.highestPrice * 0.99;
+			var newSl = this.highestPrice * (1 - (this.slPct / 100));
 			if (newSl > this.slPrice) this.slPrice = newSl;
 		}
 		if (this.state === "SHORT" && ltp < this.lowestPrice) {
 			this.lowestPrice = ltp;
-			var newSl2 = this.lowestPrice * 1.01;
+			var newSl2 = this.lowestPrice * (1 + (this.slPct / 100));
 			if (newSl2 < this.slPrice) this.slPrice = newSl2;
 		}
 	}
@@ -153,6 +155,29 @@ BotInstance.prototype.tick = function() {
 		} else if (r > 0.95) {
 			if (this.direction === "LONG_SHORT" || this.direction === "SHORT_ONLY") signal = "SHORT";
 		}
+	} else if (this.strategy === "RSI_REVERSION") {
+		var rsiData = calcRSI(prices, 14);
+		var rsi = rsiData[rsiData.length - 1];
+		if (rsi < 30) {
+			if (this.direction === "LONG_SHORT" || this.direction === "LONG_ONLY") signal = "LONG";
+		} else if (rsi > 70) {
+			if (this.direction === "LONG_SHORT" || this.direction === "SHORT_ONLY") signal = "SHORT";
+		}
+	} else if (this.strategy === "TREND_FOLLOWER") {
+		var maShort = calcSMA(prices, 9);
+		var maLong = calcSMA(prices, 21);
+		var shortCurr = maShort[maShort.length - 1];
+		var shortPrev = maShort[maShort.length - 2];
+		var longCurr = maLong[maLong.length - 1];
+		var longPrev = maLong[maLong.length - 2];
+		
+		if (shortCurr !== null && longCurr !== null && shortPrev !== null && longPrev !== null) {
+			if (shortPrev <= longPrev && shortCurr > longCurr) {
+				if (this.direction === "LONG_SHORT" || this.direction === "LONG_ONLY") signal = "LONG";
+			} else if (shortPrev >= longPrev && shortCurr < longCurr) {
+				if (this.direction === "LONG_SHORT" || this.direction === "SHORT_ONLY") signal = "SHORT";
+			}
+		}
 	}
 	
 	// Entry Execution
@@ -173,12 +198,13 @@ BotInstance.prototype.tick = function() {
 				if (fillQty > 0) {
 					if (processEquityTrade(stock, side, fillQty, ltp, true)) {
 						stock.available_liquidity -= fillQty;
+						var executionPrice = ltp;
 						this.qty = fillQty;
-						this.entryPrice = ltp;
-						this.highestPrice = ltp;
-						this.lowestPrice = ltp;
-						this.slPrice = signal === "LONG" ? ltp * 0.99 : ltp * 1.01; 
-						this.tpPrice = signal === "LONG" ? ltp * 1.02 : ltp * 0.98;
+						this.entryPrice = executionPrice;
+						this.highestPrice = executionPrice;
+						this.lowestPrice = executionPrice;
+						this.slPrice = signal === "LONG" ? executionPrice * (1 - (this.slPct / 100)) : executionPrice * (1 + (this.slPct / 100)); 
+						this.tpPrice = signal === "LONG" ? executionPrice * (1 + (this.tpPct / 100)) : executionPrice * (1 - (this.tpPct / 100));
 						this.state = signal;
 						toast("Bot ("+this.ticker+")", "Opened " + signal + " Equity position for " + fillQty, "success");
 					}
@@ -201,11 +227,12 @@ BotInstance.prototype.tick = function() {
 			if (lots > 0) {
 				if (processOptionTrade(stock, "BUY", optType, strike, expiryType, lots, lotSize, fxRate, true)) {
 					this.qty = lots * lotSize;
-					this.entryPrice = ltp;
-					this.highestPrice = ltp;
-					this.lowestPrice = ltp;
-					this.slPrice = signal === "LONG" ? ltp * 0.99 : ltp * 1.01; 
-					this.tpPrice = signal === "LONG" ? ltp * 1.02 : ltp * 0.98;
+					var fillPrice = state.optionsPositions[stock.ticker + "_" + optType + "_" + strike + "_" + expiryType].avgPremium;
+					this.entryPrice = fillPrice;
+					this.highestPrice = fillPrice;
+					this.lowestPrice = fillPrice;
+					this.slPrice = signal === "LONG" ? fillPrice * (1 - (this.slPct / 100)) : fillPrice * (1 + (this.slPct / 100)); 
+					this.tpPrice = signal === "LONG" ? fillPrice * (1 + (this.tpPct / 100)) : fillPrice * (1 - (this.tpPct / 100));
 					this.state = signal;
 					this.optionId = stock.ticker + "_" + optType + "_" + strike + "_" + expiryType;
 					toast("Bot ("+this.ticker+")", "Opened " + signal + " Options position ("+lots+" Lots)", "success");
@@ -238,13 +265,38 @@ var BotManager = {
 	},
 
 	stop: function(ticker) {
-		if (this.activeBots[ticker]) {
-			delete this.activeBots[ticker];
-			toast("Bot Engine", "Bot stopped on " + ticker, "warning");
-			this.updateUI(ticker);
-			this.renderStats();
-		}
-	},
+  		if (this.activeBots[ticker]) {
+  			var bot = this.activeBots[ticker];
+  			var stock = stockMap[ticker];
+  			var fxRate = EXCHANGE_RATES[stock && stock.currency] || 1;
+  			
+  			if (bot.state !== "FLAT" && stock) {
+  				if (bot.asset === "EQUITY") {
+  					var exitSide = bot.state === "LONG" ? "SELL" : "BUY";
+  					if (processEquityTrade(stock, exitSide, bot.qty, stock.ltp, true)) {
+  						toast("Bot Engine", "Auto-squared off Equity position", "warning");
+  					}
+  				} else if (bot.asset === "OPTIONS" && bot.optionId) {
+  					var posOpt = state.optionsPositions[bot.optionId];
+  					if (posOpt && posOpt.lots > 0) {
+  						var parts = bot.optionId.split("_");
+  						var lotsToSell = Math.min(posOpt.lots, Math.floor(bot.qty / posOpt.lotSize));
+  						if (lotsToSell > 0) {
+  							if (processOptionTrade(stock, "SELL", parts[1], parseFloat(parts[2]), parts[3], lotsToSell, posOpt.lotSize, fxRate, true)) {
+  								toast("Bot Engine", "Auto-squared off Options position", "warning");
+  							}
+  						}
+  					}
+  				}
+  			}
+
+  			delete this.activeBots[ticker];
+  			toast("Bot Engine", "Bot stopped on " + ticker, "warning");
+  			this.updateUI(ticker);
+  			this.renderStats();
+  			if (typeof renderAll === "function") renderAll();
+  		}
+  	},
 
 	toggle: function() {
 		var ticker = state.activeStock ? state.activeStock.ticker : null;
@@ -258,6 +310,8 @@ var BotManager = {
 				asset: document.getElementById("bot-asset").value,
 				strategy: document.getElementById("bot-strategy").value,
 				riskPct: parseInt(document.getElementById("bot-risk-slider").value),
+				slPct: parseFloat(document.getElementById("bot-sl-pct").value) || 1,
+				tpPct: parseFloat(document.getElementById("bot-tp-pct").value) || 2,
 				useTrailingStop: document.getElementById("bot-trailing-stop").checked
 			};
 			this.start(ticker, config);
