@@ -4520,6 +4520,7 @@ var state = {
 	positions: {},
 	optionsPositions: {},
 	tradeHistory: [],
+	botTradeHistory: [],
 	inventory: {
 		brokerageFreeDays: 0,
 		bailoutCards: 0,
@@ -6050,6 +6051,9 @@ function setupListeners() {
 	document.getElementById("tab-options").addEventListener("click", function () {
 		switchOrderTab("options");
 	});
+	document.getElementById("tab-bot").addEventListener("click", function () {
+		switchOrderTab("bot");
+	});
 
 	document.getElementById("opt-call").addEventListener("click", function () {
 		document.getElementById("opt-call").classList.add("active");
@@ -6112,6 +6116,12 @@ function setupListeners() {
 	document.getElementById("history-tab").addEventListener("click", function () {
 		switchBottomTab("history");
 	});
+	var botStatsTab = document.getElementById("bot-stats-tab");
+	if (botStatsTab) {
+		botStatsTab.addEventListener("click", function () {
+			switchBottomTab("bot-stats");
+		});
+	}
 	document
 		.getElementById("btn-close-all")
 		.addEventListener("click", closeAllPositions);
@@ -7021,6 +7031,9 @@ function switchOrderTab(tab) {
 	document
 		.getElementById("options-form")
 		.classList.toggle("hidden", tab !== "options");
+	document
+		.getElementById("bot-form")
+		.classList.toggle("hidden", tab !== "bot");
 	if (tab === "options") updateStrikesAndPremium();
 }
 
@@ -7035,7 +7048,11 @@ function switchBottomTab(tab) {
 		document.getElementById("options-pos-tab").classList.add("active");
 	else if (tab === "pending")
 		document.getElementById("pending-orders-tab").classList.add("active");
-	else document.getElementById("history-tab").classList.add("active");
+	else if (tab === "history") document.getElementById("history-tab").classList.add("active");
+	else if (tab === "bot-stats") {
+		var btab = document.getElementById("bot-stats-tab");
+		if (btab) btab.classList.add("active");
+	}
 
 	document
 		.getElementById("equity-table")
@@ -7049,10 +7066,17 @@ function switchBottomTab(tab) {
 	document
 		.getElementById("history-table")
 		.classList.toggle("hidden", tab !== "history");
+	var botTbl = document.getElementById("bot-stats-table");
+	if (botTbl) botTbl.classList.toggle("hidden", tab !== "bot-stats");
 
 	if (tab === "options") renderOptionsTable();
 	if (tab === "pending") renderPendingTable();
 	if (tab === "history") renderHistoryTable();
+	if (tab === "bot-stats") {
+		if (typeof BotManager !== "undefined" && BotManager.renderStats) {
+			BotManager.renderStats();
+		}
+	}
 }
 
 // ==================== MARKET SIMULATION ====================
@@ -7765,6 +7789,8 @@ function tickMinute() {
 	// Prevent memory bloat and data corruption in long-running sessions
 	if (state.tradeHistory.length > 5000) state.tradeHistory.length = 5000;
 	if (state.loanHistory.length > 200) state.loanHistory.splice(0, state.loanHistory.length - 200);
+
+	if (typeof BotManager !== "undefined") BotManager.tickAll(); // Run BotManager
 
 	renderAll();
 }
@@ -8577,7 +8603,7 @@ function executeTrade(side) {
 	}
 }
 
-function processEquityTrade(stock, side, qty, price) {
+function processEquityTrade(stock, side, qty, price, isBot) {
 	var fxRate = EXCHANGE_RATES[stock.currency] || 1; // INR per 1 unit of stock's currency
 	var cost = price * qty; // in native currency
 	var costINR = cost * fxRate; // in INR
@@ -8588,11 +8614,13 @@ function processEquityTrade(stock, side, qty, price) {
 	var nextMargin = state.margin;
 	var tradeType = "";
 	var toastArgs = null;
+	var pnlRealized = null;
 
 	if (side === "BUY") {
 		if (pos.qty < 0) {
 			var coverQty = Math.min(qty, Math.abs(pos.qty));
 			var pnl = (pos.avgPrice - price) * coverQty; // native currency
+			pnlRealized = pnl * fxRate; // INR
 			var releasedShortMargin = pos.avgPrice * coverQty * 0.2;
 			nextMargin += (releasedShortMargin + pnl) * fxRate;
 			pos.qty += coverQty;
@@ -8602,7 +8630,7 @@ function processEquityTrade(stock, side, qty, price) {
 				var addCost = price * remaining; // native
 				var addCostINR = addCost * fxRate; // INR
 				if (nextMargin < addCostINR) {
-					toast("Error", "Insufficient margin", "error");
+					if (!isBot) toast("Error", "Insufficient margin", "error");
 					return false;
 				}
 				if (pos.qty === 0) pos.avgPrice = price;
@@ -8628,7 +8656,7 @@ function processEquityTrade(stock, side, qty, price) {
 			];
 		} else {
 			if (nextMargin < costINR) {
-				toast("Error", "Insufficient margin for BUY", "error");
+				if (!isBot) toast("Error", "Insufficient margin for BUY", "error");
 				return false;
 			}
 			var totalCost2 = pos.qty * pos.avgPrice + cost; // native
@@ -8653,6 +8681,7 @@ function processEquityTrade(stock, side, qty, price) {
 	} else {
 		if (pos.qty > 0) {
 			var sellQty = Math.min(qty, pos.qty);
+			pnlRealized = (price - pos.avgPrice) * sellQty * fxRate; // INR
 			nextMargin += price * sellQty * fxRate; // convert proceeds to INR
 			pos.qty -= sellQty;
 
@@ -8661,7 +8690,7 @@ function processEquityTrade(stock, side, qty, price) {
 				var shortMargin = price * remaining2 * 0.2; // native
 				var shortMarginINR = shortMargin * fxRate; // INR
 				if (nextMargin < shortMarginINR) {
-					toast("Error", "Insufficient margin for short", "error");
+					if (!isBot) toast("Error", "Insufficient margin for short", "error");
 					return false;
 				}
 				pos.qty -= remaining2;
@@ -8699,7 +8728,7 @@ function processEquityTrade(stock, side, qty, price) {
 			var shortMargin2 = price * qty * 0.2; // native
 			var shortMargin2INR = shortMargin2 * fxRate; // INR
 			if (nextMargin < shortMargin2INR) {
-				toast("Error", "Insufficient margin for short", "error");
+				if (!isBot) toast("Error", "Insufficient margin for short", "error");
 				return false;
 			}
 			if (pos.qty === 0) {
@@ -8722,7 +8751,7 @@ function processEquityTrade(stock, side, qty, price) {
 
 	// Check if margin is sufficient to cover brokerage too (all sides)
 	if (nextMargin - brokerage < 0) {
-		toast("Error", "Insufficient margin to cover brokerage", "error");
+		if (!isBot) toast("Error", "Insufficient margin to cover brokerage", "error");
 		return false;
 	}
 
@@ -8737,8 +8766,12 @@ function processEquityTrade(stock, side, qty, price) {
 		dalalStock.ltp = parseFloat((dalalStock.ltp * (1 + bump)).toFixed(4));
 	}
 
+	if (!isBot && toastArgs) {
+		toast.apply(null, toastArgs);
+	}
+
 	// Record trade history (value stored in INR)
-	state.tradeHistory.unshift({
+	var tradeRecord = {
 		time: formatTime(state.time),
 		day: state.day,
 		ticker: stock.ticker,
@@ -8747,7 +8780,11 @@ function processEquityTrade(stock, side, qty, price) {
 		qty: qty,
 		price: price,
 		value: costINR,
-	});
+		pnl: pnlRealized
+	};
+
+	if (isBot) state.botTradeHistory.unshift(tradeRecord);
+	else state.tradeHistory.unshift(tradeRecord);
 
 	// Add to volume
 	stock.volume += qty;
@@ -9017,6 +9054,16 @@ function executeOptionTrade(side) {
 	}
 
 	var fxRate = EXCHANGE_RATES[stock.currency] || 1;
+	
+	if (processOptionTrade(stock, side, optType, strike, expiryType, lots, lotSize, fxRate, false)) {
+		document.getElementById("option-lots").value = 1;
+		renderAll();
+	}
+}
+
+function processOptionTrade(stock, side, optType, strike, expiryType, lots, lotSize, fxRate, isBot) {
+	var totalQty = lots * lotSize;
+	var optionId = stock.ticker + "_" + optType + "_" + strike + "_" + expiryType;
 	var premium = 0;
 	var cost = 0;
 	var costINR = 0;
@@ -9035,8 +9082,8 @@ function executeOptionTrade(side) {
 		var brokerage = costINR * 0.001;
 		if (state.inventory && state.inventory.brokerageFreeDays > 0) brokerage = 0;
 		if (state.margin < costINR + brokerage) {
-			toast("Error", "Insufficient margin including brokerage", "error");
-			return;
+			if (!isBot) toast("Error", "Insufficient margin including brokerage", "error");
+			return false;
 		}
 		if (!pos) {
 			pos = {
@@ -9057,7 +9104,7 @@ function executeOptionTrade(side) {
 		state.margin -= costINR + brokerage;
 		state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
 
-		state.tradeHistory.unshift({
+		var tradeRecord = {
 			time: formatTime(state.time),
 			day: state.day,
 			ticker: stock.ticker,
@@ -9067,28 +9114,23 @@ function executeOptionTrade(side) {
 			price: premium,
 			value: costINR,
 			pnl: 0,
-		});
+		};
+		if (isBot) state.botTradeHistory.unshift(tradeRecord);
+		else state.tradeHistory.unshift(tradeRecord);
 
-		toast(
-			"Option BUY",
-			lots +
-				"L " +
-				stock.ticker +
-				" " +
-				optType +
-				" " +
-				strike +
-				" " +
-				expiryType +
-				" @ " +
-				fmtPrice(stock, premium),
-			"success",
-		);
+		if (!isBot) {
+			toast(
+				"Option BUY",
+				lots + "L " + stock.ticker + " " + optType + " " + strike + " " + expiryType + " @ " + fmtPrice(stock, premium),
+				"success",
+			);
+		}
+		return true;
 	} else {
 		var pos2 = state.optionsPositions[optionId];
 		if (!pos2 || pos2.lots < lots) {
 			toast("Error", "Insufficient option holdings", "error");
-			return;
+			return false;
 		}
 		var remainingDays = pos2.daysToExpiry - getDayFraction();
 		premium = calcPremium(optType, strike, stock.ltp, remainingDays);
@@ -9099,7 +9141,7 @@ function executeOptionTrade(side) {
 		if (state.inventory && state.inventory.brokerageFreeDays > 0) brokerage = 0;
 		if (state.margin + costINR - brokerage < 0) {
 			toast("Error", "Insufficient margin for brokerage", "error");
-			return;
+			return false;
 		}
 
 		var pnlNative = (premium - pos2.avgPremium) * totalQty;
@@ -9109,46 +9151,39 @@ function executeOptionTrade(side) {
 		state.totalBrokerage = (state.totalBrokerage || 0) + brokerage;
 		pos2.lots -= lots;
 		if (pos2.lots === 0) delete state.optionsPositions[optionId];
-		toast(
-			"Option SELL",
-			lots +
-				"L " +
-				stock.ticker +
-				" " +
-				optType +
-				" " +
-				strike +
-				" " +
-				expiryType +
-				" @ " +
-				fmtPrice(stock, premium),
-			"error",
-		);
+		
+		if (!isBot) {
+			toast(
+				"Option SELL",
+				lots + "L " + stock.ticker + " " + optType + " " + strike + " " + expiryType + " @ " + fmtPrice(stock, premium),
+				"error",
+			);
+		}
+
+		var dalalStock = marketStocks.find(function (s) {
+			return s.ticker === "DALAL";
+		});
+		if (dalalStock) {
+			var bump = (brokerage / 1000) * 0.00002;
+			dalalStock.ltp = parseFloat((dalalStock.ltp * (1 + bump)).toFixed(4));
+		}
+
+		var tradeRecord2 = {
+			time: formatTime(state.time),
+			day: state.day,
+			ticker: stock.ticker,
+			side: side,
+			type: optType + " " + strike + " " + expiryType,
+			qty: totalQty,
+			price: premium,
+			value: costINR,
+			pnl: pnl,
+		};
+		if (isBot) state.botTradeHistory.unshift(tradeRecord2);
+		else state.tradeHistory.unshift(tradeRecord2);
+		
+		return true;
 	}
-
-	var dalalStock = marketStocks.find(function (s) {
-		return s.ticker === "DALAL";
-	});
-	if (dalalStock) {
-		var bump = (brokerage / 1000) * 0.00002;
-		dalalStock.ltp = parseFloat((dalalStock.ltp * (1 + bump)).toFixed(4));
-	}
-
-	// Record trade
-	state.tradeHistory.unshift({
-		time: formatTime(state.time),
-		day: state.day,
-		ticker: stock.ticker,
-		side: side,
-		type: optType + " " + strike + " " + expiryType,
-		qty: totalQty,
-		price: premium,
-		value: costINR,
-		pnl: pnl,
-	});
-
-	document.getElementById("option-lots").value = 1;
-	renderAll();
 }
 
 // ==================== RENDER ====================
@@ -9176,6 +9211,12 @@ function renderAll() {
 		if (state.activeTab === "options") updateStrikesAndPremium();
 		if (state.activeBottomTab === "options") renderOptionsTable();
 		if (state.activeBottomTab === "pending") renderPendingTable();
+		if (state.activeBottomTab === "bot-stats") {
+			if (typeof BotManager !== "undefined" && BotManager.renderStats) {
+				BotManager.renderStats();
+			}
+		}
+
 		if (state.activeBottomTab === "history") renderHistoryTable();
 
 		// 3. MULTI-CHART PANEL UPDATE
@@ -11351,29 +11392,48 @@ function renderHistoryTable() {
 }
 
 function exportTradeHistoryCSV() {
-	if (state.tradeHistory.length === 0) {
+	if (state.tradeHistory.length === 0 && (!state.botTradeHistory || state.botTradeHistory.length === 0)) {
 		toast("Export", "No trade history to export", "error");
 		return;
 	}
 
 	// Header row
 	var rows = [
-		'"Time","Day","Symbol","Side","Type","Qty","Price (Native)","Value (INR)","P&L"',
+		'"Time","Day","Executor","Symbol","Side","Type","Qty","Price (Native)","Value (INR)","P&L"',
 	];
 
-	// Trade rows - oldest first (tradeHistory is stored newest-first)
-	var history = state.tradeHistory.slice().reverse();
-	history.forEach(function (trade) {
+	// Combine manual and bot trades
+	var combinedHistory = [];
+	state.tradeHistory.forEach(function(t) { 
+		var t2 = Object.assign({}, t); t2.executor = "Manual"; combinedHistory.push(t2); 
+	});
+	if (state.botTradeHistory) {
+		state.botTradeHistory.forEach(function(t) { 
+			var t2 = Object.assign({}, t); t2.executor = "Bot"; combinedHistory.push(t2); 
+		});
+	}
+
+	// Sort by day and time roughly (since they are stored newest first, reversing is close enough, but a true sort is better if mixed)
+	// We'll just reverse the array of each and concatenate for simplicity, as they are independent streams but both chronological
+	combinedHistory.sort(function(a, b) {
+		if (a.day !== b.day) return a.day - b.day; // ascending day
+		// This is a naive time sort, assumes format like "14:30"
+		return a.time.localeCompare(b.time);
+	});
+
+	combinedHistory.forEach(function (trade) {
 		rows.push(
 			[
 				'"' + trade.time + '"',
 				'"Day ' + trade.day + '"',
+				'"' + trade.executor + '"',
 				'"' + trade.ticker + '"',
 				'"' + trade.side + '"',
 				'"' + trade.type + '"',
 				trade.qty,
 				trade.price.toFixed(2),
 				trade.value.toFixed(2),
+				trade.pnl != null ? trade.pnl.toFixed(2) : '""',
 			].join(","),
 		);
 	});

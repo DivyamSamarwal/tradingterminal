@@ -1,29 +1,30 @@
-/* ========== VARIABLES ========== */
+/* ========== PREMIUM VARIABLES ========== */
 :root {
-    --bg-0: #05050A;
-    --bg-1: #0A0A14;
-    --bg-2: #12121F;
-    --bg-3: #1A1A2A;
-    --border: #222233;
-    --border-light: #2D2D44;
-    --text: #D0D2D9;
-    --text-dim: #7A7C8C;
+    --bg-0: #020205; /* Deep rich black */
+    --bg-1: #0A0A10;
+    --bg-2: #12121C;
+    --bg-3: #1B1B29;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-light: rgba(255, 255, 255, 0.15);
+    --text: #A0A5B5;
+    --text-dim: #656A7A;
     --text-bright: #FFFFFF;
-    --accent: #3B82F6;
-    --accent-hover: #2563EB;
-    --green: #10B981;
-    --green-dim: rgba(16, 185, 129, 0.15);
-    --green-hover: #059669;
-    --red: #EF4444;
-    --red-dim: rgba(239, 68, 68, 0.15);
-    --red-hover: #DC2626;
-    --orange: #F59E0B;
-    --font: 'Outfit', -apple-system, sans-serif;
-    --mono: var(--font);
-    --radius: 8px;
-    --shadow: 0 8px 30px rgba(0,0,0,0.5);
-    --glass-bg: rgba(10, 10, 20, 0.75);
-    --glass-border: rgba(255, 255, 255, 0.08);
+    --accent: #5E6AD2;
+    --accent-hover: #7E8CFF;
+    --green: #00E676;
+    --green-dim: rgba(0, 230, 118, 0.12);
+    --green-hover: #00C853;
+    --red: #FF3D71;
+    --red-dim: rgba(255, 61, 113, 0.12);
+    --red-hover: #E33664;
+    --orange: #FFB74D;
+    --font: 'Outfit', 'Inter', -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', 'Roboto Mono', monospace;
+    --radius: 12px;
+    --shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+    --glow: 0 0 20px rgba(94, 106, 210, 0.4);
+    --glass-bg: rgba(10, 10, 16, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.06);
 }
 
 /* --- THEME: RETRO SYNTHWAVE --- */

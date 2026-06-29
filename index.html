@@ -323,6 +323,7 @@
                 <div class="order-tabs">
                     <button class="o-tab active" id="tab-equity">Equity</button>
                     <button class="o-tab" id="tab-options">Options</button>
+                    <button class="o-tab" id="tab-bot" style="color: var(--accent);"><i class="fa-solid fa-robot"></i> Algo Bot</button>
                 </div>
 
                 <!-- Equity Form -->
@@ -507,6 +508,70 @@
                     </div>
                 </div>
 
+                <!-- Algo Bot Form -->
+                <div class="order-form hidden" id="bot-form">
+                    <div style="display: flex; gap: 10px;">
+                        <div class="fg" style="flex:1;">
+                            <label for="bot-direction">Direction</label>
+                            <select class="fc" id="bot-direction">
+                                <option value="LONG_SHORT">Long & Short</option>
+                                <option value="LONG_ONLY">Long Only</option>
+                                <option value="SHORT_ONLY">Short Only</option>
+                            </select>
+                        </div>
+                        <div class="fg" style="flex:1;">
+                            <label for="bot-asset">Asset</label>
+                            <select class="fc" id="bot-asset">
+                                <option value="EQUITY">Equity</option>
+                                <option value="OPTIONS">Options (ATM)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="fg">
+                        <label for="bot-strategy">Strategy Engine</label>
+                        <select class="fc" id="bot-strategy">
+                            <option value="CONFLUENCE">Confluence (RSI + MACD)</option>
+                            <option value="MOMENTUM">Momentum Noise (High Freq)</option>
+                        </select>
+                        <div class="field-note">Confluence: Bearish cross triggers SHORT.</div>
+                    </div>
+                    <div class="fg">
+                        <label>Risk Per Trade (Position Sizing)</label>
+                        <div style="display:flex; align-items:center; gap: 10px; margin-top:5px;">
+                            <input type="range" id="bot-risk-slider" min="1" max="50" value="10" style="flex:1;">
+                            <span class="mono" id="bot-risk-val" style="font-weight:600; color:var(--accent);">10%</span>
+                        </div>
+                        <div class="field-note">Percentage of total portfolio cash to risk.</div>
+                    </div>
+                    <div class="fg">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label>Risk Management Engine</label>
+                            <label style="display: flex; align-items: center; gap: 5px; font-size: 11px; cursor: pointer;">
+                                <input type="checkbox" id="bot-trailing-stop" style="margin:0;"> Trailing Stop
+                            </label>
+                        </div>
+                        <div class="toggle-row" style="margin-top:5px;">
+                            <div style="flex:1; background:var(--bg-2); padding:8px; border-radius:4px; text-align:center; font-size:12px;">Stop Loss: <strong>-1%</strong></div>
+                            <div style="flex:1; background:var(--bg-2); padding:8px; border-radius:4px; text-align:center; font-size:12px;">Take Profit: <strong>+2%</strong></div>
+                        </div>
+                    </div>
+                    
+                    <div class="bot-status" style="margin-top: 15px; padding: 12px; border-radius: var(--radius); background: var(--glass-bg); border: 1px solid var(--glass-border); text-align: center;">
+                        <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;">Engine Status</div>
+                        <div id="bot-state-display" style="font-size: 18px; font-weight: 700; color: var(--text-dim); margin-top: 4px; font-family: var(--mono);">OFFLINE</div>
+                    </div>
+
+                    <div class="order-actions" style="margin-top: 15px;">
+                        <button class="btn-buy uiverse-btn" id="btn-toggle-bot" style="width: 100%; --accent: var(--accent);">
+                            <div class="button-outer" style="border-radius: var(--radius);">
+                                <div class="button-inner" style="border-radius: calc(var(--radius) - 2px);">
+                                    <span id="bot-btn-text"><i class="fa-solid fa-power-off"></i> START ENGINE</span>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Position Card -->
                 <div class="pos-card">
                     <div class="pos-card-head">Current Position</div>
@@ -529,6 +594,7 @@
                 <button class="b-tab" id="history-tab"><i class="fa-solid fa-clock-rotate-left"></i> Trade History</button>
                 <button class="b-tab export-csv-btn" id="btn-export-csv" title="Export trade history to CSV"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
                 <button class="b-tab close-all-btn" id="btn-close-all" title="Close all open positions"><i class="fa-solid fa-xmark"></i> Close All</button>
+                <button class="b-tab" id="bot-stats-tab" style="color: var(--accent);"><i class="fa-solid fa-robot"></i> Bot Stats</button>
             </div>
             <div class="table-area" id="equity-table">
                 <table class="dtable">
@@ -573,6 +639,18 @@
                     </tr></thead>
                     <tbody id="history-tbody">
                         <tr><td colspan="8" class="empty">No trades yet</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-area hidden" id="bot-stats-table">
+                <table class="dtable">
+                    <thead><tr>
+                        <th>Symbol</th><th>Asset</th><th>State</th>
+                        <th class="r">Qty</th><th class="r">Entry</th><th class="r">SL</th><th class="r">LTP</th>
+                        <th class="r">P&amp;L</th><th class="r">Action</th>
+                    </tr></thead>
+                    <tbody id="bot-stats-tbody">
+                        <tr><td colspan="9" class="empty">No active bots running</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1116,6 +1194,7 @@
 
     <div id="toast-container" class="toast-box"></div>
     <script src="js/app.js?v=149"></script>
+    <script src="js/bot.js?v=1"></script>
     <script src="js/analytics.js?v=8"></script>
 </body>
 </html>
