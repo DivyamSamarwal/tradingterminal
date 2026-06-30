@@ -5800,8 +5800,9 @@ document.addEventListener("DOMContentLoaded", function () {
 	renderFxRates();
 	startClock();
 	
-	// Initialize UI theme state
+	// Initialize UI theme and font state
 	applyTheme(state.theme);
+	applyFont(state.font || "outfit");
 
 	// High-frequency HFT order book flicker (visual realism)
 	depthInterval = setInterval(function () {
@@ -7788,6 +7789,7 @@ function tickMinute() {
 
 	// Prevent memory bloat and data corruption in long-running sessions
 	if (state.tradeHistory.length > 5000) state.tradeHistory.length = 5000;
+	if (state.botTradeHistory && state.botTradeHistory.length > 10000) state.botTradeHistory.length = 10000;
 	if (state.loanHistory.length > 200) state.loanHistory.splice(0, state.loanHistory.length - 200);
 
 	if (typeof BotManager !== "undefined") BotManager.tickAll(); // Run BotManager

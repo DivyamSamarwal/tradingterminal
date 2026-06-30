@@ -531,9 +531,15 @@
                         <label for="bot-strategy">Strategy Engine</label>
                         <select class="fc" id="bot-strategy">
                             <option value="CONFLUENCE">Confluence (RSI + MACD)</option>
-                            <option value="MOMENTUM">Momentum Noise (High Freq)</option>
+                            <option value="MOMENTUM">Momentum Noise (Random High Freq)</option>
                             <option value="RSI_REVERSION">RSI Mean Reversion (Range Bound)</option>
                             <option value="TREND_FOLLOWER">Trend Follower (Moving Average Crossover)</option>
+                            <option value="BOLLINGER_REVERSION">Bollinger Mean Reversion</option>
+                            <option value="EMA_CROSSOVER">EMA Fast/Slow Crossover</option>
+                            <option value="MACD_MOMENTUM">Pure MACD Momentum</option>
+                            <option value="HFT_SCALPER">HFT Micro Scalper (Tick Momentum)</option>
+                            <option value="HFT_STAT_ARB">HFT Stat-Arb (Micro Z-Score Reversion)</option>
+                            <option value="HFT_VOLATILITY">HFT Volatility Breakout (Micro Channel)</option>
                         </select>
                         <div class="field-note">Confluence: Bearish cross triggers SHORT.</div>
                     </div>

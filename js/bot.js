@@ -52,24 +52,51 @@ BotInstance.prototype.tick = function() {
 		}
 	}
 
+	// Current Metric (LTP for Equity, Premium for Options)
+	var currentMetric = ltp;
+	if (this.asset === "OPTIONS" && this.optionId) {
+		var posOpt = state.optionsPositions[this.optionId];
+		if (posOpt) {
+			var remainingDays = posOpt.daysToExpiry - getDayFraction();
+			currentMetric = calcPremium(posOpt.type, posOpt.strike, ltp, remainingDays);
+		}
+	}
+
 	// Trailing Stop Logic
 	if (this.useTrailingStop && this.state !== "FLAT") {
-		if (this.state === "LONG" && ltp > this.highestPrice) {
-			this.highestPrice = ltp;
-			var newSl = this.highestPrice * (1 - (this.slPct / 100));
-			if (newSl > this.slPrice) this.slPrice = newSl;
-		}
-		if (this.state === "SHORT" && ltp < this.lowestPrice) {
-			this.lowestPrice = ltp;
-			var newSl2 = this.lowestPrice * (1 + (this.slPct / 100));
-			if (newSl2 < this.slPrice) this.slPrice = newSl2;
+		if (this.asset === "EQUITY") {
+			if (this.state === "LONG" && currentMetric > this.highestPrice) {
+				this.highestPrice = currentMetric;
+				var newSl = this.highestPrice * (1 - (this.slPct / 100));
+				if (newSl > this.slPrice) this.slPrice = newSl;
+			}
+			if (this.state === "SHORT" && currentMetric < this.lowestPrice) {
+				this.lowestPrice = currentMetric;
+				var newSl2 = this.lowestPrice * (1 + (this.slPct / 100));
+				if (newSl2 < this.slPrice) this.slPrice = newSl2;
+			}
+		} else if (this.asset === "OPTIONS") {
+			// Options are always a LONG position on the premium, regardless of CE or PE
+			if (currentMetric > this.highestPrice) {
+				this.highestPrice = currentMetric;
+				var newSl3 = this.highestPrice * (1 - (this.slPct / 100));
+				if (newSl3 > this.slPrice) this.slPrice = newSl3;
+			}
 		}
 	}
 
 	// Exit Logic
 	if (this.state === "LONG" || this.state === "SHORT") {
-		var hitSL = (this.state === "LONG" && ltp <= this.slPrice) || (this.state === "SHORT" && ltp >= this.slPrice);
-		var hitTP = (this.state === "LONG" && ltp >= this.tpPrice) || (this.state === "SHORT" && ltp <= this.tpPrice);
+		var hitSL = false;
+		var hitTP = false;
+		
+		if (this.asset === "EQUITY") {
+			hitSL = (this.state === "LONG" && currentMetric <= this.slPrice) || (this.state === "SHORT" && currentMetric >= this.slPrice);
+			hitTP = (this.state === "LONG" && currentMetric >= this.tpPrice) || (this.state === "SHORT" && currentMetric <= this.tpPrice);
+		} else if (this.asset === "OPTIONS") {
+			hitSL = currentMetric <= this.slPrice;
+			hitTP = currentMetric >= this.tpPrice;
+		}
 
 		if (hitSL || hitTP) {
 			if (this.asset === "EQUITY") {
@@ -178,6 +205,76 @@ BotInstance.prototype.tick = function() {
 				if (this.direction === "LONG_SHORT" || this.direction === "SHORT_ONLY") signal = "SHORT";
 			}
 		}
+	} else if (this.strategy === "BOLLINGER_REVERSION") {
+		var bb = calcBollingerBands(prices, 20, 2);
+		var currentPrice = prices[prices.length - 1];
+		var lowerBand = bb.lower[bb.lower.length - 1];
+		var upperBand = bb.upper[bb.upper.length - 1];
+		if (currentPrice < lowerBand) {
+			if (this.direction === "LONG_SHORT" || this.direction === "LONG_ONLY") signal = "LONG";
+		} else if (currentPrice > upperBand) {
+			if (this.direction === "LONG_SHORT" || this.direction === "SHORT_ONLY") signal = "SHORT";
+		}
+	} else if (this.strategy === "EMA_CROSSOVER") {
+		var emaFast = calcEMA(prices, 5);
+		var emaSlow = calcEMA(prices, 20);
+		var fastCurr = emaFast[emaFast.length - 1];
+		var fastPrev = emaFast[emaFast.length - 2];
+		var slowCurr = emaSlow[emaSlow.length - 1];
+		var slowPrev = emaSlow[emaSlow.length - 2];
+		if (fastCurr !== null && slowCurr !== null && fastPrev !== null && slowPrev !== null) {
+			if (fastPrev <= slowPrev && fastCurr > slowCurr) {
+				if (this.direction === "LONG_SHORT" || this.direction === "LONG_ONLY") signal = "LONG";
+			} else if (fastPrev >= slowPrev && fastCurr < slowCurr) {
+				if (this.direction === "LONG_SHORT" || this.direction === "SHORT_ONLY") signal = "SHORT";
+			}
+		}
+	} else if (this.strategy === "MACD_MOMENTUM") {
+		var macdData = calcMACD(prices, 12, 26, 9);
+		var hist = macdData.histogram;
+		var histCurr = hist[hist.length - 1];
+		var histPrev = hist[hist.length - 2];
+		if (histCurr !== null && histPrev !== null) {
+			if (histPrev < 0 && histCurr > 0) {
+				if (this.direction === "LONG_SHORT" || this.direction === "LONG_ONLY") signal = "LONG";
+			} else if (histPrev > 0 && histCurr < 0) {
+				if (this.direction === "LONG_SHORT" || this.direction === "SHORT_ONLY") signal = "SHORT";
+			}
+		}
+	} else if (this.strategy === "HFT_SCALPER") {
+		var n = prices.length;
+		if (prices[n-1] > prices[n-2] && prices[n-2] > prices[n-3] && prices[n-3] > prices[n-4]) {
+			if (this.direction === "LONG_SHORT" || this.direction === "LONG_ONLY") signal = "LONG";
+		} else if (prices[n-1] < prices[n-2] && prices[n-2] < prices[n-3] && prices[n-3] < prices[n-4]) {
+			if (this.direction === "LONG_SHORT" || this.direction === "SHORT_ONLY") signal = "SHORT";
+		}
+	} else if (this.strategy === "HFT_STAT_ARB") {
+		var period = 20;
+		var n = prices.length;
+		var slice = prices.slice(n - period, n);
+		var mean = 0;
+		for (var j = 0; j < slice.length; j++) mean += slice[j];
+		mean /= period;
+		var variance = 0;
+		for (var k2 = 0; k2 < slice.length; k2++) variance += (slice[k2] - mean) * (slice[k2] - mean);
+		var stdDev = Math.sqrt(variance / period);
+		var zScore = stdDev > 0 ? (prices[n-1] - mean) / stdDev : 0;
+		
+		if (zScore < -2.0) {
+			if (this.direction === "LONG_SHORT" || this.direction === "LONG_ONLY") signal = "LONG";
+		} else if (zScore > 2.0) {
+			if (this.direction === "LONG_SHORT" || this.direction === "SHORT_ONLY") signal = "SHORT";
+		}
+	} else if (this.strategy === "HFT_VOLATILITY") {
+		var bb = calcBollingerBands(prices, 10, 1.5);
+		var currentPrice = prices[prices.length - 1];
+		var lowerBand = bb.lower[bb.lower.length - 1];
+		var upperBand = bb.upper[bb.upper.length - 1];
+		if (currentPrice > upperBand) { 
+			if (this.direction === "LONG_SHORT" || this.direction === "LONG_ONLY") signal = "LONG";
+		} else if (currentPrice < lowerBand) { 
+			if (this.direction === "LONG_SHORT" || this.direction === "SHORT_ONLY") signal = "SHORT";
+		}
 	}
 	
 	// Entry Execution
@@ -214,8 +311,10 @@ BotInstance.prototype.tick = function() {
 			var optType = signal === "LONG" ? "CE" : "PE";
 			
 			// Find ATM Strike
-			var step = stock.step || 10;
-			var strike = Math.round(ltp / step) * step;
+			var strikes = generateStrikes(stock);
+			var strike = strikes.reduce(function(prev, curr) {
+				return (Math.abs(curr - ltp) < Math.abs(prev - ltp) ? curr : prev);
+			});
 			var expiryType = "W1";
 			var remainingDays = getExpiryDays() - getDayFraction();
 			
@@ -231,8 +330,8 @@ BotInstance.prototype.tick = function() {
 					this.entryPrice = fillPrice;
 					this.highestPrice = fillPrice;
 					this.lowestPrice = fillPrice;
-					this.slPrice = signal === "LONG" ? fillPrice * (1 - (this.slPct / 100)) : fillPrice * (1 + (this.slPct / 100)); 
-					this.tpPrice = signal === "LONG" ? fillPrice * (1 + (this.tpPct / 100)) : fillPrice * (1 - (this.tpPct / 100));
+					this.slPrice = fillPrice * (1 - (this.slPct / 100)); 
+					this.tpPrice = fillPrice * (1 + (this.tpPct / 100));
 					this.state = signal;
 					this.optionId = stock.ticker + "_" + optType + "_" + strike + "_" + expiryType;
 					toast("Bot ("+this.ticker+")", "Opened " + signal + " Options position ("+lots+" Lots)", "success");
@@ -380,6 +479,8 @@ var BotManager = {
 			var ltp = stock.ltp;
 			var pnlNative = 0;
 			
+			var displayLtp = ltp;
+			
 			if (bot.state !== "FLAT") {
 				if (bot.asset === "EQUITY") {
 					pnlNative = bot.state === "LONG" ? (ltp - bot.entryPrice) * bot.qty : (bot.entryPrice - ltp) * bot.qty;
@@ -389,6 +490,7 @@ var BotManager = {
 						var remainingDays = posOpt.daysToExpiry - getDayFraction();
 						var currentPrem = calcPremium(posOpt.type, posOpt.strike, ltp, remainingDays);
 						pnlNative = (currentPrem - posOpt.avgPremium) * bot.qty;
+						displayLtp = currentPrem;
 					}
 				}
 			}
@@ -404,7 +506,7 @@ var BotManager = {
 				'<td class="r">'+bot.qty+'</td>' +
 				'<td class="r">'+bot.entryPrice.toFixed(2)+'</td>' +
 				'<td class="r">'+(bot.state !== "FLAT" ? bot.slPrice.toFixed(2) : "-")+'</td>' +
-				'<td class="r">'+ltp.toFixed(2)+'</td>' +
+				'<td class="r">'+displayLtp.toFixed(2)+'</td>' +
 				'<td class="r '+pnlCls+'">'+fmtCur(pnlINR)+'</td>' +
 				'<td class="r"><button class="btn-sm" style="background:var(--red);color:white;border:none;padding:2px 6px;border-radius:4px;cursor:pointer;" onclick="event.stopPropagation(); BotManager.stop(\''+ticker+'\')">STOP</button></td>' +
 			'</tr>';
