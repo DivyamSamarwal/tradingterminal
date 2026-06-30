@@ -151,7 +151,9 @@ BotInstance.prototype.tick = function() {
 	}
 	
 	// Warmup check for new entries
-	var prices = stock.history;
+	var prices = stock.preHistory && stock.preHistory.length 
+		? stock.preHistory.concat(stock.history) 
+		: stock.history;
 	if (prices.length < 40) return; 
 
 	// Signal Generation
