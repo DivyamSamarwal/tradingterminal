@@ -4521,6 +4521,8 @@ var state = {
 	optionsPositions: {},
 	tradeHistory: [],
 	botTradeHistory: [],
+	customStrategies: {},
+	globalBotMemory: {},
 	inventory: {
 		brokerageFreeDays: 0,
 		bailoutCards: 0,

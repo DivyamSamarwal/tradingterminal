@@ -528,7 +528,10 @@
                         </div>
                     </div>
                     <div class="fg">
-                        <label for="bot-strategy">Strategy Engine</label>
+                        <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                            <label for="bot-strategy">Strategy Engine</label>
+                            <a href="#" onclick="openCustomBotStudio(); return false;" style="color:var(--accent); text-decoration:none; font-size:11px; font-weight:bold;">+ Custom Studio</a>
+                        </div>
                         <select class="fc" id="bot-strategy">
                             <option value="CONFLUENCE">Confluence (RSI + MACD)</option>
                             <option value="MOMENTUM">Momentum Noise (Random High Freq)</option>
@@ -1211,8 +1214,52 @@
     </div>
 
     <div id="toast-container" class="toast-box"></div>
-    <script src="js/app.js?v=149"></script>
-    <script src="js/bot.js?v=1"></script>
+    
+    <!-- Custom Bot Studio Modal -->
+    <div id="custom-bot-modal" class="overlay hidden">
+        <div class="overlay-card bot-studio-modal">
+            <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:20px;">
+                <h2 style="margin:0;">Custom Bot Studio <span class="badge" style="background:var(--accent); color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; vertical-align:middle;">PRO</span></h2>
+                <button class="btn-close-pos" style="border:none; background:transparent; font-size:24px; color:var(--text-dim); cursor:pointer; padding:0; line-height:1;" onclick="closeCustomBotStudio()">×</button>
+            </div>
+            
+            <div class="studio-layout" style="display:flex; gap:20px; flex:1; overflow:hidden;">
+                <div class="studio-sidebar" style="width:220px; display:flex; flex-direction:column; border-right:1px solid var(--border); padding-right:15px;">
+                    <h3 style="margin-top:0; font-size:14px; color:var(--text-bright); margin-bottom:15px;">Saved Bots</h3>
+                    <div id="custom-bot-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+                    <button class="btn" style="width:100%; margin-top:15px; padding:8px; border:1px dashed var(--text-dim); background:transparent; color:var(--text-bright); border-radius:4px; cursor:pointer;" onclick="createNewCustomBot()">+ New Bot</button>
+                </div>
+                
+                <div class="studio-main" style="flex:1; display:flex; flex-direction:column; overflow-y:auto; padding-right:5px;">
+                    <label style="display:block; font-size:10px; color:var(--text-dim); margin-bottom:5px; font-weight:bold; letter-spacing:0.5px;">STRATEGY NAME</label>
+                    <input type="text" id="custom-bot-name" class="fc" placeholder="e.g. My Mean Reversion Bot" style="margin-bottom: 15px; width:100%; box-sizing:border-box;">
+                    
+                    <label style="display:block; font-size:10px; color:var(--text-dim); margin-bottom:5px; font-weight:bold; letter-spacing:0.5px;">TEMPLATE (OPTIONAL)</label>
+                    <select id="custom-bot-template" class="fc" style="margin-bottom: 15px; width:100%; box-sizing:border-box;" onchange="loadCustomBotTemplate()">
+                        <option value="">-- Select Boilerplate --</option>
+                        <option value="EMA_CROSS">EMA Fast/Slow Crossover</option>
+                        <option value="RSI_SCALP">RSI Mean Reversion (Scalp)</option>
+                        <option value="DRAWING_DEMO">Chart Overlay & Drawing Demo</option>
+                        <option value="ARB_HEDGE">Cross-Asset Arbitrage (Memory Demo)</option>
+                    </select>
+                    
+                    <label style="display:block; font-size:10px; color:var(--text-dim); margin-bottom:5px; font-weight:bold; letter-spacing:0.5px;">STRATEGY LOGIC (JAVASCRIPT)</label>
+                    <textarea id="custom-bot-code" class="fc" style="width:100%; box-sizing:border-box; height:150px; font-family:var(--mono); resize:vertical; background:var(--bg-1); color:var(--text-bright);"></textarea>
+                    
+                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+                        <button id="custom-bot-delete-btn" style="background:transparent; color:var(--red); border:1px solid var(--red); padding:6px 12px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:600; display:none;" onclick="deleteCustomBot()">Delete</button>
+                        <button style="background:transparent; color:var(--text-bright); border:1px solid var(--border-light); padding:6px 12px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:600;" onclick="testCustomBotSyntax()">Run Syntax Check</button>
+                        <button style="background:var(--accent); color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:600;" onclick="saveCustomBot()">Deploy to Engine</button>
+                    </div>
+                    
+                    <pre id="custom-bot-console" style="margin-top:15px; background:var(--bg-0); color:var(--text); padding:12px; height:80px; overflow-y:auto; font-size:11px; font-family:var(--mono); border-radius:4px; border:1px solid var(--border); margin-bottom:0;">> New Bot Buffer Ready.</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js?v=150"></script>
+    <script src="js/bot.js?v=3"></script>
     <script src="js/analytics.js?v=8"></script>
 </body>
 </html>

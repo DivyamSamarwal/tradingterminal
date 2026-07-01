@@ -9,6 +9,9 @@ function BotInstance(ticker, config) {
 	this.direction = config.direction || "LONG_SHORT"; // LONG_ONLY, SHORT_ONLY, LONG_SHORT
 	this.asset = config.asset || "EQUITY"; // EQUITY, OPTIONS
 	this.useTrailingStop = config.useTrailingStop || false;
+	this.autoShutdown = config.autoShutdown !== false; // Default true
+	this.startTime = typeof state !== "undefined" ? state.time : 0;
+	this.startDay = typeof state !== "undefined" ? state.day : 1;
 	
 	this.state = "FLAT"; // FLAT, LONG, SHORT
 	this.entryPrice = 0;
@@ -31,7 +34,13 @@ BotInstance.prototype.tick = function() {
 	if (this.state !== "FLAT") {
 		if (this.asset === "EQUITY") {
 			var currentPos = state.positions[this.ticker];
-			var actualQty = currentPos ? Math.abs(currentPos.qty) : 0;
+			var actualQty = 0;
+			
+			if (currentPos) {
+				if (this.state === "LONG" && currentPos.qty > 0) actualQty = currentPos.qty;
+				else if (this.state === "SHORT" && currentPos.qty < 0) actualQty = Math.abs(currentPos.qty);
+			}
+			
 			if (actualQty <= 0) {
 				this.state = "FLAT";
 				this.qty = 0;
@@ -40,14 +49,20 @@ BotInstance.prototype.tick = function() {
 			}
 		} else if (this.asset === "OPTIONS" && this.optionId) {
 			var posOpt = state.optionsPositions[this.optionId];
-			var actualLots = posOpt ? posOpt.lots : 0;
-			var actualQtyOpt = actualLots * (posOpt ? posOpt.lotSize : (LOT_SIZES[this.ticker] || 100));
-			if (actualQtyOpt <= 0) {
+			if (!posOpt) {
 				this.state = "FLAT";
 				this.qty = 0;
 				this.optionId = null;
-			} else if (actualQtyOpt < this.qty) {
-				this.qty = actualQtyOpt; // Sync partial manual exit
+			} else {
+				var actualLots = posOpt.lots;
+				var actualQtyOpt = actualLots * (posOpt.lotSize || (LOT_SIZES[this.ticker] || 100));
+				if (actualQtyOpt <= 0) {
+					this.state = "FLAT";
+					this.qty = 0;
+					this.optionId = null;
+				} else if (actualQtyOpt < this.qty) {
+					this.qty = actualQtyOpt; // Sync partial manual exit
+				}
 			}
 		}
 	}
@@ -114,6 +129,12 @@ BotInstance.prototype.tick = function() {
 						stock.available_liquidity -= fillQty;
 						this.qty -= fillQty;
 						
+						var pnl = this.state === "LONG" ? (ltp - this.entryPrice) * fillQty : (this.entryPrice - ltp) * fillQty;
+						var pnlNative = pnl * fxRate;
+						if (typeof BotManager !== "undefined" && BotManager.recordAnalytics) {
+							BotManager.recordAnalytics(this.strategy, pnlNative);
+						}
+						
 						if (this.qty <= 0) {
 							this.state = "FLAT";
 							toast("Bot ("+this.ticker+")", "Squared off " + exitSide + " position", "success");
@@ -132,6 +153,12 @@ BotInstance.prototype.tick = function() {
 					var lotsToSell = Math.min(posOpt.lots, Math.floor(this.qty / posOpt.lotSize));
 					if (lotsToSell > 0) {
 						if (processOptionTrade(stock, "SELL", optType, strike, expiryType, lotsToSell, posOpt.lotSize, fxRate, true)) {
+							// For options, currentMetric (ltp) is the current premium. entryPrice was the premium we bought at.
+							var pnlNative = (currentMetric - this.entryPrice) * (lotsToSell * posOpt.lotSize) * fxRate;
+							if (typeof BotManager !== "undefined" && BotManager.recordAnalytics) {
+								BotManager.recordAnalytics(this.strategy, pnlNative);
+							}
+							
 							this.state = "FLAT";
 							this.qty = 0;
 							this.optionId = null;
@@ -159,7 +186,57 @@ BotInstance.prototype.tick = function() {
 	// Signal Generation
 	var signal = null; // null, "LONG", "SHORT"
 	
-	if (this.strategy === "CONFLUENCE") {
+	if (this.strategy && this.strategy.startsWith("CUSTOM_")) {
+		var customBotDef = state.customStrategies ? state.customStrategies[this.strategy] : null;
+		if (customBotDef) {
+			try {
+				var safeStock = Object.assign({}, stock);
+				delete safeStock.history;
+				delete safeStock.preHistory;
+				
+				var fn = new Function("context", customBotDef.code);
+				var mockContext = {
+					stock: safeStock,
+					history: prices.slice(),
+					bot: this,
+					memory: this.memory || {},
+					global: state.globalBotMemory || {},
+					utils: {
+						ema: typeof calcEMA === "function" ? calcEMA : function(){return 0;},
+						macd: typeof calcMACD === "function" ? calcMACD : function(){return 0;},
+						rsi: typeof calcRSI === "function" ? calcRSI : function(){return 50;},
+						bollingerBands: typeof calcBollingerBands === "function" ? calcBollingerBands : function(){return 0;}
+					},
+					log: function(msg) { toast("Bot Log (" + customBotDef.name + ")", msg, "info"); },
+					plot: function() {}, // TBD
+					drawMarker: function() {} // TBD
+				};
+				
+				var result = fn(mockContext);
+				this.memory = mockContext.memory; // save memory state
+				
+				// Handle dynamic return
+				if (typeof result === "string") {
+					signal = result;
+				} else if (result && typeof result === "object") {
+					if (result.signal) signal = result.signal;
+					if (result.sl) this.slPrice = parseFloat(result.sl);
+					if (result.tp) this.tpPrice = parseFloat(result.tp);
+					if (result.slPct) this.slPct = parseFloat(result.slPct);
+					if (result.tpPct) this.tpPct = parseFloat(result.tpPct);
+					if (result.sl && signal) this._customSL = parseFloat(result.sl);
+					if (result.tp && signal) this._customTP = parseFloat(result.tp);
+				}
+				
+				// Validate direction constraints
+				if (signal === "LONG" && this.direction === "SHORT_ONLY") signal = null;
+				if (signal === "SHORT" && this.direction === "LONG_ONLY") signal = null;
+			} catch(e) {
+				console.error("Custom Bot Error:", e);
+				// Silent fail on tick to avoid toast spam
+			}
+		}
+	} else if (this.strategy === "CONFLUENCE") {
 		var rsiData = calcRSI(prices, 14);
 		var rsi = rsiData[rsiData.length - 1];
 		var macdData = calcMACD(prices, 12, 26, 9);
@@ -302,9 +379,10 @@ BotInstance.prototype.tick = function() {
 						this.entryPrice = executionPrice;
 						this.highestPrice = executionPrice;
 						this.lowestPrice = executionPrice;
-						this.slPrice = signal === "LONG" ? executionPrice * (1 - (this.slPct / 100)) : executionPrice * (1 + (this.slPct / 100)); 
-						this.tpPrice = signal === "LONG" ? executionPrice * (1 + (this.tpPct / 100)) : executionPrice * (1 - (this.tpPct / 100));
+						this.slPrice = this._customSL || (signal === "LONG" ? executionPrice * (1 - (this.slPct / 100)) : executionPrice * (1 + (this.slPct / 100))); 
+						this.tpPrice = this._customTP || (signal === "LONG" ? executionPrice * (1 + (this.tpPct / 100)) : executionPrice * (1 - (this.tpPct / 100)));
 						this.state = signal;
+						this._customSL = null; this._customTP = null;
 						toast("Bot ("+this.ticker+")", "Opened " + signal + " Equity position for " + fillQty, "success");
 					}
 				}
@@ -324,7 +402,7 @@ BotInstance.prototype.tick = function() {
 			var lotSize = LOT_SIZES[this.ticker] || 100;
 			var lotCostINR = (premium * lotSize) * fxRate;
 			
-			var lots = Math.floor(riskAmount / lotCostINR);
+			var lots = lotCostINR > 0 ? Math.floor(riskAmount / lotCostINR) : 0;
 			if (lots > 0) {
 				if (processOptionTrade(stock, "BUY", optType, strike, expiryType, lots, lotSize, fxRate, true)) {
 					this.qty = lots * lotSize;
@@ -332,9 +410,10 @@ BotInstance.prototype.tick = function() {
 					this.entryPrice = fillPrice;
 					this.highestPrice = fillPrice;
 					this.lowestPrice = fillPrice;
-					this.slPrice = fillPrice * (1 - (this.slPct / 100)); 
-					this.tpPrice = fillPrice * (1 + (this.tpPct / 100));
+					this.slPrice = this._customSL || (fillPrice * (1 - (this.slPct / 100))); 
+					this.tpPrice = this._customTP || (fillPrice * (1 + (this.tpPct / 100)));
 					this.state = signal;
+					this._customSL = null; this._customTP = null;
 					this.optionId = stock.ticker + "_" + optType + "_" + strike + "_" + expiryType;
 					toast("Bot ("+this.ticker+")", "Opened " + signal + " Options position ("+lots+" Lots)", "success");
 				}
@@ -371,10 +450,30 @@ var BotManager = {
   			var stock = stockMap[ticker];
   			var fxRate = EXCHANGE_RATES[stock && stock.currency] || 1;
   			
+  			// Charge server fee on stop
+  			if (typeof state !== "undefined") {
+  				var daysActive = state.day - bot.startDay;
+  				var currentTick = state.time;
+  				var ticksActive = currentTick - bot.startTime + (daysActive * 1440);
+  				var cost = Math.max(0, Math.floor(ticksActive * (1000 / 60)));
+  				if (cost > 0) {
+  					state.margin -= cost;
+  					var h = Math.floor(ticksActive / 60);
+  					var m = ticksActive % 60;
+  					toast("Server Costs", "Billed ₹" + cost.toLocaleString("en-IN") + " for " + ticker + " bot (" + h + "h " + m + "m)", "warning");
+  					if (typeof renderTopBar !== "undefined") renderTopBar();
+  				}
+  			}
+  			
   			if (bot.state !== "FLAT" && stock) {
   				if (bot.asset === "EQUITY") {
   					var exitSide = bot.state === "LONG" ? "SELL" : "BUY";
   					if (processEquityTrade(stock, exitSide, bot.qty, stock.ltp, true)) {
+						var pnl = bot.state === "LONG" ? (stock.ltp - bot.entryPrice) * bot.qty : (bot.entryPrice - stock.ltp) * bot.qty;
+						var pnlNative = pnl * fxRate;
+						if (typeof BotManager !== "undefined" && BotManager.recordAnalytics) {
+							BotManager.recordAnalytics(bot.strategy, pnlNative);
+						}
   						toast("Bot Engine", "Auto-squared off Equity position", "warning");
   					}
   				} else if (bot.asset === "OPTIONS" && bot.optionId) {
@@ -384,6 +483,11 @@ var BotManager = {
   						var lotsToSell = Math.min(posOpt.lots, Math.floor(bot.qty / posOpt.lotSize));
   						if (lotsToSell > 0) {
   							if (processOptionTrade(stock, "SELL", parts[1], parseFloat(parts[2]), parts[3], lotsToSell, posOpt.lotSize, fxRate, true)) {
+								var ltpPrem = calcPremium(parts[1], parseFloat(parts[2]), stock.ltp, getExpiryDays() - getDayFraction());
+								var pnlNative = (ltpPrem - bot.entryPrice) * (lotsToSell * posOpt.lotSize) * fxRate;
+								if (typeof BotManager !== "undefined" && BotManager.recordAnalytics) {
+									BotManager.recordAnalytics(bot.strategy, pnlNative);
+								}
   								toast("Bot Engine", "Auto-squared off Options position", "warning");
   							}
   						}
@@ -399,6 +503,17 @@ var BotManager = {
   		}
   	},
 
+	recordAnalytics: function(strategy, pnl) {
+		if (typeof state === "undefined") return;
+		state.botAnalytics = state.botAnalytics || {};
+		if (!state.botAnalytics[strategy]) {
+			state.botAnalytics[strategy] = { totalTrades: 0, winningTrades: 0, totalPnl: 0 };
+		}
+		state.botAnalytics[strategy].totalTrades++;
+		if (pnl > 0) state.botAnalytics[strategy].winningTrades++;
+		state.botAnalytics[strategy].totalPnl += pnl;
+	},
+
 	toggle: function() {
 		var ticker = state.activeStock ? state.activeStock.ticker : null;
 		if (!ticker) return toast("Bot Error", "Select a stock first", "error");
@@ -413,7 +528,8 @@ var BotManager = {
 				riskPct: parseInt(document.getElementById("bot-risk-slider").value),
 				slPct: parseFloat(document.getElementById("bot-sl-pct").value) || 1,
 				tpPct: parseFloat(document.getElementById("bot-tp-pct").value) || 2,
-				useTrailingStop: document.getElementById("bot-trailing-stop").checked
+				useTrailingStop: document.getElementById("bot-trailing-stop").checked,
+				autoShutdown: document.getElementById("bot-auto-shutdown") ? document.getElementById("bot-auto-shutdown").checked : true
 			};
 			this.start(ticker, config);
 		}
@@ -448,8 +564,20 @@ var BotManager = {
 		if (!state.marketOpen) return;
 		var tickers = Object.keys(this.activeBots);
 		for (var i = 0; i < tickers.length; i++) {
-			this.activeBots[tickers[i]].tick();
+			var ticker = tickers[i];
+			var bot = this.activeBots[ticker];
+			var stock = typeof stockMap !== "undefined" ? stockMap[ticker] : null;
+			
+			if (bot.autoShutdown && stock && typeof isMarketOpen !== "undefined" && !isMarketOpen(stock, state.time)) {
+				if (typeof toast !== "undefined") toast("Bot Engine", "Auto-shutdown triggered for " + ticker + " due to market close.", "info");
+				this.stop(ticker);
+				continue;
+			}
+			
+			bot.tick();
 		}
+		
+		tickers = Object.keys(this.activeBots); // Refetch in case bots were stopped
 		
 		// Update active stock UI dynamically
 		if (state.activeStock && this.activeBots[state.activeStock.ticker]) {
@@ -466,12 +594,27 @@ var BotManager = {
 		if (!tbody) return;
 		
 		var tickers = Object.keys(this.activeBots);
+		var html = "";
+		
+		// Add Analytics Header Row
+		if (typeof state !== "undefined" && state.botAnalytics && Object.keys(state.botAnalytics).length > 0) {
+			var statsHtml = "";
+			for (var strat in state.botAnalytics) {
+				var stat = state.botAnalytics[strat];
+				var winRate = stat.totalTrades > 0 ? Math.round((stat.winningTrades / stat.totalTrades) * 100) : 0;
+				var pnlColor = stat.totalPnl >= 0 ? "var(--green)" : "var(--red)";
+				var pnlSign = stat.totalPnl >= 0 ? "+" : "";
+				statsHtml += "<div style='display:inline-block; margin-right:15px; padding:5px; background:rgba(255,255,255,0.05); border-radius:4px;'><span style='color:var(--accent); font-weight:bold;'>" + strat + ":</span> <span style='font-size:11px'>Win: " + winRate + "% | P&L: <span style='color:" + pnlColor + "'>" + pnlSign + "₹" + stat.totalPnl.toLocaleString("en-IN", {maximumFractionDigits:0}) + "</span></span></div>";
+			}
+			html += "<tr><td colspan='9' style='text-align:left; padding:8px; border-bottom:1px solid var(--border);'>" + statsHtml + "</td></tr>";
+		}
+
 		if (tickers.length === 0) {
-			tbody.innerHTML = '<tr><td colspan="9" class="empty">No active bots running</td></tr>';
+			html += '<tr><td colspan="9" class="empty">No active bots running</td></tr>';
+			tbody.innerHTML = html;
 			return;
 		}
 
-		var html = "";
 		for (var i = 0; i < tickers.length; i++) {
 			var ticker = tickers[i];
 			var bot = this.activeBots[ticker];
@@ -550,3 +693,161 @@ document.addEventListener("DOMContentLoaded", function() {
 		};
 	}
 });
+
+// --- Custom Bot Studio UI Logic ---
+var activeCustomBotId = null;
+
+  window.openCustomBotStudio = function() {
+      var modal = document.getElementById("custom-bot-modal");
+      modal.classList.remove("hidden");
+      modal.style.display = "flex";
+      renderCustomBotList();
+      if (!activeCustomBotId) {
+          createNewCustomBot();
+      }
+  };
+  
+  window.closeCustomBotStudio = function() {
+      var modal = document.getElementById("custom-bot-modal");
+      modal.classList.add("hidden");
+      modal.style.display = "none";
+  };
+
+window.renderCustomBotList = function() {
+      var container = document.getElementById("custom-bot-list");
+      if (!container) return;
+      container.innerHTML = "";
+      Object.keys(state.customStrategies || {}).forEach(function(id) {
+          var bot = state.customStrategies[id];
+          var div = document.createElement("div");
+          var isActive = (id === activeCustomBotId);
+          div.textContent = bot.name || id;
+          div.style = "padding:8px 12px; background:" + (isActive ? "var(--accent)" : "transparent") + "; color:" + (isActive ? "#fff" : "var(--text)") + "; border-radius:4px; cursor:pointer; font-size:12px; border:1px solid " + (isActive ? "var(--accent)" : "var(--border)") + ";";
+          div.onclick = function() { loadCustomBot(id); };
+          container.appendChild(div);
+      });
+      updateStrategyDropdown();
+  };
+
+window.updateStrategyDropdown = function() {
+    var sel = document.getElementById("bot-strategy");
+    Array.from(sel.options).forEach(function(opt) {
+        if (opt.value.startsWith("CUSTOM_")) sel.removeChild(opt);
+    });
+    Object.keys(state.customStrategies || {}).forEach(function(id) {
+        var opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = "CUSTOM: " + (state.customStrategies[id].name || id);
+        sel.appendChild(opt);
+    });
+};
+
+window.createNewCustomBot = function() {
+    activeCustomBotId = null;
+    document.getElementById("custom-bot-name").value = "";
+    document.getElementById("custom-bot-template").value = "";
+    document.getElementById("custom-bot-code").value = "";
+    document.getElementById("custom-bot-delete-btn").style.display = "none";
+    document.getElementById("custom-bot-console").innerHTML = "> New Bot Buffer Ready.";
+    renderCustomBotList();
+};
+
+window.loadCustomBot = function(id) {
+    activeCustomBotId = id;
+    var bot = state.customStrategies[id];
+    if (!bot) return;
+    document.getElementById("custom-bot-name").value = bot.name || "";
+    document.getElementById("custom-bot-code").value = bot.code || "";
+    document.getElementById("custom-bot-delete-btn").style.display = "block";
+    document.getElementById("custom-bot-console").innerHTML = "> Loaded " + bot.name;
+    renderCustomBotList();
+};
+
+window.saveCustomBot = function() {
+    var name = document.getElementById("custom-bot-name").value.trim() || "Untitled Bot";
+    var code = document.getElementById("custom-bot-code").value;
+    if (!activeCustomBotId) {
+        activeCustomBotId = "CUSTOM_" + Date.now();
+    }
+    state.customStrategies = state.customStrategies || {};
+    state.customStrategies[activeCustomBotId] = {
+        name: name,
+        code: code
+    };
+    localStorage.setItem("customStrategies", JSON.stringify(state.customStrategies));
+    document.getElementById("custom-bot-console").innerHTML = "> ✅ Saved Custom Strategy: " + name;
+    document.getElementById("custom-bot-delete-btn").style.display = "block";
+    renderCustomBotList();
+};
+
+window.deleteCustomBot = function() {
+    if (!activeCustomBotId) return;
+    delete state.customStrategies[activeCustomBotId];
+    localStorage.setItem("customStrategies", JSON.stringify(state.customStrategies));
+    createNewCustomBot();
+    renderCustomBotList();
+};
+
+window.testCustomBotSyntax = function() {
+    var code = document.getElementById("custom-bot-code").value;
+    var consoleEl = document.getElementById("custom-bot-console");
+    consoleEl.innerHTML = "> Testing Syntax...\n";
+    try {
+        var safeStock = state.activeStock ? Object.assign({}, state.activeStock) : { ticker: "TEST", ltp: 100 };
+        delete safeStock.history;
+        delete safeStock.preHistory;
+        
+        var fn = new Function("context", code);
+        var mockContext = {
+            stock: safeStock,
+            history: state.activeStock ? state.activeStock.history.slice() : [98, 99, 100],
+            bot: {},
+            memory: {},
+            global: {},
+            utils: {
+                ema: typeof calcEMA === "function" ? calcEMA : function(){return 0;},
+                macd: typeof calcMACD === "function" ? calcMACD : function(){return 0;},
+                rsi: typeof calcRSI === "function" ? calcRSI : function(){return 50;},
+                bollingerBands: typeof calcBollingerBands === "function" ? calcBollingerBands : function(){return 0;}
+            },
+            log: function(msg) { consoleEl.innerHTML += "> [LOG] " + msg + "\n"; },
+            plot: function() {},
+            drawMarker: function() {}
+        };
+        var result = fn(mockContext);
+        consoleEl.innerHTML += "> ✅ Syntax Valid! Result: " + JSON.stringify(result) + "\n";
+    } catch(e) {
+        consoleEl.innerHTML += "> ❌ Error: " + e.message + "\n";
+    }
+};
+
+window.loadCustomBotTemplate = function() {
+    var sel = document.getElementById("custom-bot-template").value;
+    var codeEl = document.getElementById("custom-bot-code");
+    if (sel === "EMA_CROSS") {
+        codeEl.value = "// EMA Fast/Slow Crossover\nvar fastArr = context.utils.ema(context.history, 10);\nvar slowArr = context.utils.ema(context.history, 25);\nvar fast = fastArr[fastArr.length - 1];\nvar slow = slowArr[slowArr.length - 1];\ncontext.log('Fast: ' + fast.toFixed(2) + ' Slow: ' + slow.toFixed(2));\nif (fast > slow) return 'LONG';\nif (fast < slow) return 'SHORT';\nreturn null;";
+    } else if (sel === "RSI_SCALP") {
+        codeEl.value = "// Custom RSI logic not yet built, using EMA fallback\nvar emaArr = context.utils.ema(context.history, 5);\nvar ema = emaArr[emaArr.length - 1];\nif (context.stock.ltp < ema) return 'LONG';\nreturn null;";
+    } else if (sel === "DRAWING_DEMO") {
+        codeEl.value = "// Plot a blue line at the EMA\nvar emaArr = context.utils.ema(context.history, 10);\nvar ema = emaArr[emaArr.length - 1];\ncontext.plot(ema, 'blue');\n\nif (context.stock.ltp > ema) {\n    context.drawMarker('LONG', context.stock.ltp);\n    return 'LONG';\n}\nreturn null;";
+    } else if (sel === "ARB_HEDGE") {
+        codeEl.value = "// Share data globally across bots!\nvar myTicker = context.stock.ticker;\ncontext.global[myTicker + '_ltp'] = context.stock.ltp;\n\n// E.g. wait for NIFTY to rise before buying\nvar nifty = context.global['NIFTY_ltp'];\nif (nifty && nifty > 22500) return 'LONG';\nreturn null;";
+    }
+};
+
+// Initialize Custom Bots from LocalStorage
+(function() {
+    if (!state.customStrategies || Object.keys(state.customStrategies).length === 0) {
+        try {
+            var saved = localStorage.getItem("customStrategies");
+            if (saved) {
+                state.customStrategies = JSON.parse(saved);
+                if (typeof updateStrategyDropdown === "function") {
+                    updateStrategyDropdown();
+                }
+            }
+        } catch(e) {
+            console.error("Failed to load custom bots", e);
+        }
+    }
+})();
