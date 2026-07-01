@@ -7,6 +7,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
     <link rel="stylesheet" href="css/styles.css?v=1003">
     <style>
         #custom-tooltip {
@@ -1244,7 +1248,27 @@
                     </select>
                     
                     <label style="display:block; font-size:10px; color:var(--text-dim); margin-bottom:5px; font-weight:bold; letter-spacing:0.5px;">STRATEGY LOGIC (JAVASCRIPT)</label>
-                    <textarea id="custom-bot-code" class="fc" style="width:100%; box-sizing:border-box; height:150px; font-family:var(--mono); resize:vertical; background:var(--bg-1); color:var(--text-bright);"></textarea>
+                    <style>
+                        .CodeMirror {
+                            height: auto !important;
+                            min-height: 400px !important;
+                            border: 1px solid #333 !important;
+                            border-radius: 6px !important;
+                            font-family: 'Courier New', Courier, monospace !important;
+                            font-size: 14px !important;
+                            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2) !important;
+                            resize: vertical !important;
+                            overflow: hidden !important;
+                        }
+                        .CodeMirror-scroll {
+                            min-height: 400px !important;
+                        }
+                    </style>
+                    <textarea id="custom-bot-code" class="fc" spellcheck="false"></textarea>
+                    <div style="font-size:10px; color:var(--text-dim); margin-top:5px; line-height:1.4;">
+                        <strong>API:</strong> <code>context.stock.ltp</code>, <code>context.history</code> (Array), <code>context.utils.ema(arr, period)</code>, <code>context.utils.rsi(arr, period)</code>, <code>context.log(msg)</code>. <br/>
+                        <strong>Returns:</strong> <code>"LONG"</code>, <code>"SHORT"</code>, or <code>null</code>.
+                    </div>
                     
                     <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
                         <button id="custom-bot-delete-btn" style="background:transparent; color:var(--red); border:1px solid var(--red); padding:6px 12px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:600; display:none;" onclick="deleteCustomBot()">Delete</button>

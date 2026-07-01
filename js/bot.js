@@ -194,7 +194,12 @@ BotInstance.prototype.tick = function() {
 				delete safeStock.history;
 				delete safeStock.preHistory;
 				
-				var fn = new Function("context", customBotDef.code);
+				if (!customBotDef.compiledFn || customBotDef.rawCode !== customBotDef.code) {
+					customBotDef.compiledFn = new Function("context", customBotDef.code);
+					customBotDef.rawCode = customBotDef.code;
+				}
+				var fn = customBotDef.compiledFn;
+				
 				var mockContext = {
 					stock: safeStock,
 					history: prices.slice(),
@@ -695,16 +700,35 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // --- Custom Bot Studio UI Logic ---
-var activeCustomBotId = null;
-
+  var activeCustomBotId = null;
+  window.cmEditor = null;
+  
   window.openCustomBotStudio = function() {
       var modal = document.getElementById("custom-bot-modal");
       modal.classList.remove("hidden");
       modal.style.display = "flex";
+      
+      if (!window.cmEditor) {
+          window.cmEditor = CodeMirror.fromTextArea(document.getElementById("custom-bot-code"), {
+              lineNumbers: true,
+              mode: "javascript",
+              theme: "monokai",
+              indentUnit: 4,
+              tabSize: 4,
+              indentWithTabs: false
+          });
+          window.cmEditor.on("change", function() {
+              window.cmEditor.save(); // Sync to textarea
+          });
+      }
+      
       renderCustomBotList();
       if (!activeCustomBotId) {
           createNewCustomBot();
       }
+      
+      // Refresh to ensure proper rendering after unhiding
+      setTimeout(function() { if (window.cmEditor) window.cmEditor.refresh(); }, 200);
   };
   
   window.closeCustomBotStudio = function() {
@@ -742,26 +766,28 @@ window.updateStrategyDropdown = function() {
     });
 };
 
-window.createNewCustomBot = function() {
-    activeCustomBotId = null;
-    document.getElementById("custom-bot-name").value = "";
-    document.getElementById("custom-bot-template").value = "";
-    document.getElementById("custom-bot-code").value = "";
-    document.getElementById("custom-bot-delete-btn").style.display = "none";
-    document.getElementById("custom-bot-console").innerHTML = "> New Bot Buffer Ready.";
-    renderCustomBotList();
-};
+  window.createNewCustomBot = function() {
+      activeCustomBotId = null;
+      document.getElementById("custom-bot-name").value = "";
+      document.getElementById("custom-bot-template").value = "";
+      document.getElementById("custom-bot-code").value = "";
+      if (window.cmEditor) window.cmEditor.setValue("");
+      document.getElementById("custom-bot-delete-btn").style.display = "none";
+      document.getElementById("custom-bot-console").innerHTML = "> New Bot Buffer Ready.";
+      renderCustomBotList();
+  };
 
-window.loadCustomBot = function(id) {
-    activeCustomBotId = id;
-    var bot = state.customStrategies[id];
-    if (!bot) return;
-    document.getElementById("custom-bot-name").value = bot.name || "";
-    document.getElementById("custom-bot-code").value = bot.code || "";
-    document.getElementById("custom-bot-delete-btn").style.display = "block";
-    document.getElementById("custom-bot-console").innerHTML = "> Loaded " + bot.name;
-    renderCustomBotList();
-};
+  window.loadCustomBot = function(id) {
+      activeCustomBotId = id;
+      var bot = state.customStrategies[id];
+      if (!bot) return;
+      document.getElementById("custom-bot-name").value = bot.name || "";
+      document.getElementById("custom-bot-code").value = bot.code || "";
+      if (window.cmEditor) window.cmEditor.setValue(bot.code || "");
+      document.getElementById("custom-bot-delete-btn").style.display = "block";
+      document.getElementById("custom-bot-console").innerHTML = "> Loaded " + (typeof escapeHtmlGlobal === 'function' ? escapeHtmlGlobal(bot.name) : bot.name);
+      renderCustomBotList();
+  };
 
 window.saveCustomBot = function() {
     var name = document.getElementById("custom-bot-name").value.trim() || "Untitled Bot";
@@ -775,7 +801,7 @@ window.saveCustomBot = function() {
         code: code
     };
     localStorage.setItem("customStrategies", JSON.stringify(state.customStrategies));
-    document.getElementById("custom-bot-console").innerHTML = "> ✅ Saved Custom Strategy: " + name;
+    document.getElementById("custom-bot-console").innerHTML = "> ✅ Saved Custom Strategy: " + (typeof escapeHtmlGlobal === 'function' ? escapeHtmlGlobal(name) : name);
     document.getElementById("custom-bot-delete-btn").style.display = "block";
     renderCustomBotList();
 };
@@ -791,7 +817,17 @@ window.deleteCustomBot = function() {
 window.testCustomBotSyntax = function() {
     var code = document.getElementById("custom-bot-code").value;
     var consoleEl = document.getElementById("custom-bot-console");
-    consoleEl.innerHTML = "> Testing Syntax...\n";
+    consoleEl.innerHTML = "> <span style='color:#a8a8a8;'>Testing Syntax...</span>\n";
+    
+    function escapeHtml(unsafe) {
+        return (unsafe || "").toString()
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
+
     try {
         var safeStock = state.activeStock ? Object.assign({}, state.activeStock) : { ticker: "TEST", ltp: 100 };
         delete safeStock.history;
@@ -810,30 +846,38 @@ window.testCustomBotSyntax = function() {
                 rsi: typeof calcRSI === "function" ? calcRSI : function(){return 50;},
                 bollingerBands: typeof calcBollingerBands === "function" ? calcBollingerBands : function(){return 0;}
             },
-            log: function(msg) { consoleEl.innerHTML += "> [LOG] " + msg + "\n"; },
+            log: function(msg) { 
+                consoleEl.innerHTML += "> <span style='color:#74b9ff;'>[LOG] " + escapeHtml(msg) + "</span>\n"; 
+                consoleEl.scrollTop = consoleEl.scrollHeight;
+            },
             plot: function() {},
             drawMarker: function() {}
         };
         var result = fn(mockContext);
-        consoleEl.innerHTML += "> ✅ Syntax Valid! Result: " + JSON.stringify(result) + "\n";
+        consoleEl.innerHTML += "> <span style='color:#00E676;'>✅ Syntax Check Passed!</span> Result: " + escapeHtml(JSON.stringify(result)) + "\n";
+        consoleEl.scrollTop = consoleEl.scrollHeight;
     } catch(e) {
-        consoleEl.innerHTML += "> ❌ Error: " + e.message + "\n";
+        consoleEl.innerHTML += "> <span style='color:#ff7675;'>❌ Syntax Error: " + escapeHtml(e.message) + "</span>\n";
+        consoleEl.scrollTop = consoleEl.scrollHeight;
     }
 };
 
-window.loadCustomBotTemplate = function() {
-    var sel = document.getElementById("custom-bot-template").value;
-    var codeEl = document.getElementById("custom-bot-code");
-    if (sel === "EMA_CROSS") {
-        codeEl.value = "// EMA Fast/Slow Crossover\nvar fastArr = context.utils.ema(context.history, 10);\nvar slowArr = context.utils.ema(context.history, 25);\nvar fast = fastArr[fastArr.length - 1];\nvar slow = slowArr[slowArr.length - 1];\ncontext.log('Fast: ' + fast.toFixed(2) + ' Slow: ' + slow.toFixed(2));\nif (fast > slow) return 'LONG';\nif (fast < slow) return 'SHORT';\nreturn null;";
-    } else if (sel === "RSI_SCALP") {
-        codeEl.value = "// Custom RSI logic not yet built, using EMA fallback\nvar emaArr = context.utils.ema(context.history, 5);\nvar ema = emaArr[emaArr.length - 1];\nif (context.stock.ltp < ema) return 'LONG';\nreturn null;";
-    } else if (sel === "DRAWING_DEMO") {
-        codeEl.value = "// Plot a blue line at the EMA\nvar emaArr = context.utils.ema(context.history, 10);\nvar ema = emaArr[emaArr.length - 1];\ncontext.plot(ema, 'blue');\n\nif (context.stock.ltp > ema) {\n    context.drawMarker('LONG', context.stock.ltp);\n    return 'LONG';\n}\nreturn null;";
-    } else if (sel === "ARB_HEDGE") {
-        codeEl.value = "// Share data globally across bots!\nvar myTicker = context.stock.ticker;\ncontext.global[myTicker + '_ltp'] = context.stock.ltp;\n\n// E.g. wait for NIFTY to rise before buying\nvar nifty = context.global['NIFTY_ltp'];\nif (nifty && nifty > 22500) return 'LONG';\nreturn null;";
-    }
-};
+  window.loadCustomBotTemplate = function() {
+      var sel = document.getElementById("custom-bot-template").value;
+      var codeEl = document.getElementById("custom-bot-code");
+      var code = "";
+      if (sel === "EMA_CROSS") {
+          code = "// EMA Fast/Slow Crossover\nvar fastArr = context.utils.ema(context.history, 10);\nvar slowArr = context.utils.ema(context.history, 25);\nvar fast = fastArr[fastArr.length - 1];\nvar slow = slowArr[slowArr.length - 1];\ncontext.log('Fast: ' + fast.toFixed(2) + ' Slow: ' + slow.toFixed(2));\nif (fast > slow) return 'LONG';\nif (fast < slow) return 'SHORT';\nreturn null;";
+      } else if (sel === "RSI_SCALP") {
+          code = "// Custom RSI logic not yet built, using EMA fallback\nvar emaArr = context.utils.ema(context.history, 5);\nvar ema = emaArr[emaArr.length - 1];\nif (context.stock.ltp < ema) return 'LONG';\nreturn null;";
+      } else if (sel === "DRAWING_DEMO") {
+          code = "// Plot a blue line at the EMA\nvar emaArr = context.utils.ema(context.history, 10);\nvar ema = emaArr[emaArr.length - 1];\ncontext.plot(ema, 'blue');\n\nif (context.stock.ltp > ema) {\n    context.drawMarker('LONG', context.stock.ltp);\n    return 'LONG';\n}\nreturn null;";
+      } else if (sel === "ARB_HEDGE") {
+          code = "// Share data globally across bots!\nvar myTicker = context.stock.ticker;\ncontext.global[myTicker + '_ltp'] = context.stock.ltp;\n\n// E.g. wait for NIFTY to rise before buying\nvar nifty = context.global['NIFTY_ltp'];\nif (nifty && nifty > 22500) return 'LONG';\nreturn null;";
+      }
+      codeEl.value = code;
+      if (window.cmEditor) window.cmEditor.setValue(code);
+  };
 
 // Initialize Custom Bots from LocalStorage
 (function() {

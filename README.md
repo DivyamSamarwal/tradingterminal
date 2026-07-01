@@ -52,13 +52,19 @@ A robust routing and execution engine supporting advanced order types and Time-i
 * **Time In Force (TIF)**: Supports **DAY**, **IOC** (Immediate or Cancel), and **FOK** (Fill or Kill) instructions.
 * **Position Limits**: Implements algebraic exposure calculation to enforce strict maximum position caps and prevent exploitation.
 
-### 📉 4. Derivatives & Pricing Models
+### 🤖 4. Algorithmic Custom Bot Studio
+* **Integrated IDE**: A fully-featured, embedded CodeMirror IDE that allows users to write raw JavaScript trading algorithms directly within the browser.
+* **Real-time Syntax Validation**: An advanced syntax checker that validates code and intercepts errors before execution to prevent engine crashes.
+* **Dynamic Engine Caching**: Custom bots are intelligently compiled and cached on the fly to `new Function()`, preventing CPU overhead and allowing for high-frequency sub-millisecond execution loops.
+* **Sandbox Security**: User scripts execute with robust error handling and HTML sanitization (XSS protection) on all console outputs, keeping the terminal strictly secure.
+
+### 📉 5. Derivatives & Pricing Models
 * **Synthetic Options**: Supports Call and Put options on underlying equities.
 * **Live Greeks Calculation**: Dynamically computes premium pricing using standard risk metrics (Delta, Gamma, Theta, Vega).
 * **Time Decay**: Options premiums realistically decay as the contract approaches expiry (Theta).
 * **Clearing & Settlement**: Automated End-of-Day (EOD) processing handles the exercise or expiration of derivatives based on the underlying asset's closing price.
 
-### 🌍 5. Global Multi-Asset Universe
+### 🌍 6. Global Multi-Asset Universe
 * **Equities**: Instruments from US, Indian, Japanese, Chinese, Hong Kong, and European exchanges.
 * **Indices**: Tracking major benchmarks (S&P 500, NIFTY 50, Nikkei 225, HSI, DAX, FTSE 100).
 * **Commodities**: Futures-style contracts for precious metals and energy.
@@ -67,18 +73,18 @@ A robust routing and execution engine supporting advanced order types and Time-i
 * **Automated FX Conversion**: Real-time cross-currency conversion dynamically settles international P&L into the base portfolio currency.
 * **Categorized Watchlist**: Organize and filter the vast universe of instruments via a dedicated, toggleable sidebar watchlist.
 
-### 🏦 6. Dalal Bank & Credit System
+### 🏦 7. Dalal Bank & Credit System
 * **Dynamic Credit Scoring**: Tracks a live CIBIL Score (300-900) based on financial behavior, affecting loan eligibility and interest rates.
 * **Margin Loans**: Take out short-term, high-interest loans to multiply buying power. Daily EMI is automatically deducted from the cash margin.
 * **Fixed Deposits**: Lock in excess cash for guaranteed risk-free returns over set maturity periods.
 * **Liquidations & Defaults**: Failing to cover daily loan EMIs triggers CIBIL score penalties and forces immediate liquidation of trading assets to cover debts.
 
-### 🏢 7. Real Estate & Property Market
+### 🏢 8. Real Estate & Property Market
 * **Property Portfolio**: Buy, hold, and sell 30 unique global properties spanning Residential, Commercial, and Luxury sectors.
 * **Dynamic Rent Collection**: Earn daily rental yields automatically based on the live fluctuating market value of owned properties.
 * **Mortgages & Foreclosure**: Purchase properties with 20% down payments via 14-day mortgages. Missing EMI payments results in bank foreclosure, asset seizure, and severe credit damage.
 
-### 📰 8. Risk Management & News Engine
+### 📰 9. Risk Management & News Engine
 * **Live Portfolio Metrics**: Real-time calculation of Portfolio Value, Cash Balance, Required Margin, and Unrealized P&L.
 * **Bracket Orders**: Integrated Stop-Loss and Take-Profit functionality for automated risk management.
 * **Technical Charting**: Integrated candlestick charting with customizable intervals, logarithmic scaling, and technical overlays.
@@ -86,21 +92,21 @@ A robust routing and execution engine supporting advanced order types and Time-i
 * **Interactive Drawing Tools**: Annotate charts directly with Trendlines, Horizontal Support/Resistance levels, and Fibonacci Retracements.
 * **News & Sentiment Engine**: Injects simulated macroeconomic data and geopolitical events, triggering localized volatility spikes and algorithmic sentiment shifts.
 
-### 🎨 9. Customization & Theming Engine
+### 🎨 10. Customization & Theming Engine
 * **Dynamic UI Theming**: Switch between multiple highly polished color palettes including Deep Dark Mode and Light Mode.
 * **Typography Control**: Swap between modern sans-serif fonts (Outfit, Inter) and developer-focused monospace fonts (Roboto Mono, JetBrains Mono).
 * **Live Styling Overrides**: The UI instantly reacts and re-renders components using CSS Variables to apply user customization seamlessly.
 
-### 📈 10. Real-Time Simulation Analytics
+### 📈 11. Real-Time Simulation Analytics
 * **True Mathematical Fundamentals**: Generates live simulation analytics such as Total Turnover (Volume × Price), Average Daily Volume, All-Time Highs, and Historical Volatility Range calculated directly from the simulation's mathematical history rather than static data.
 * **Live Technical Signals**: EOD (End of Day) tracking for 20-day Simple and Exponential Moving Averages (SMA / EMA) to provide dynamic Bullish/Bearish sentiment signals.
 
-### 💼 11. The Syndicate (Black Market)
+### 💼 12. The Syndicate (Black Market)
 * **Underground Crates**: Utilize excess cash to purchase Bronze, Silver, or Gold crates that drop randomized, powerful market perks.
 * **Insider Advantages**: Unlock temporary rule-bending mechanics such as **Brokerage Holiday** (zero trading fees), **Circuit Override** (bypass exchange halts), **Market Freeze** (pause time to evaluate positions), and **Profit Amplifier** (boosted returns).
 * **Inventory Management**: Accumulate and deploy these perks strategically to maximize portfolio growth or survive severe market downturns.
 
-### ⏱️ 12. Simulation Playback Controls
+### ⏱️ 13. Simulation Playback Controls
 * **Time Acceleration**: Fast-forward the market simulation at **10x Speed** to quickly backtest strategies across multiple trading days.
 * **Market Freeze**: Manually pause the simulation engine to calmly review portfolio metrics, analyze charts, and place complex order setups without latency pressure.
 

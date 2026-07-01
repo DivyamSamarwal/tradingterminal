@@ -3591,9 +3591,9 @@ body.font-jetbrains { --font: 'JetBrains Mono', monospace; --mono: 'JetBrains Mo
 
 /* Custom Bot Studio */
 .bot-studio-modal {
-  max-width: 900px;
+  max-width: 1200px;
   width: 95%;
-  height: 80vh;
+  height: 85vh;
   display: flex;
   flex-direction: column;
   text-align: left;

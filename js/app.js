@@ -11693,6 +11693,15 @@ function formatTime(mins) {
 	);
 }
 
+function escapeHtmlGlobal(unsafe) {
+    return (unsafe || "").toString()
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+
 function toast(title, msg, type) {
 	type = type || "info";
 	var container = document.getElementById("toast-container");
@@ -11700,9 +11709,9 @@ function toast(title, msg, type) {
 	el.className = "toast " + type;
 	el.innerHTML =
 		'<span class="toast-title">' +
-		title +
+		escapeHtmlGlobal(title) +
 		'</span><span class="toast-msg">' +
-		msg +
+		escapeHtmlGlobal(msg) +
 		"</span>";
 	container.appendChild(el);
 	setTimeout(function () {
